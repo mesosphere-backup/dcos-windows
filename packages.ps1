@@ -4,6 +4,26 @@
 #  functioning DC/OS master and agent. It is used by the script DCOSWindowsAgentSetup.ps1 and DCOSWindowsMasterSetup.ps1.
 #
 
+
+class Installable
+{
+    static [string] $ClassName = "Installable"
+    Setup([string] $script_path) { Write-Host "Setup Installable  : $script_path"; }
+}
+
+
+function Setup-Installable {
+    param (
+        [string] $script_path
+    )
+    $obj = ( Get-Content "$script_path/setupinfo.json" | ConvertFrom-Json)
+    $setup = [String] $obj.agent_setup
+    Invoke-Expression ". '$script_path/$setup'"
+
+    $installer = New-Object $obj.package_name;
+    $installer.Setup($script_path)
+}
+
 $global:NssmDir = "c:\nssm"
 $global:NssmBinariesUrl = "http://nssm.cc/ci/nssm-2.24-101-g897c7ad.zip"
 $global:NssmSourceRepo  = ""
@@ -18,45 +38,3 @@ $global:MesosBuildNumber = ""
 $global:MesosVersion     = "mesos"
 $global:MesosFileType    = ".zip"
 $global:MesosSha1        = ""
-
-$global:ErlangBinariesUri = ""
-$global:ErlangSourceRepo  = ""
-$global:ErlangBuildNumber = ""
-$global:ErlangVersion     = "otp_win64_19.3"
-$global:ErlangFileType    = ".zip"
-$global:ErlangSha1        = ""
-
-$global:SpartanBinariesUri = ""
-$global:SpartanSourceRepo  = ""
-$global:SpartanBuildNumber = ""
-$global:SpartanVersion     = "dcos-spartan"
-$global:SpartanFileType    = ".zip"
-$global:SpartanSha1        = ""
-
-$global:NavstarBinariesUri = ""
-$global:NavstarSourceRepo  = ""
-$global:NavstarBuildNumber = ""
-$global:NavstarVersion     = "dcos-navstar"
-$global:NavstarFileType    = ".zip"
-$global:NavstarSha1        = ""
-
-$global:MinuteManBinariesUri = ""
-$global:MinuteManSourceRepo  = ""
-$global:MinuteManBuildNumber = ""
-$global:MinuteManVersion     = "dcos-minuteman"
-$global:MinuteManFileType    = ".zip"
-$global:MinuteManSha1        = ""
-
-$global:AdminrouterBinariesUri = ""
-$global:AdminrouterSourceRepo  = ""
-$global:AdminrouterBuildNumber = ""
-$global:AdminrouterVersion     = "dcos-adminrouter"
-$global:AdminrouterFileType    = ".zip"
-$global:AdminrouterSha1        = ""
-
-$global:NginxBinariesUri = ""
-$global:NginxSourceRepo  = ""
-$global:NginxBuildNumber = ""
-$global:NginxVersion     = "ngnix"
-$global:NginxFileType    = ".zip"
-$global:NginxSha1        = ""
