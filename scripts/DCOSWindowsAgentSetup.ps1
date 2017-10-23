@@ -136,6 +136,23 @@ Get-DCOSBinaries($download_uri, $download_dir)
     Expand-ZIPFile -File ($download_dir+"\"+$zipfile) -Destination ($download_dir)
     Copy-Item -Path ($download_dir+"\"+$global:NssmVersion+$global:NssmBuildNumber+"\win64\nssm.exe") -Destination $global:NssmDir
 
+    # Add ClusterID (required for metrics)
+    $dcosconfigpath = Join-Path -Path $global:MesosInstallDir -ChildPath "var/lib/dcos"
+    if (!(test-apth $dcosconfigpath)
+    {
+        $dir = New-Item -ItemType "directory" -Path $dcosconfigpath -force
+    }
+    (new-guid).guid >"$dcosconfigpath/cluster-id"
+
+    # Add the detect-ip.ps1 script to binary dir
+    #
+    $detect_ip = '$headers = @{"Metadata" = "true"};  `
+                    $r = Invoke-WebRequest -headers $headers "http://169.254.169.254/metadata/instance/network/interface/0/ipv4/ipAddress/0/privateIpAddress?api-version=2017-04-02&format=text"; `
+                    $r.Content; '
+
+    $detect_ip >"$global:MesosLaunchDir/detect_ip"
+
+    #
     # Get Erlang Runtime
 
     # Get Spartan
