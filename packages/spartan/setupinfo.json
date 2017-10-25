@@ -1,5 +1,6 @@
 {
     "package_name": "spartan",
+    "requires"    : [ "epmd" ],
     "install_dir": "/dcos",
     "agent_setup": "setup-spartan.ps1",
     "master_setup": "setup-spartan.ps1",

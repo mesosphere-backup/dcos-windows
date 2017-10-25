@@ -1,0 +1,8 @@
+{
+    "package_name": "epmd",
+    "requires"    : [ "erts" ],
+    "agent_setup": "setup-epmd.ps1",
+    "master_setup": "setup-epmd.ps1",
+    "package_type": "script",
+    "md5": ""
+}
