@@ -1,347 +1,158 @@
-#
-#  DCOSWindowsAgentSetup.ps1  -MasterIp <string> -AgentPrivateIP <string> -BootstapUri <uri>
-#
-#
-#
-#
-   
-
 [CmdletBinding(DefaultParameterSetName="Standard")]
-param(
-    [string]
+Param(
     [ValidateNotNullOrEmpty()]
-    $MasterIP,  # with port.  Could be a list of ipaddr:port or hostname:port
-
-    [string]
+    [string]$MasterIP,
     [ValidateNotNullOrEmpty()]
-    $AgentPrivateIP,  # ie 10.0.0.5
-
-    [string]
+    [string]$AgentPrivateIP,
     [ValidateNotNullOrEmpty()]
-    $BootstrapUrl,
-
-    [switch]
+    [string]$BootstrapUrl,
     [AllowNull()]
-    $isPublic = $false, # is this a public agent? 
-
-    [string]
+    [switch]$isPublic = $false,
     [AllowNull()]
-    $MesosDownloadDir, # ie c:mesos-download
-
-    [string]
+    [string]$MesosDownloadDir,
     [AllowNull()]
-    $MesosInstallDir,  # ie c:\mesos
-
-    [string]
+    [string]$MesosInstallDir,
     [AllowNull()]
-    $MesosLaunchDir,  # ie c:\mesos\src
-
-    [string]
+    [string]$MesosLaunchDir,
     [AllowNull()]
-    $MesosWorkDir,	# ie c:\mesos\work
-	
-	[string]
-	[AllowNull()]
-	$customAttrs
+    [string]$MesosWorkDir,
+    [AllowNull()]
+    [string]$customAttrs
 )
 
-    Write-Host ("args = "+$args)
+$ErrorActionPreference = "Stop"
 
-. $PSScriptRoot\packages.ps1
-
-$global:TestDcosBinariesUri = "https://dcosdevstorage.blob.core.windows.net/dcos-windows"
-
-$global:DCOSWindowsBinariesUri = ""
-
-$global:DCOSDownloadDir = "c:\dcos-staging"
-$global:DcosDir = "c:\dcos"
-
-$global:NssmDir = "c:\nssm"
-
-$global:MesosInstallDir = "c:\mesos"
-$global:MesosWorkDir    = "c:\mesos\work"
-$global:MesosLaunchDir  = "c:\mesos\bin"
-
-$global:MesosMasterIp = ""
+$SCRIPTS_REPO_URL = "https://github.com/Microsoft/mesos-jenkins"
+$SCRIPTS_DIR = Join-Path $env:TEMP "mesos-jenkins"
+$MESOS_BINARIES_URL = "$BootstrapUrl/mesos.zip"
 
 
-filter Timestamp {"$(Get-Date -Format o): $_"}
-
-function
-Write-Log($message)
-{
-    $msg = $message | Timestamp
-    Write-Output $msg
-}
-
-function
-Expand-ZIPFile($file, $destination)
-{
-    $shell = new-object -com shell.application
-    $zip = $shell.NameSpace($file)
-    foreach($item in $zip.items())
-    {
-        $shell.Namespace($destination).copyhere($item, 0x14)
+function Add-ToSystemPath {
+    Param(
+        [Parameter(Mandatory=$true)]
+        [string[]]$Path
+    )
+    $systemPath = [System.Environment]::GetEnvironmentVariable('Path', 'Machine').Split(';')
+    $currentPath = $env:PATH.Split(';')
+    foreach($p in $Path) {
+        if($p -notin $systemPath) {
+            $systemPath += $p
+        }
+        if($p -notin $currentPath) {
+            $currentPath += $p
+        }
+    }
+    $env:PATH = $currentPath -join ';'
+    setx.exe /M PATH ($systemPath -join ';')
+    if($LASTEXITCODE) {
+        Throw "Failed to set the new system path"
     }
 }
 
-
-function 
-Remove-Directory($dirname)
-{
-
-    try {
-        #Get-ChildItem $dirname -Recurse | Remove-Item  -force -confirm:$false
-        # This doesn't work because of long file names
-        # But this does:
-        Invoke-Expression ("cmd /C rmdir /s /q "+$dirname)
+function Install-Prerequisites {
+    $prerequisites = @{
+        'git'= @{
+            'url'= "http://dcos-win.westus.cloudapp.azure.com/downloads/Git-2.14.1-64-bit.exe"
+            'install_args' = @("/SILENT")
+            'install_dir' = (Join-Path $env:ProgramFiles "Git")
+            'env_paths' = @((Join-Path $env:ProgramFiles "Git\cmd"), (Join-Path $env:ProgramFiles "Git\bin"))
+        }
+        'putty'= @{
+            'url'= "http://dcos-win.westus.cloudapp.azure.com/downloads//putty-64bit-0.70-installer.msi"
+            'install_args'= @("/q")
+            'install_dir'= (Join-Path $env:ProgramFiles "PuTTY")
+            'env_paths' = @((Join-Path $env:ProgramFiles "PuTTY"))
+        }
     }
-    catch {
-        # If this fails we don't want it to stop
-
+    foreach($program in $prerequisites.Keys) {
+        if(Test-Path $prerequisites[$program]['install_dir']) {
+            Write-Output "$program is already installed"
+            Add-ToSystemPath $prerequisites[$program]['env_paths']
+            continue
+        }
+        Write-Output "Downloading $program from $($prerequisites[$program]['url'])"
+        $fileName = $prerequisites[$program]['url'].Split('/')[-1]
+        $programFile = Join-Path $env:TEMP $fileName
+        Invoke-WebRequest -UseBasicParsing -Uri $prerequisites[$program]['url'] -OutFile $programFile
+        $parameters = @{
+            'FilePath' = $programFile
+            'ArgumentList' = $prerequisites[$program]['install_args']
+            'Wait' = $true
+            'PassThru' = $true
+        }
+        if($programFile.EndsWith('.msi')) {
+            $parameters['FilePath'] = 'msiexec.exe'
+            $parameters['ArgumentList'] += @("/i", $programFile)
+        }
+        Write-Output "Installing $programFile"
+        $p = Start-Process @parameters
+        if($p.ExitCode -ne 0) {
+            Throw "Failed to install prerequisite $programFile during the environment setup"
+        }
+        Add-ToSystemPath $prerequisites[$program]['env_paths']
     }
 }
 
-function
-Get-DCOSBinaries($download_uri, $download_dir)
-{
-
-
-    # Get Mesos Binaries
-    $zipfile = ( $global:MesosVersion+$global:MesosBuildNumber+$global:MesosFileType )
-
-    Remove-Directory($download_dir)
-    $dir = New-Item -ItemType "directory" -Path $download_dir  -force
-    Invoke-WebRequest -Uri ($download_uri+"/"+$zipfile) -OutFile ($download_dir+"\"+$zipfile)
-
-    Remove-Directory($global:MesosWorkDir)
-    Remove-Directory($global:MesosLaunchDir)
-    Remove-Directory($global:MesosLogDir)
-    Remove-Directory($global:MesosInstallDir)
-
-    $dir = New-Item -ItemType "directory" -Path $global:MesosInstallDir -force
-    $dir = New-Item -ItemType "directory" -Path $global:MesosLaunchDir -force
-    $dir = New-Item -ItemType "directory" -Path $global:MesosWorkDir -force
-    $dir = New-Item -ItemType "directory" -Path $global:MesosLogDir -force
-
-    Expand-ZIPFile -File ($download_dir+"\"+$zipfile) -Destination $global:MesosLaunchDir
-
-    # Get nssm runtime
-    $zipfile = $global:NssmVersion+$global:NssmBuildNumber+".zip"
-
-    Invoke-WebRequest -Uri ($download_uri+"/"+$zipfile) -OutFile ($download_dir+"\"+$zipfile)
-
-    Remove-Directory($global:NssmDir)
-    $dir = New-Item -ItemType "directory" -Path $global:NssmDir -force
-    Expand-ZIPFile -File ($download_dir+"\"+$zipfile) -Destination ($download_dir)
-    Copy-Item -Path ($download_dir+"\"+$global:NssmVersion+$global:NssmBuildNumber+"\win64\nssm.exe") -Destination $global:NssmDir
-
-    # Add ClusterID (required for metrics)
-    $dcosconfigpath = Join-Path -Path $global:MesosInstallDir -ChildPath "var/lib/dcos"
-    if (!(test-apth $dcosconfigpath)
-    {
-        $dir = New-Item -ItemType "directory" -Path $dcosconfigpath -force
+function New-ScriptsDirectory {
+    if(Test-Path $SCRIPTS_DIR) {
+        Remove-Item -Recurse -Force -Path $SCRIPTS_DIR
     }
-    (new-guid).guid >"$dcosconfigpath/cluster-id"
-
-    # Add the detect-ip.ps1 script to binary dir
-    #
-    $detect_ip = '$headers = @{"Metadata" = "true"};  `
-                    $r = Invoke-WebRequest -headers $headers "http://169.254.169.254/metadata/instance/network/interface/0/ipv4/ipAddress/0/privateIpAddress?api-version=2017-04-02&format=text"; `
-                    $r.Content; '
-
-    $detect_ip >"$global:MesosLaunchDir/detect_ip"
-
-    #
-    # Get Erlang Runtime
-
-    # Get Spartan
-
-    # Get NavStar
-
-    # Get Minuteman
+    $p = Start-Process -FilePath 'git.exe' -Wait -PassThru -NoNewWindow -ArgumentList @('clone', $SCRIPTS_REPO_URL, $SCRIPTS_DIR)
+    if($p.ExitCode -ne 0) {
+        Throw "Failed to clone $SCRIPTS_REPO_URL repository"
+    }
 }
 
-
-
-function
-ValidateMasterIP($input_ip_str)
-{
-   # with port.  Could be a list of ipaddr:port or hostname:port
-   #
-   # Validate in a bit. For now, just accept it.
-
-   try {
-       $hostlist = ConvertFrom-Json $input_ip_str
-
-       $hoststr = "zk://"
-       if ($hostlist.count -eq 1)
-       {
-          $hoststr += $hostlist
-       }
-       else {
-           for ($i = 0; $i -lt $hostlist.count; $i++ )
-           {
-               if ($i -gt 0) 
-               {
-                  $hoststr += ","
-               }
-               $hoststr += $hostlist[$i]    
-           }
-       }
-       $hoststr += "/mesos"
-   }
-   catch {
-       $hoststr = "invalid address"
-   }
-
-   return $hoststr
+function Get-MasterIPs {
+    [string[]]$ips = ConvertFrom-Json $MasterIP
+    # NOTE(ibalutoiu): ACS-Engine adds the Zookeper port to every master IP and we need only the address
+    [string[]]$masterIPs = $ips | ForEach-Object { $_.Split(':')[0] }
+    return $masterIPs
 }
 
+function Install-MesosAgent {
+    $masterIPs = Get-MasterIPs
+    & "$SCRIPTS_DIR\DCOS\mesos-agent-setup.ps1" -MasterAddress $masterIPs -MesosWindowsBinariesURL $MESOS_BINARIES_URL `
+                                                -AgentPrivateIP $AgentPrivateIP -Public:$isPublic -CustomAttributes $customAttrs
+    if($LASTEXITCODE) {
+        Throw "Failed to setup the DCOS Mesos Windows slave agent"
+    }
+}
 
-function
-ValidateBootstrapURI($input_bootstrap_uri)
-{
-   # Check to see if the binaries are where we expect them
-   # if not, we faqil
-   #
-   if ($false)
-   {
-       throw $input_bootstrap_uri+" is not a valid DC/OS download source"
-       return $null;
-   }
-   else
-   {
-       return $input_bootstrap_uri
-   }
+function Install-ErlangRuntime {
+    & "$SCRIPTS_DIR\DCOS\erlang-setup.ps1"
+    if($LASTEXITCODE) {
+        Throw "Failed to setup the Windows Erlang runtime"
+    }
+}
 
+function Install-EPMDAgent {
+    & "$SCRIPTS_DIR\DCOS\epmd-agent-setup.ps1"
+    if($LASTEXITCODE) {
+        Throw "Failed to setup the DCOS EPMD Windows agent"
+    }
+}
+
+function Install-SpartanAgent {
+    $masterIPs = Get-MasterIPs
+    & "$SCRIPTS_DIR\DCOS\spartan-agent-setup.ps1" -MasterAddress $masterIPs -AgentPrivateIP $AgentPrivateIP -Public:$isPublic
+    if($LASTEXITCODE) {
+        Throw "Failed to setup the DCOS Spartan Windows agent"
+    }
 }
 
 
 try {
-    
-    $global:MesosMasterIp = ValidateMasterIP $MasterIP
-    $global:DCOSWindowsBinariesUri = ValidateBootstrapURI $BootstrapUrl
-
-    if ($MesosDownloadDir)
-    {
-        # This should be the download destination of the script and Great Big Zip file
-        $global:DCOSDownloadDir = $MesosDownloadDir
-    }
-    else
-    {
-        $global:DCOSDownloadDir = "c:\dcos-download"
-    }
-
-    if ($MesosInstallDir)
-    {
-        # This should be the download destination of the script and Great Big Zip file
-        $global:MesosInstallDir = $MesosInstallDir
-    }
-    else
-    {
-        $global:MesosInstallDir = "c:\mesos"
-    }
-
-    if ($MesosLaunchDir)
-    {
-        $global:MesosLaunchDir = $MesosLaunchDir
-    }
-    else
-    {
-        $global:MesosLaunchDir = $global:MesosInstallDir+"\bin"
-    }
-
-    if ($MesosWorkDir)
-    {
-        $global:MesosWorkDir = $MesosWorkDir
-    }
-    else
-    {
-        $global:MesosWorkDir = $global:MesosInstallDir+"\work"
-    }
-
-    if ($MesosLogDir)
-    {
-        $global:MesosLogkDir = $MesosLogDir
-    }
-    else
-    {
-        $global:MesosLogDir = $global:MesosInstallDir+"\log"
-    }
-
-    try {
-
-        # If we don't shut down nssm we can't rebuild the directories
-        # if nssm is running
-        Write-Log "Stop and Remove Mesos Service"
-        net stop Mesos
-        Invoke-Expression ($global:NssmDir+"\nssm remove Mesos confirm" )
-        Stop-Process -name "nssm*" -force
-    }
-    catch {
-
-    }
-
-    Write-Log "Get DC/OS Binaries"
-    Get-DCOSBinaries $global:DCOSWindowsBinariesUri $global:DCOSDownloadDir
-    
-    Write-Log "Open up the Marathon port (5051)"
- 
-    # Only the private node needs 2181 opened, but we will do it for both
-    netsh advfirewall firewall add rule name="Mesos2181" dir=in  protocol=tcp localport=2181 action=allow
-    netsh advfirewall firewall add rule name="mesos" dir=in  protocol=tcp localport=5051 action=allow
-
-    Write-Log "Register Mesos Service"
-    if ($customAttrs)
-    {
-        $attr_string=$customAttrs
-    }
-    else 
-    {
-        $attr_string = "os:windows"
-        if ($isPublic) 
-        {
-            $attr_string += ";public_ip:yes"
-        }
-    }
-    
-    $mesos_run = (" --master="+$global:MesosMasterIp `
-                     +" --work_dir="+$global:MesosWorkDir `
-                     +" --runtime_dir="+$global:MesosWorkDir `
-                     +" --launcher_dir="+$global:MesosLaunchDir `
-                     +" --ip="+$AgentPrivateIP`
-                     +' --attributes="'+$attr_string+'"'`
-                     +" --isolation=windows/cpu,filesystem/windows --containerizers=docker,mesos")
-
-    if ($isPublic) 
-    {
-        $mesos_run += " --default_role='slave_public'"
-    }
-
-Write-Log "run = "+$mesos_run
-
-    Invoke-Expression ($global:NssmDir+"\nssm install Mesos "+$global:MesosLaunchDir+"\mesos-agent.exe" )
-    Invoke-Expression ($global:NssmDir+"\nssm set Mesos AppDirectory "+$global:MesosLaunchDir ) 
-    Invoke-Expression ($global:NssmDir+"\nssm set Mesos AppParameters "+$mesos_run )
-    Invoke-Expression ($global:NssmDir+"\nssm set Mesos DisplayName Mesos" )
-    Invoke-Expression ($global:NssmDir+"\nssm set Mesos Description Mesos" )
-    Invoke-Expression ($global:NssmDir+"\nssm set Mesos Start SERVICE_AUTO_START" )
-    Invoke-Expression ($global:NssmDir+"\nssm set Mesos ObjectName LocalSystem" )
-    # Invoke-Expression ($global:NssmDir+"\nssm set Mesos Type SERVICE_WIN32_OWN_PROCESS" )
-    Invoke-Expression ($global:NssmDir+"\nssm set Mesos Type SERVICE_INTERACTIVE_PROCESS" )
-    Invoke-Expression ($global:NssmDir+"\nssm set Mesos AppThrottle 1500" )
-    Invoke-Expression ($global:NssmDir+"\nssm set Mesos AppStdout "+$global:MesosLogDir+"\MesosStdOut.log" )
-    Invoke-Expression ($global:NssmDir+"\nssm set Mesos AppStderr "+$global:MesosLogDir+"\MesosStdErr.log" )
-    Invoke-Expression ($global:NssmDir+"\nssm set Mesos AppStdoutCreationDisposition 4" )
-    Invoke-Expression ($global:NssmDir+"\nssm set Mesos AppStderrCreationDisposition 4" )
-    Invoke-Expression ($global:NssmDir+"\nssm set Mesos AppRotateFiles 1" )
-    Invoke-Expression ($global:NssmDir+"\nssm set Mesos AppRotateOnline 1" )
-    Invoke-Expression ($global:NssmDir+"\nssm set Mesos AppRotateSeconds 86400" )
-    Invoke-Expression ($global:NssmDir+"\nssm set Mesos AppRotateBytes 1048576" )
-    net start Mesos
+    Install-Prerequisites
+    New-ScriptsDirectory
+    Install-MesosAgent
+    Install-ErlangRuntime
+    Install-EPMDAgent
+    Install-SpartanAgent
+    Set-NetFirewallRule -Name 'FPS-SMB-In-TCP' -Enabled True # The SMB firewall rule is needed when collecting logs
+} catch {
+    Write-Output $_.ToString()
+    exit 1
 }
-catch
-{
-   Write-Log "error: " +$_.Excption.message
-}
+Write-Output "Successfully finished setting up the DCOS Windows Agent"
+exit 0
