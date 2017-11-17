@@ -1,0 +1,115 @@
+# Copyright 2017 Cloudbase Solutions Srl
+#
+#    Licensed under the Apache License, Version 2.0 (the "License"); you may
+#    not use this file except in compliance with the License. You may obtain
+#    a copy of the License at
+#
+#         http://www.apache.org/licenses/LICENSE-2.0
+#
+#    Unless required by applicable law or agreed to in writing, software
+#    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+#    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+#    License for the specific language governing permissions and limitations
+#    under the License.
+#
+
+$templating = (Resolve-Path "$PSScriptRoot\..\Templating").Path
+Import-Module $templating
+
+
+function Start-ExternalCommand {
+    <#
+    .SYNOPSIS
+    Helper function to execute a script block and throw an exception in case of error.
+    .PARAMETER ScriptBlock
+    Script block to execute
+    .PARAMETER ArgumentList
+    A list of parameters to pass to Invoke-Command
+    .PARAMETER ErrorMessage
+    Optional error message. This will become part of the exception message we throw in case of an error.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$true)]
+        [Alias("Command")]
+        [ScriptBlock]$ScriptBlock,
+        [array]$ArgumentList=@(),
+        [string]$ErrorMessage
+    )
+    PROCESS {
+        if($LASTEXITCODE){
+            # Leftover exit code. Some other process failed, and this
+            # function was called before it was resolved.
+            # There is no way to determine if the ScriptBlock contains
+            # a powershell commandlet or a native application. So we clear out
+            # the LASTEXITCODE variable before we execute. By this time, the value of
+            # the variable is not to be trusted for error detection anyway.
+            $LASTEXITCODE = ""
+        }
+        $res = Invoke-Command -ScriptBlock $ScriptBlock -ArgumentList $ArgumentList
+        if ($LASTEXITCODE) {
+            if(!$ErrorMessage){
+                Throw ("Command exited with status: {0}" -f $LASTEXITCODE)
+            }
+            Throw ("{0} (Exit code: $LASTEXITCODE)" -f $ErrorMessage)
+        }
+        return $res
+    }
+}
+
+function New-Directory {
+    Param(
+        [Parameter(Mandatory=$true)]
+        [string]$Path,
+        [Parameter(Mandatory=$false)]
+        [switch]$RemoveExisting
+    )
+    if(Test-Path $Path) {
+        if($RemoveExisting) {
+            # Remove if it already exist
+            Remove-Item -Recurse -Force $Path
+        } else {
+            return
+        }
+    }
+    return (New-Item -ItemType Directory -Path $Path)
+}
+
+function Start-RenderTemplate {
+    Param(
+        [Parameter(Mandatory=$true)]
+        [HashTable]$Context,
+        [Parameter(Mandatory=$true)]
+        [string]$TemplateFile,
+        [Parameter(Mandatory=$false)]
+        [string]$OutFile
+    )
+    $content = Invoke-RenderTemplateFromFile -Context $Context -Template $TemplateFile
+    if($OutFile) {
+        [System.IO.File]::WriteAllText($OutFile, $content)
+    } else {
+        return $content
+    }
+}
+
+function Open-WindowsFirewallRule {
+    Param(
+        [Parameter(Mandatory=$true)]
+        [string]$Name,
+        [ValidateSet("Inbound", "Outbound")]
+        [string]$Direction,
+        [ValidateSet("TCP", "UDP")]
+        [string]$Protocol,
+        [Parameter(Mandatory=$false)]
+        [string]$LocalAddress="0.0.0.0",
+        [Parameter(Mandatory=$true)]
+        [int]$LocalPort
+    )
+    Write-Output "Open firewall rule: $Name"
+    $firewallRule = Get-NetFirewallRule -DisplayName $Name -ErrorAction SilentlyContinue
+    if($firewallRule) {
+        Write-Output "Firewall rule already exist"
+        return
+    }
+    New-NetFirewallRule -DisplayName $Name -Direction $Direction -LocalPort $LocalPort -Protocol $Protocol -Action Allow | Out-Null
+}
