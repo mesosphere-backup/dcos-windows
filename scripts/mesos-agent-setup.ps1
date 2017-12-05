@@ -61,11 +61,13 @@ function Install-MesosBinaries {
 }
 
 function Get-MesosAgentAttributes {
+    if($CustomAttributes) {
+        return $CustomAttributes
+    }
     $attributes = "os:windows"
     if($Public) {
         $attributes += ";public_ip:yes"
     }
-    # TODO: Decide what to do with the custom attributes passed from the ACS Engine
     return $attributes
 }
 
