@@ -89,6 +89,7 @@ function New-MesosWindowsAgent {
                            " --runtime_dir=`"${MESOS_WORK_DIR}`"" + `
                            " --launcher_dir=`"${MESOS_BIN_DIR}`"" + `
                            " --log_dir=`"${MESOS_LOG_DIR}`"" + `
+                           " --external_log_file=`"${MESOS_LOG_DIR}\mesos-service.err.log`"" + `
                            " --ip=`"${agentAddress}`"" + `
                            " --isolation=`"windows/cpu,filesystem/windows`"" + `
                            " --containerizers=`"docker,mesos`"" + `
