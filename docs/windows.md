@@ -28,6 +28,9 @@ The deployment process for Windows must be significantly different form linux. T
 The installation adds to those goals:
 - The deployment should be feasible on a Windows host without additional preparation. As a result, the deployment must use only tools available on a freshly installed windows machine.
 
+## dcos-windows repository
+
+The package tree, top level scripts, and configuration files are, as much as possible, located in the repository *dcos-windows*.  (This does not include the yaml template files used by gen).  The dcos/dcos repository is a subproject of dcos-windows in order to ensure that pkgpanda, gen, and release are in alignment.  Packages and package files that are comon between windows and linux builds are used by dcos-windows via symbolic links.
 
 ## Packaging
 
@@ -53,10 +56,10 @@ With the configuration tool, all components are built into a package that contai
 
 Orchestrating the rollout of an installation is difficult, particularly when you are required to do things in a specific order. To keep everything as simple as possible, at the host level DC/OS makes no assumptions about the state of the cluster. You can install agents and then masters or even install both at the same time!
 
-Once your package is built, you can get going by running `dcos_install.sh` on every host. This script only does three things:
+Once your package is built, you can get going by running `dcosWindowsProvision.ps1` on every windows agent. This script only does three things:
 
-- Downloads the package to the current host.
-- Extracts the package into `/opt/mesosphere`.
+- Downloads the package directory to the current host.
+- Extracts the package into `%SYSTEMDRIVE%/mesosphere`.
 - Initiates installation using the [DC/OS Component Package Manager (Pkgpanda)](/docs/1.11/overview/architecture/components/#dcos-component-package-manager).
 
 That’s really it! Once the ZooKeeper cluster reaches quorum on the masters and Mesos comes up, every agent will join the cluster and you’ll be ready to go. We’ve kept the steps minimal to make sure they’re as reliable as possible.
@@ -120,10 +123,19 @@ The components included in DC/OS have a significant amount of configuration opti
 Remember that clusters most look almost the same for package install to work. As soon as configuration parameters that the frameworks rely on change, we cannot guarantee that a package can install or run reliably.
 
 ## Way Forward
+- Enable tox unit tests, less tests which are extremely linux specific (for example have a hard dependency on bash or systemd).
+- Enable pkgpanda build tests, with the same limiations
+- Add windows specific unit tests to fill in gaps in coverage.
+- Build packages as needed for bootstrap, deployed through Azure
+- Deploy packages to azure via dcos-launch
+- Build and debug pkgpanda API using IIS redirection 
 
 ### Specific Modifications Required
 
 ### Current Status
+
+#### tox unit tests passing: 59
+#### tox unit tests failing: 18
 
 
 [1]: https://github.com/dcos/dcos/blob/master/packages/mesos/build
