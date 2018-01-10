@@ -26,7 +26,6 @@ $SCRIPTS_REPO_URL = "https://github.com/dcos/dcos-windows"
 $SCRIPTS_DIR = Join-Path $env:TEMP "dcos-windows"
 $MESOS_BINARIES_URL = "$BootstrapUrl/mesos.zip"
 
-
 function Add-ToSystemPath {
     Param(
         [Parameter(Mandatory=$true)]
@@ -124,8 +123,21 @@ function Install-SpartanAgent {
     }
 }
 
+function New-DockerNATNetwork {
+    #
+    # This needs to be used by all the containers since DCOS Spartan DNS server
+    # is not bound to the gateway address.
+    # The Docker gateway address is added to the DNS server list unless
+    # disable_gatewaydns network option is enabled.
+    #
+    docker.exe network create --driver="nat" --opt "com.docker.network.windowsshim.disable_gatewaydns=true" "nat_network"
+    if($LASTEXITCODE -ne 0) {
+        Throw "Failed to create the new Docker NAT network with disable_gatewaydns flag"
+    }
+}
 
 try {
+    New-DockerNATNetwork
     New-ScriptsDirectory
     Install-MesosAgent
     Install-ErlangRuntime
