@@ -6,6 +6,7 @@ $EXHIBITOR_PORT = 8181
 $DCOS_DIR = Join-Path $env:SystemDrive "DCOS"
 $ERLANG_DIR = Join-Path $DCOS_DIR "erl8.3"
 $ERTS_DIR = Join-Path $ERLANG_DIR "erts-8.3"
+$DOCKER_HOME = Join-Path $env:ProgramFiles "Docker"
 
 # Mesos configurations
 $MESOS_SERVICE_NAME = "dcos-mesos-slave"

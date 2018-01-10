@@ -84,6 +84,7 @@ function New-MesosWindowsAgent {
     $agentAddress = Get-MesosAgentPrivateIP
     $mesosAttributes = Get-MesosAgentAttributes
     $masterZkAddress = "zk://" + ($MasterAddress -join ":2181,") + ":2181/mesos"
+    $mesosPath = ($DOCKER_HOME -replace '\\', '\\') + ';' + ($MESOS_BIN_DIR -replace '\\', '\\')
     $mesosAgentArguments = ("--master=`"${masterZkAddress}`"" + `
                            " --work_dir=`"${MESOS_WORK_DIR}`"" + `
                            " --runtime_dir=`"${MESOS_WORK_DIR}`"" + `
@@ -93,7 +94,8 @@ function New-MesosWindowsAgent {
                            " --ip=`"${agentAddress}`"" + `
                            " --isolation=`"windows/cpu,filesystem/windows`"" + `
                            " --containerizers=`"docker,mesos`"" + `
-                           " --attributes=`"${mesosAttributes}`"")
+                           " --attributes=`"${mesosAttributes}`"" + `
+                           " --executor_environment_variables=`"{\`"PATH\`": \`"${mesosPath}\`"}`"")
     if($Public) {
         $mesosAgentArguments += " --default_role=`"slave_public`""
     }
