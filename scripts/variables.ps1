@@ -10,6 +10,8 @@ $DOCKER_HOME = Join-Path $env:ProgramFiles "Docker"
 
 # Mesos configurations
 $MESOS_SERVICE_NAME = "dcos-mesos-slave"
+$MESOS_SERVICE_DISPLAY_NAME = "DCOS Mesos Windows Slave"
+$MESOS_SERVICE_DESCRIPTION = "Windows Service for the DCOS Mesos Slave"
 $MESOS_AGENT_PORT = 5051
 $MESOS_DIR = Join-Path $DCOS_DIR "mesos"
 $MESOS_BIN_DIR = Join-Path $MESOS_DIR "bin"
@@ -26,17 +28,19 @@ $MESOS_BUILD_BASE_URL = "$LOG_SERVER_BASE_URL/mesos-build"
 
 # EPMD configurations
 $EPMD_SERVICE_NAME = "dcos-epmd"
+$EPMD_SERVICE_DISPLAY_NAME = "DCOS EPMD Windows Agent"
+$EPMD_SERVICE_DESCRIPTION = "Windows Service for the DCOS EPMD Agent"
 $EPMD_PORT = 61420
 $EPMD_DIR = Join-Path $DCOS_DIR "epmd"
 $EPMD_SERVICE_DIR = Join-Path $EPMD_DIR "service"
-$EPMD_LOG_DIR = Join-Path $EPMD_DIR "log"
 
 # Spartan configurations
 $SPARTAN_SERVICE_NAME = "dcos-spartan"
+$SPARTAN_SERVICE_DISPLAY_NAME = "DCOS Spartan Windows Agent"
+$SPARTAN_SERVICE_DESCRIPTION = "Windows Service for the DCOS Spartan Windows Agent"
 $SPARTAN_DEVICE_NAME = "spartan"
 $SPARTAN_DIR = Join-Path $DCOS_DIR "spartan"
 $SPARTAN_RELEASE_DIR = Join-Path $SPARTAN_DIR "release"
-$SPARTAN_LOG_DIR = Join-Path $SPARTAN_DIR "log"
 $SPARTAN_SERVICE_DIR = Join-Path $SPARTAN_DIR "service"
 $SPARTAN_GIT_REPO_DIR = Join-Path $SPARTAN_DIR "spartan"
 $SPARTAN_BUILD_OUT_DIR = Join-Path $SPARTAN_DIR "build-output"
@@ -44,7 +48,7 @@ $SPARTAN_BUILD_LOGS_DIR = Join-Path $SPARTAN_BUILD_OUT_DIR "logs"
 $SPARTAN_BUILD_BASE_URL = "$LOG_SERVER_BASE_URL/spartan-build"
 
 # Installers URLs
-$SERVICE_WRAPPER_URL = "$LOG_SERVER_BASE_URL/downloads/WinSW.NET4.exe"
+$SERVICE_WRAPPER_URL = "$LOG_SERVER_BASE_URL/downloads/service-wrapper.exe"
 $VCREDIST_2013_URL = "https://download.microsoft.com/download/2/E/6/2E61CFA4-993B-4DD4-91DA-3737CD5CD6E3/vcredist_x64.exe"
 $DEVCON_CAB_URL = "https://download.microsoft.com/download/7/D/D/7DD48DE6-8BDA-47C0-854A-539A800FAA90/wdk/Installers/787bee96dbd26371076b37b13c405890.cab"
 

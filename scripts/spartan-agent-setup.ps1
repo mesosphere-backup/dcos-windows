@@ -27,7 +27,6 @@ function New-Environment {
     New-Directory -RemoveExisting $SPARTAN_DIR
     New-Directory $SPARTAN_RELEASE_DIR
     New-Directory $SPARTAN_SERVICE_DIR
-    New-Directory $SPARTAN_LOG_DIR
     $spartanReleaseZip = Join-Path $env:TEMP "spartan-release.zip"
     Write-Output "Downloading latest Spartan build"
     Invoke-WebRequest -UseBasicParsing -Uri $SPARTAN_LATEST_RELEASE_URL -OutFile $spartanReleaseZip
@@ -129,41 +128,27 @@ function New-SpartanWindowsAgent {
                          "-config `"${spartanConfigFile}`" " + `
                          "-args_file `"${spartanVMArgsFile}`" -pa " + `
                          "-- foreground")
-    $context = @{
-        "service_name" = $SPARTAN_SERVICE_NAME
-        "service_display_name" = "Spartan Windows Agent"
-        "service_description" = "Windows Service for the DCOS Spartan Windows Agent"
-        "service_binary" = $erlBinary
-        "service_arguments" = $spartanArguments
-        "log_dir" = $SPARTAN_LOG_DIR
-        "env_vars" = @(
-            @{
-                'name' = 'MASTER_SOURCE'
-                'value' = 'exhibitor'
-            },
-            @{
-                'name' = 'EXHIBITOR_ADDRESS'
-                'value' = $MasterAddress[0]
-            }
-        )
-    }
-    Start-RenderTemplate -TemplateFile "$TEMPLATES_DIR\windows-service.xml" -Context $context -OutFile "$SPARTAN_SERVICE_DIR\spartan-service.xml"
-    $serviceWapper = Join-Path $SPARTAN_SERVICE_DIR "spartan-service.exe"
-    Invoke-WebRequest -UseBasicParsing -Uri $SERVICE_WRAPPER_URL -OutFile $serviceWapper
-    $p = Start-Process -FilePath $serviceWapper -ArgumentList @("install") -NoNewWindow -PassThru -Wait
-    if($p.ExitCode -ne 0) {
-        Throw "Failed to set up the Spartan Windows service. Exit code: $($p.ExitCode)"
-    }
+    $environmentFile = Join-Path $SPARTAN_SERVICE_DIR "environment-file"
+    Set-Content -Path $environmentFile -Value @(
+        "MASTER_SOURCE=exhibitor",
+        "EXHIBITOR_ADDRESS=$($MasterAddress[0])"
+    )
+    $wrapperPath = Join-Path $SPARTAN_SERVICE_DIR "service-wrapper.exe"
+    Invoke-WebRequest -UseBasicParsing -Uri $SERVICE_WRAPPER_URL -OutFile $wrapperPath
+    New-DCOSWindowsService -Name $SPARTAN_SERVICE_NAME -DisplayName $SPARTAN_SERVICE_DISPLAY_NAME -Description $SPARTAN_SERVICE_DESCRIPTION `
+                           -WrapperPath $wrapperPath -EnvironmentFiles @($environmentFile) -BinaryPath "`"$erlBinary $spartanArguments`""
     # Temporary stop Docker service because we have port 53 bound and this needs to be used by Spartan
     # TODO(ibalutoiu): Permanently disable the Docker embedded DNS and remove this workaround
     Stop-Service "Docker"
-
-    Start-ExternalCommand { sc.exe failure $SPARTAN_SERVICE_NAME reset=5 actions=restart/1000 }
-    Start-ExternalCommand { sc.exe failureflag $SPARTAN_SERVICE_NAME 1 }
+    # TODO(ibalutoiu): If we start Spartan right after after we stop "Docker", it will sometimes report "address in use"
+    #                  We leave a sleep here until Docker gets updated and the hack will be removed
+    Start-Sleep 5
     Start-Service $SPARTAN_SERVICE_NAME
+    # TODO(ibalutoiu): Wait until Spartan properly initializes the DNS and then start Docker.
+    #                  To be removed once Docker gets updated.
+    Start-Sleep 5
     # Point the DNS from the host to the Spartan local DNS
     Set-DnsClientServerAddress -InterfaceAlias * -ServerAddresses @('192.51.100.1', '192.51.100.2', '192.51.100.3')
-
     # TODO(ibalutoiu): Remove this workaround of stopping/starting the Docker service once the embedded Docker DNS is disabled
     Start-Service "Docker"
 }

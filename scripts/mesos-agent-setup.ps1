@@ -95,27 +95,14 @@ function New-MesosWindowsAgent {
                            " --isolation=`"windows/cpu,filesystem/windows`"" + `
                            " --containerizers=`"docker,mesos`"" + `
                            " --attributes=`"${mesosAttributes}`"" + `
-                           " --executor_environment_variables=`"{\`"PATH\`": \`"${mesosPath}\`"}`"")
+                           " --executor_environment_variables=`"{\\\`"PATH\\\`": \\\`"${mesosPath}\\\`"}`"")
     if($Public) {
         $mesosAgentArguments += " --default_role=`"slave_public`""
     }
-    $context = @{
-        "service_name" = $MESOS_SERVICE_NAME
-        "service_display_name" = "DCOS Mesos Windows Slave"
-        "service_description" = "Windows Service for the DCOS Mesos Slave"
-        "service_binary" = $mesosBinary
-        "service_arguments" = $mesosAgentArguments
-        "log_dir" = $MESOS_LOG_DIR
-    }
-    Start-RenderTemplate -TemplateFile "$TEMPLATES_DIR\windows-service.xml" -Context $context -OutFile "$MESOS_SERVICE_DIR\mesos-service.xml"
-    $serviceWapper = Join-Path $MESOS_SERVICE_DIR "mesos-service.exe"
-    Invoke-WebRequest -UseBasicParsing -Uri $SERVICE_WRAPPER_URL -OutFile $serviceWapper
-    $p = Start-Process -FilePath $serviceWapper -ArgumentList @("install") -NoNewWindow -PassThru -Wait
-    if($p.ExitCode -ne 0) {
-        Throw "Failed to set up the DCOS Mesos Slave Windows service. Exit code: $($p.ExitCode)"
-    }
-    Start-ExternalCommand { sc.exe failure $MESOS_SERVICE_NAME reset=5 actions=restart/1000 }
-    Start-ExternalCommand { sc.exe failureflag $MESOS_SERVICE_NAME 1 }
+    $wrapperPath = Join-Path $MESOS_SERVICE_DIR "service-wrapper.exe"
+    Invoke-WebRequest -UseBasicParsing -Uri $SERVICE_WRAPPER_URL -OutFile $wrapperPath
+    New-DCOSWindowsService -Name $MESOS_SERVICE_NAME -DisplayName $MESOS_SERVICE_DISPLAY_NAME -Description $MESOS_SERVICE_DESCRIPTION `
+                           -WrapperPath $wrapperPath -BinaryPath "$mesosBinary $mesosAgentArguments"
     Start-Service $MESOS_SERVICE_NAME
 }
 
