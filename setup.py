@@ -1,6 +1,6 @@
 from setuptools import setup
 import platform
-is_windows = platform.system() is "Windows"
+is_windows = (platform.system() == "Windows")
 
 def get_advanced_templates():
     template_base = 'aws/templates/advanced/'
@@ -10,13 +10,13 @@ def get_advanced_templates():
 
 if is_windows:
     packages=[
-        'dcos/gen',
-        'dcos/gen.build_deploy',
-        'dcos/pkgpanda',
-        'dcos/pkgpanda.build',
-        'dcos/pkgpanda.http',
-        'dcos/release',
-        'dcos/release.storage',
+        'gen',
+        'gen.build_deploy',
+        'pkgpanda',
+        'pkgpanda.build',
+        'pkgpanda.http',
+        'release',
+        'release.storage',
         ]
 
     package_data={

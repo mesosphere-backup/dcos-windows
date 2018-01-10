@@ -1,0 +1,18 @@
+<configuration>
+  <id>dcos-epmd</id>
+  <name>DCOS EPMD Windows Agent</name>
+  <description>Windows Service for the DCOS EPMD Agent</description>
+  <executable>C:\DCOS\erl8.3\erts-8.3\bin\epmd.exe</executable>
+  <arguments>-port 61420</arguments>
+  <logpath>C:\DCOS\epmd\log</logpath>
+  <priority>Normal</priority>
+  <stoptimeout>20 sec</stoptimeout>
+  <stopparentprocessfirst>false</stopparentprocessfirst>
+  <startmode>Automatic</startmode>
+  <waithint>15 sec</waithint>
+  <sleeptime>1 sec</sleeptime>
+  <log mode="roll">
+    <sizeThreshold>10240</sizeThreshold>
+    <keepFiles>8</keepFiles>
+  </log>
+</configuration>
