@@ -113,3 +113,50 @@ function Open-WindowsFirewallRule {
     }
     New-NetFirewallRule -DisplayName $Name -Direction $Direction -LocalPort $LocalPort -Protocol $Protocol -Action Allow | Out-Null
 }
+
+function New-DCOSWindowsService {
+    Param(
+        [Parameter(Mandatory=$true)]
+        [string]$WrapperPath,
+        [Parameter(Mandatory=$true)]
+        [string]$Name,
+        [Parameter(Mandatory=$false)]
+        [string]$DisplayName,
+        [Parameter(Mandatory=$false)]
+        [string]$Description,
+        [Parameter(Mandatory=$true)]
+        [string]$BinaryPath,
+        [Parameter(Mandatory=$false)]
+        [string[]]$EnvironmentFiles,
+        [Parameter(Mandatory=$false)]
+        [string]$PreStartCommand
+    )
+    $service = Get-Service -Name $Name -ErrorAction SilentlyContinue
+    if($service) {
+        Write-Output "The service $Name already exists"
+        return
+    }
+    $params = @{
+        'Name' = $Name
+        'StartupType' = 'Automatic'
+        'Confirm' = $false
+    }
+    if($DisplayName) {
+        $params['DisplayName'] = $DisplayName
+    }
+    if($Description) {
+        $params['Description'] = $Description
+    }
+    $binaryPathName = "`"$WrapperPath`" --service-name `"$Name`""
+    if($PreStartCommand) {
+        $binaryPathName += " --exec-start-pre `"$PreStartCommand`""
+    }
+    foreach($file in $EnvironmentFiles) {
+        $binaryPathName += " --environment-file `"$file`""
+    }
+    $binaryPathName += " $BinaryPath"
+    $params['BinaryPathName'] = $binaryPathName
+    New-Service @params | Out-Null
+    Start-ExternalCommand { sc.exe failure $Name reset=5 actions=restart/1000 }
+    Start-ExternalCommand { sc.exe failureflag $Name 1 }
+}

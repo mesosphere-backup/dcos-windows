@@ -18,7 +18,6 @@ function New-Environment {
     }
     New-Directory -RemoveExisting $EPMD_DIR
     New-Directory $EPMD_SERVICE_DIR
-    New-Directory $EPMD_LOG_DIR
 }
 
 function New-EPMDWindowsAgent {
@@ -26,23 +25,10 @@ function New-EPMDWindowsAgent {
     if(!(Test-Path $epmdBinary)) {
         Throw "The EPMD binary $epmdBinary doesn't exist. Cannot configure the EPMD agent Windows service"
     }
-    $context = @{
-        "service_name" = $EPMD_SERVICE_NAME
-        "service_display_name" = "DCOS EPMD Windows Agent"
-        "service_description" = "Windows Service for the DCOS EPMD Agent"
-        "service_binary" = $epmdBinary
-        "service_arguments" = "-port $EPMD_PORT"
-        "log_dir" = $EPMD_LOG_DIR
-    }
-    Start-RenderTemplate -TemplateFile "$TEMPLATES_DIR\windows-service.xml" -Context $context -OutFile "$EPMD_SERVICE_DIR\epmd-service.xml"
-    $serviceWapper = Join-Path $EPMD_SERVICE_DIR "epmd-service.exe"
-    Invoke-WebRequest -UseBasicParsing -Uri $SERVICE_WRAPPER_URL -OutFile $serviceWapper
-    $p = Start-Process -FilePath $serviceWapper -ArgumentList @("install") -NoNewWindow -PassThru -Wait
-    if($p.ExitCode -ne 0) {
-        Throw "Failed to set up the EPMD Windows service. Exit code: $($p.ExitCode)"
-    }
-    Start-ExternalCommand { sc.exe failure $EPMD_SERVICE_NAME reset=5 actions=restart/1000 }
-    Start-ExternalCommand { sc.exe failureflag $EPMD_SERVICE_NAME 1 }
+    $wrapperPath = Join-Path $EPMD_SERVICE_DIR "service-wrapper.exe"
+    Invoke-WebRequest -UseBasicParsing -Uri $SERVICE_WRAPPER_URL -OutFile $wrapperPath
+    New-DCOSWindowsService -Name $EPMD_SERVICE_NAME -DisplayName $EPMD_SERVICE_DISPLAY_NAME -Description $EPMD_SERVICE_DESCRIPTION `
+                           -WrapperPath $wrapperPath -BinaryPath "$epmdBinary -port $EPMD_PORT"
     Start-Service $EPMD_SERVICE_NAME
 }
 
