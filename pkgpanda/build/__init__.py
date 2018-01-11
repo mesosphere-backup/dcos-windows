@@ -42,22 +42,26 @@ class DockerCmd:
         self.container = str()
 
     def run(self, name, cmd):
-        print("***DOCKER!!!*** name = "+name+"command = "+cmd)
-        container_name = "{}-{}".format(
-            name, ''.join(
-                random.choice(string.ascii_lowercase) for _ in range(10)
+        print("***DOCKER!!!*** name = "+name+"command = "+cmd[0])
+        if is_windows:
+            check_call(cmd)
+        else:
+            container_name = "{}-{}".format(
+                name, ''.join(
+                    random.choice(string.ascii_lowercase) for _ in range(10)
+                )
             )
-        )
-        docker = ["docker", "run", "--name={}".format(container_name)]
-        for host_path, container_path in self.volumes.items():
-            docker += ["-v", "{0}:{1}".format(host_path, container_path)]
+            docker = ["docker", "run", "--name={}".format(container_name)]
+            for host_path, container_path in self.volumes.items():
+                docker += ["-v", "{0}:{1}".format(host_path, container_path)]
 
-        for k, v in self.environment.items():
-            docker += ["-e", "{0}={1}".format(k, v)]
+            for k, v in self.environment.items():
+                docker += ["-e", "{0}={1}".format(k, v)]
 
-        docker.append(self.container)
-        docker += cmd
-        check_call(docker)
+            docker.append(self.container)
+            docker += cmd
+            check_call(docker)
+        
         DockerCmd.clean(container_name)
 
     @staticmethod
@@ -258,7 +262,10 @@ class PackageStore:
         self._upstream = None
         self._upstream_package_dir = self._upstream_dir + "/packages"
         # TODO(cmaloney): Make it so the upstream directory can be kept around
-        check_call(['rm', '-rf', self._upstream_dir])
+        if is_windows:
+            rm_r(self._packages_dir + "/upstream.json")
+        else:
+            check_call(['rm', '-rf', self._upstream_dir])
         upstream_config = self._packages_dir + '/upstream.json'
         if os.path.exists(upstream_config):
             try:
@@ -344,7 +351,13 @@ class PackageStore:
 
     def get_package_cache_folder(self, name):
         directory = self._package_cache_dir + '/' + name
-        check_call(['mkdir', '-p', directory])
+        if is_windows:
+            try:
+                os.mkdir(directory)
+            except:
+                pass
+        else:
+            check_call(['mkdir', '-p', directory])
         return directory
 
     def list_trees(self):
@@ -824,11 +837,16 @@ def _build(package_store, name, variant, clean_after_build, recursive):
 
     package_dir = package_store.get_package_folder(name)
 
+
     def src_abs(name):
         return package_dir + '/' + name
 
     def cache_abs(filename):
         return package_store.get_package_cache_folder(name) + '/' + filename
+
+    if is_windows:
+        print("2DO: Windows: Removing everything from under " + package_store.get_package_cache_folder(name) + "\n")
+        rm_r(package_store.get_package_cache_folder(name))
 
     # Build pkginfo over time, translating fields from buildinfo.
     pkginfo = {}
@@ -899,9 +917,7 @@ def _build(package_store, name, variant, clean_after_build, recursive):
         builder.add('extra_source', extra_id)
         final_buildinfo['extra_source'] = extra_id
 
-    if is_windows: 
-       print("2do: We need to clean things out as if we had a new container\n")
-    else:
+    if not is_windows: 
         # Figure out the docker name.
         docker_name = builder.take('docker')
         cmd.container = docker_name
@@ -1220,12 +1236,19 @@ def _build(package_store, name, variant, clean_after_build, recursive):
         # TODO(cmaloney): Run a wrapper which sources
         # /opt/mesosphere/environment then runs a build. Also should fix
         # ownership of /opt/mesosphere/packages/{pkg_id} post build.
-        cmd.run("package-builder", [
-            "/bin/bash",
-            "-o", "nounset",
-            "-o", "pipefail",
-            "-o", "errexit",
-            "/pkg/build"])
+        if is_windows:
+            print("2DO: Trying to run " + package_dir + "\\build.ps1")
+            cmd.run("package-builder", [
+             "powershell.exe",
+             "-file",
+             package_dir + "\\build.ps1"])
+        else:
+            cmd.run("package-builder", [
+             "/bin/bash",
+             "-o", "nounset",
+             "-o", "pipefail",
+             "-o", "errexit",
+             "/pkg/build"])
     except CalledProcessError as ex:
         raise BuildError("docker exited non-zero: {}\nCommand: {}".format(ex.returncode, ' '.join(ex.cmd)))
 
