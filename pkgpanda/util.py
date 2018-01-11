@@ -254,7 +254,8 @@ def expect_fs(folder, contents):
 
 
 def make_tar(result_filename, change_folder):
-    tar_cmd = ["tar", "--numeric-owner", "--owner=0", "--group=0"]
+    # tar_cmd = ["bsdtar", "--numeric-owner", "--owner=0", "--group=0"]
+    tar_cmd = ["bsdtar" ]
     if which("pxz"):
         tar_cmd += ["--use-compress-program=pxz", "-cf"]
     else:
