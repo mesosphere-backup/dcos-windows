@@ -65,7 +65,10 @@ class DockerCmd:
     @staticmethod
     def clean(name):
         """Cleans up the specified container"""
-        check_call(["docker", "rm", "-v", name])
+        if not is_windows:
+            check_call(["docker", "rm", "-v", name])
+        else:
+            print("2DO: dockercmd clean?")
 
 
 def get_variants_from_filesystem(directory, extension):
@@ -261,7 +264,7 @@ class PackageStore:
         self._upstream_package_dir = self._upstream_dir + "/packages"
         # TODO(cmaloney): Make it so the upstream directory can be kept around
         if is_windows:
-            rm_r(self._packages_dir + "/upstream.json")
+            rm_r(self._upstream_dir)
         else:
             check_call(['rm', '-rf', self._upstream_dir])
         upstream_config = self._packages_dir + '/upstream.json'
@@ -561,7 +564,13 @@ def make_bootstrap_tarball(package_store, packages, variant):
         print("Bootstrap already up to date, not recreating")
         return mark_latest()
 
-    check_call(['mkdir', '-p', bootstrap_cache_dir])
+    if is_windows:
+        try:
+            os.mkdir(bootstrap_cache_dir)
+        except:
+            pass
+    else:
+        check_call(['mkdir', '-p', bootstrap_cache_dir])
 
     # Try downloading.
     if package_store.try_fetch_bootstrap_and_active(bootstrap_id):
@@ -743,7 +752,13 @@ def build_tree(package_store, mkbootstrap, tree_variant):
     # Build bootstraps and and package lists for all variants.
     # TODO(cmaloney): Allow distinguishing between "build all" and "build the default one".
     complete_cache_dir = package_store.get_complete_cache_dir()
-    check_call(['mkdir', '-p', complete_cache_dir])
+    if is_windows:
+        try:
+            os.mkdir(complete_cache_dir)
+        except:
+            pass
+    else:
+        check_call(['mkdir', '-p', complete_cache_dir])
     results = {}
     for package_set in package_sets:
         info = {
@@ -883,7 +898,13 @@ def _build(package_store, name, variant, clean_after_build, recursive):
         for src_name, src_info in sorted(sources.items()):
             # TODO(cmaloney): Switch to a unified top level cache directory shared by all packages
             cache_dir = package_store.get_package_cache_folder(name) + '/' + src_name
-            check_call(['mkdir', '-p', cache_dir])
+            if is_windows:
+                try:
+                    os.mkdir(cache_dir)
+                except:
+                    pass
+            else:
+                check_call(['mkdir', '-p', cache_dir])
             fetcher = get_src_fetcher(src_info, cache_dir, package_dir)
             fetchers[src_name] = fetcher
             checkout_ids[src_name] = fetcher.get_id()
@@ -1238,7 +1259,7 @@ def _build(package_store, name, variant, clean_after_build, recursive):
             print("2DO: Trying to run " + package_dir + "\\build.ps1")
             cmd.run("package-builder", [
              "powershell.exe",
-             #"-file",
+             "-file",
              package_dir + "\\build.ps1"])
         else:
             cmd.run("package-builder", [
@@ -1252,9 +1273,12 @@ def _build(package_store, name, variant, clean_after_build, recursive):
 
     # Clean up the temporary install dir used for dependencies.
     # TODO(cmaloney): Move to an RAII wrapper.
-    check_call(['rm', '-rf', install_dir])
+    if is_windows:
+        rm_r(install_dir)
+    else:
+        check_call(['rm', '-rf', install_dir])
 
-    with logger.scope("Build package tarball"):
+    with logger.scope("Build package arball"):
         # Check for forbidden services before packaging the tarball:
         try:
             check_forbidden_services(cache_abs("result"), RESERVED_UNIT_NAMES)

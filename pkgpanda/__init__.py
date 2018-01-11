@@ -43,7 +43,7 @@ from pkgpanda.constants import (DCOS_SERVICE_CONFIGURATION_FILE,
                                 STATE_DIR_ROOT)
 from pkgpanda.exceptions import (InstallError, PackageError, PackageNotFound,
                                  ValidationError)
-from pkgpanda.util import (download, extract_tarball, if_exists, is_windows, load_json, write_json, write_string)
+from pkgpanda.util import (download, extract_tarball, if_exists, is_windows, load_json, rm_r, write_json, write_string)
 
 
 # TODO(cmaloney): Can we switch to something like a PKGBUILD from ArchLinux and

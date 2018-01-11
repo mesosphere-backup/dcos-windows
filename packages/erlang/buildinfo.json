@@ -1,0 +1,12 @@
+{
+  "requires": ["openssl", "ncurses"],
+  "sources": {
+    "erlang": {
+      "kind": "git",
+      "git": "https://github.com/dcos/otp.git",
+      "ref": "53c0dddd12e90cea408a503245e796ae08258c21",
+      "ref_origin": "maint-19"
+    }
+  },
+  "username": "dcos_epmd"
+}
