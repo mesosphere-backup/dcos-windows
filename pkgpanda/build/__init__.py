@@ -23,7 +23,6 @@ from pkgpanda.util import (check_forbidden_services, download_atomic,
                            make_file, make_tar, rewrite_symlinks, rm_r, write_json,
                            write_string)
 
-
 class BuildError(Exception):
     """An error while building something."""
 
@@ -61,8 +60,7 @@ class DockerCmd:
             docker.append(self.container)
             docker += cmd
             check_call(docker)
-        
-        DockerCmd.clean(container_name)
+            DockerCmd.clean(container_name)
 
     @staticmethod
     def clean(name):
@@ -1240,7 +1238,7 @@ def _build(package_store, name, variant, clean_after_build, recursive):
             print("2DO: Trying to run " + package_dir + "\\build.ps1")
             cmd.run("package-builder", [
              "powershell.exe",
-             "-file",
+             #"-file",
              package_dir + "\\build.ps1"])
         else:
             cmd.run("package-builder", [
@@ -1270,7 +1268,8 @@ def _build(package_store, name, variant, clean_after_build, recursive):
     # Bundle the artifacts into the pkgpanda package
     tmp_name = pkg_path + "-tmp.tar.xz"
     make_tar(tmp_name, cache_abs("result"))
-    os.rename(tmp_name, pkg_path)
+    #os.rename(tmp_name, pkg_path)
+    os.replace(tmp_name, pkg_path)
     print("Package built.")
     if clean_after_build:
         clean()

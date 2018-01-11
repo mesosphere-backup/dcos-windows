@@ -2,7 +2,7 @@
 param(
     [string]
     [ValidateNotNullOrEmpty()]
-    $pkgSrc  # Location of the packages tree sources
+    $pkgSrc,  # Location of the packages tree sources
 
     [string]
     [ValidateNotNullOrEmpty()]

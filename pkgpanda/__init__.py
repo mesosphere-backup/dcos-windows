@@ -904,11 +904,12 @@ class Install:
                 json.dump(state, f)
                 f.flush()
                 os.fsync(f.fileno())
-            print("2DO: Ignoring rename failure")
             try:
-                os.rename(state_filename + ".new", state_filename)
-            except:
-                pass
+              #  os.rename(state_filename + ".new", state_filename)
+                os.replace(state_filename + ".new", state_filename)
+            except e:
+                print("rename error:"+e)
+                #pass
 
         # TODO(pyronicide): systemd requires units to be both in the
         # root directory (/etc/systemd/system) *and* (for starting) in a
