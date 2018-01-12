@@ -1,17 +1,27 @@
 import copy
 import logging
 import os
+import sys
 import subprocess
 import uuid
 
 import pytest
 
-import gen.build_deploy.aws
-import release
-import release.storage.aws
-from pkgpanda.build import BuildError
-from pkgpanda.util import variant_prefix, write_json, write_string
+try:
+    import gen.build_deploy.aws
+except:
+    pass
 
+import release
+try:
+    import release.storage.aws
+except:
+    pass
+
+from pkgpanda.build import BuildError
+from pkgpanda.util import is_windows variant_prefix, write_json, write_string
+
+pytestmark = pytest.mark.skipif(is_windows)
 
 @pytest.fixture(scope='module')
 def config():
@@ -27,6 +37,7 @@ def config_testing(config):
     return config['testing']
 
 
+@pytest.mark.skipf(not "gen.build_deploy.aws" in sys.modules)
 @pytest.fixture(scope='module')
 def config_aws(config_testing):
     if 'aws' not in config_testing:

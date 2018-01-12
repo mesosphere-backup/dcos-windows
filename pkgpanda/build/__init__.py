@@ -7,7 +7,7 @@ import shutil
 import string
 import tempfile
 from contextlib import contextmanager
-from os import chdir, getcwd, mkdir
+from os import chdir, getcwd, mkdir, makedirs
 from os.path import exists
 from subprocess import CalledProcessError, check_call, check_output
 
@@ -354,7 +354,7 @@ class PackageStore:
         directory = self._package_cache_dir + '/' + name
         if is_windows:
             try:
-                os.mkdir(directory)
+                os.makedirs(directory)
             except:
                 pass
         else:
@@ -566,7 +566,7 @@ def make_bootstrap_tarball(package_store, packages, variant):
 
     if is_windows:
         try:
-            os.mkdir(bootstrap_cache_dir)
+            os.makedirs(bootstrap_cache_dir)
         except:
             pass
     else:
@@ -754,7 +754,7 @@ def build_tree(package_store, mkbootstrap, tree_variant):
     complete_cache_dir = package_store.get_complete_cache_dir()
     if is_windows:
         try:
-            os.mkdir(complete_cache_dir)
+            os.makedirs(complete_cache_dir)
         except:
             pass
     else:
@@ -900,7 +900,7 @@ def _build(package_store, name, variant, clean_after_build, recursive):
             cache_dir = package_store.get_package_cache_folder(name) + '/' + src_name
             if is_windows:
                 try:
-                    os.mkdir(cache_dir)
+                    os.makedirs(cache_dir)
                 except:
                     pass
             else:
@@ -1180,10 +1180,10 @@ def _build(package_store, name, variant, clean_after_build, recursive):
                 "'src' directory already exists, did you have a previous build? " +
                 "Currently all builds must be from scratch. Support should be " +
                 "added for re-using a src directory when possible. src={}".format(src_dir))
-        os.mkdir(src_dir)
+        os.makedirs(src_dir)
         for src_name, fetcher in sorted(fetchers.items()):
             root = cache_abs('src/' + src_name)
-            os.mkdir(root)
+            os.makedirs(root)
 
             fetcher.checkout_to(root)
     except ValidationError as ex:
@@ -1215,7 +1215,7 @@ def _build(package_store, name, variant, clean_after_build, recursive):
     # TODO(cmaloney): Run as a specific non-root user, make it possible
     # for non-root to cleanup afterwards.
     # Run the build, prepping the environment as necessary.
-    mkdir(cache_abs("result"))
+    os.makedirs(cache_abs("result"))
 
     # Copy the build info to the resulting tarball
     write_json(cache_abs("src/buildinfo.full.json"), final_buildinfo)

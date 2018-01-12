@@ -1,7 +1,9 @@
+import pytest
 from shutil import copytree
 
-from pkgpanda.util import resources_test_dir, run
+from pkgpanda.util import is_windows, resources_test_dir, run 
 
+pytestmark = pytest.mark.skipif(is_windows, 'tests for linux only')
 
 list_output = """mesos:
   0.22.0
@@ -21,22 +23,12 @@ mesos-config:
   justmesos
 """
 
-
 def test_list():
-    repo = "--repository={}".format(resources_test_dir("packages"))
-    test_output = run(["pkgpanda", "list", repo])
-    test_output = test_output.replace('\r', '')   # Eliminate the CRs that windows inserts
-    print("test_output: "+test_output)
-    print("list_output: "+list_output)
-    assert test_output == list_output
+    assert run(["pkgpanda", "list", "--repository={}".format(resources_test_dir("packages"))]) == list_output
 
 
 def test_active():
-    test_output = run(["pkgpanda", "active", "--root={}".format(resources_test_dir("install"))])
-    test_output = test_output.replace('\r', '')   # Eliminate the CRs that windows inserts
-    print("test_output: "+test_output)
-    print("list_output: "+list_output)
-    assert test_output == active_output
+    assert run(["pkgpanda", "active", "--root={}".format(resources_test_dir("install"))]) == active_output
 
 
 def test_remove(tmpdir):
@@ -49,10 +41,6 @@ def test_remove(tmpdir):
         "--repository={}".format(repo_dir),
         "--root={}".format(resources_test_dir("install_empty"))])
 
-    test_output = run(["pkgpanda", "list", "--repository={}".format(repo_dir)])
-    test_output = test_output.replace('\r', '')   # Eliminate the CRs that windows inserts
-    print("test_output: "+test_output)
-    print("list_remove_output: "+list_remove_output)
-    assert test_output == list_remove_output
+    assert run(["pkgpanda", "list", "--repository={}".format(repo_dir)]) == list_remove_output
     # TODO(cmaloney): Test removing a non-existant package.
     # TODO(cmaloney): Test removing an active package.

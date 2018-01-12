@@ -6,6 +6,7 @@ import os
 import platform
 import re
 import shutil
+import stat
 import socketserver
 import subprocess
 from contextlib import contextmanager, ExitStack
@@ -43,6 +44,10 @@ json_prettyprint_args = {
 }
 
 
+def rm_error(action, name, exc):
+    os.chmod(name, stat.S_IWRITE)
+    os.remove(name)
+
 def rm_r(path):
     if (isinstance(path, (list, tuple))):
         for this_path in path:
@@ -54,7 +59,7 @@ def rm_r(path):
     if os.path.isfile(path) or os.path.islink(path):
         os.unlink(path)
     else:
-        shutil.rmtree(path)
+        shutil.rmtree(path, onerror=rm_error)
 
 
 def variant_str(variant):
@@ -158,7 +163,7 @@ def extract_tarball(path, target):
     # prevent partial extraction from ever laying around on the filesystem.
     try:
         assert os.path.exists(path), "Path doesn't exist but should: {}".format(path)
-        os.mkdir(target)
+        os.makedirs(target)
         if is_windows:
             check_call(['bsdtar', '-xf', path, '-C', target])
         else:
@@ -414,6 +419,7 @@ class PrintLogger:
         print("{}: {} {}".format(status, text, errorDetails))
 
     def progressMessage(self, message):  # noqa: N802, N803
+        print("progress: {}".format(message))
         pass
 
     def blockOpened(self, name, flowId=None):  # noqa: N802, N803
