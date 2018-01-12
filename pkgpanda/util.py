@@ -158,8 +158,11 @@ def extract_tarball(path, target):
     # prevent partial extraction from ever laying around on the filesystem.
     try:
         assert os.path.exists(path), "Path doesn't exist but should: {}".format(path)
-        check_call(['mkdir', '-p', target])
-        check_call(['tar', '-xf', path, '-C', target])
+        os.mkdir(target)
+        if is_windows:
+            check_call(['bsdtar', '-xf', path, '-C', target])
+        else:
+            check_call(['tar', '-xf', path, '-C', target])
     except:
         # If there are errors, we can't really cope since we are already in an error state.
         rmtree(target, ignore_errors=True)
@@ -259,7 +262,10 @@ def make_tar(result_filename, change_folder):
     if which("pxz"):
         tar_cmd += ["--use-compress-program=pxz", "-cf"]
     else:
-        tar_cmd += ["-cJf"]
+        if is_windows:
+            tar_cmd += ["-cf"]
+        else:
+            tar_cmd += ["-cJf"]
     tar_cmd += [result_filename, "-C", change_folder, "."]
     check_call(tar_cmd)
 

@@ -4,7 +4,7 @@ import shutil
 from subprocess import CalledProcessError, check_call, check_output
 
 from pkgpanda.exceptions import ValidationError
-from pkgpanda.util import download_atomic, logger, sha1
+from pkgpanda.util import download_atomic, is_windows, logger, sha1
 
 
 # Ref must be a git sha-1. We then pass it through get_sha1 to make
@@ -263,7 +263,10 @@ def extract_archive(archive, dst_dir):
     archive_type = _identify_archive_type(archive)
 
     if archive_type == 'tar':
-        check_call(["tar", "-xf", archive, "--strip-components=1", "-C", dst_dir])
+        if is_windows:
+            check_call(["bsdtar", "-xf", archive, "-C", dst_dir])
+        else:
+            check_call(["tar", "-xf", archive, "--strip-components=1", "-C", dst_dir])
     elif archive_type == 'zip':
         check_call(["unzip", "-x", archive, "-d", dst_dir])
         # unzip binary does not support '--strip-components=1',
