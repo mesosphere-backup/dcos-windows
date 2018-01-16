@@ -1,5 +1,5 @@
 {
-  "requires": ["openssl", "erlang", "toybox"],
+  "requires": ["openssl", "erlang"],
   "sources": {
     "spartan": {
       "kind": "git",
