@@ -98,6 +98,7 @@ function New-MesosWindowsAgent {
                            " --isolation=`"windows/cpu,filesystem/windows`"" + `
                            " --containerizers=`"docker,mesos`"" + `
                            " --attributes=`"${mesosAttributes}`"" + `
+                           " --hostname=`"${AgentPrivateIP}`"" +
                            " --executor_environment_variables=`"{\\\`"PATH\\\`": \\\`"${mesosPath}\\\`"}`"")
     if($Public) {
         $mesosAgentArguments += " --default_role=`"slave_public`""
