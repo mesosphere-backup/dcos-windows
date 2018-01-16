@@ -1,9 +1,9 @@
 {
   "sources": {
     "erlang": {
-      "kind": "url_extract",
+      "kind": "url",
       "url": "http://erlang.org/download/otp_win64_19.3.exe",
-      "sha1": ""
+      "sha1": "01f6d43872f675ae53800de594542a8406267801"
     }
   },
   "username": "dcos_epmd"

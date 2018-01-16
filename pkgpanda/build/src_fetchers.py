@@ -268,9 +268,12 @@ def extract_archive(archive, dst_dir):
         else:
             check_call(["tar", "-xf", archive, "--strip-components=1", "-C", dst_dir])
     elif archive_type == 'zip':
-        check_call(["unzip", "-x", archive, "-d", dst_dir])
-        # unzip binary does not support '--strip-components=1',
-        _strip_first_path_component(dst_dir)
+        if is_windows:
+            check_call(["powershell.exe", "-command", "expand-archive", "-path", archive, "-destinationpath", dst_dir])
+        else:
+            check_call(["unzip", "-x", archive, "-d", dst_dir])
+            # unzip binary does not support '--strip-components=1',
+            _strip_first_path_component(dst_dir)
     else:
         raise ValidationError("Unsupported archive: {}".format(os.path.basename(archive)))
 
@@ -313,7 +316,10 @@ class UrlSrcFetcher(SourceFetcher):
 
         if self.sha != file_sha:
             corrupt_filename = self.cache_filename + '.corrupt'
-            check_call(['mv', self.cache_filename, corrupt_filename])
+            if is_windows:
+                os.replace(self.cache_filename, corrupt_filename)
+            else:
+                check_call(['mv', self.cache_filename, corrupt_filename])
             raise ValidationError(
                 "Provided sha1 didn't match sha1 of downloaded file, corrupt download saved as {}. "
                 "Provided: {}, Download file's sha1: {}, Url: {}".format(

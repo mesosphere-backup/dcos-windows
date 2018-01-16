@@ -12,4 +12,4 @@ param(
 
 )
 
-Write-Host "Building project"
+Write-Host "Building python IDNA"
