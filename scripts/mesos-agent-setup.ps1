@@ -32,6 +32,7 @@ function New-MesosEnvironment {
     }
     New-Directory -RemoveExisting $MESOS_DIR
     New-Directory $MESOS_BIN_DIR
+    New-Directory $MESOS_LOG_DIR
     New-Directory $MESOS_WORK_DIR
     New-Directory $MESOS_SERVICE_DIR
 }
@@ -85,11 +86,13 @@ function New-MesosWindowsAgent {
     $mesosAttributes = Get-MesosAgentAttributes
     $masterZkAddress = "zk://" + ($MasterAddress -join ":2181,") + ":2181/mesos"
     $mesosPath = ($DOCKER_HOME -replace '\\', '\\') + ';' + ($MESOS_BIN_DIR -replace '\\', '\\')
+    $externalLogFile = Join-Path $MESOS_LOG_DIR "mesos-service.err.log"
+    New-Item -ItemType File -Path $externalLogFile
     $mesosAgentArguments = ("--master=`"${masterZkAddress}`"" + `
                            " --work_dir=`"${MESOS_WORK_DIR}`"" + `
                            " --runtime_dir=`"${MESOS_WORK_DIR}`"" + `
                            " --launcher_dir=`"${MESOS_BIN_DIR}`"" + `
-                           " --external_log_file=`"${MESOS_LOG_DIR}\mesos-service.err.log`"" + `
+                           " --external_log_file=`"${externalLogFile}`"" + `
                            " --log_dir=`"${MESOS_LOG_DIR}`"" + `
                            " --ip=`"${agentAddress}`"" + `
                            " --isolation=`"windows/cpu,filesystem/windows`"" + `
