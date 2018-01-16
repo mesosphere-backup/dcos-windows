@@ -1,11 +1,9 @@
 {
-  "requires": ["openssl"],
   "sources": {
     "erlang": {
-      "kind": "git",
-      "git": "https://github.com/dcos/otp.git",
-      "ref": "53c0dddd12e90cea408a503245e796ae08258c21",
-      "ref_origin": "maint-19"
+      "kind": "url",
+      "url": "http://erlang.org/download/otp_win64_19.3.exe",
+      "sha1": "01f6d43872f675ae53800de594542a8406267801"
     }
   },
   "username": "dcos_epmd"
