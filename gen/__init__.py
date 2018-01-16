@@ -416,7 +416,10 @@ def get_dcosconfig_source_target_and_templates(
     # TODO(cmaloney): Make these all just defined by the base calc.py
     config_package_names = ['dcos-config', 'dcos-metadata']
 
-    template_filenames = ['dcos-windows-config.yaml', 'cloud-config-windows.yaml', 'dcos-metadata.yaml', 'dcos-windows-services.yaml']
+    if is_windows:
+        template_filenames = ['dcos-windows-config.yaml', 'cloud-config-windows.yaml', 'dcos-metadata.yaml', 'dcos-windows-services.yaml']
+    else:
+        template_filenames = ['dcos-config.yaml', 'cloud-config.yaml', 'dcos-metadata.yaml', 'dcos-services.yaml']
 
     # TODO(cmaloney): Check there are no duplicates between templates and extra_template_files
     template_filenames += extra_templates
@@ -542,6 +545,7 @@ def generate(
     sources, targets, templates = get_dcosconfig_source_target_and_templates(
         user_arguments, extra_templates, extra_sources)
 
+    import pdb; pdb.set_trace()
     resolver = validate_and_raise(sources, targets + extra_targets)
     argument_dict = get_final_arguments(resolver)
     late_variables = get_late_variables(resolver, sources)
