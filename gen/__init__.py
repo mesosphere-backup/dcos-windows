@@ -10,6 +10,7 @@ Operates strictly:
   - Defaults can be overridden. If no default is given, the parameter must be specified
   - empty string is not the same as "not specified"
 """
+
 import importlib.machinery
 import json
 import logging as log
@@ -28,7 +29,16 @@ import gen.template
 import gen.util
 from gen.exceptions import ValidationError
 from pkgpanda import PackageId
-from pkgpanda.util import hash_checkout, is_windows, json_prettyprint, load_string, split_by_token, write_json, write_yaml
+from pkgpanda.util import (
+    hash_checkout,
+    is_windows,
+    json_prettyprint,
+    load_string,
+    split_by_token,
+    write_json,
+    write_string,
+    write_yaml,
+)
 
 # List of all roles all templates should have.
 role_names = {"master", "slave", "slave_public"}
@@ -37,6 +47,12 @@ role_template = '/etc/mesosphere/roles/{}'
 
 CLOUDCONFIG_KEYS = {'coreos', 'runcmd', 'apt_sources', 'root', 'mounts', 'disk_setup', 'fs_setup', 'bootcmd'}
 PACKAGE_KEYS = {'package', 'root'}
+
+
+# Allow overriding calculators with a `gen_extra/calc.py` if it exists
+gen_extra_calc = None
+if os.path.exists('gen_extra/calc.py'):
+    gen_extra_calc = importlib.machinery.SourceFileLoader('gen_extra.calc', 'gen_extra/calc.py').load_module()
 
 
 def stringify_configuration(configuration: dict):
@@ -144,6 +160,8 @@ utils = Bunch({
     "add_roles": add_roles,
     "role_names": role_names,
     "add_services": None,
+    "add_stable_artifact": None,
+    "add_channel_artifact": None,
     "add_units": add_units,
     "render_cloudconfig": render_cloudconfig
 })
@@ -279,7 +297,7 @@ def do_gen_package(config, package_filename):
                 pass
 
             with open(path, 'w') as f:
-                f.write(file_info['content'])
+                f.write(file_info['content'] or '')
 
             # the file has special mode defined, handle that.
             if 'permissions' in file_info:
@@ -339,7 +357,7 @@ def extract_files_containing_late_variables(start_files):
             'File info must not contain late config placeholder in fields other than content: {}'.format(file_info)
         )
 
-        if _late_bind_placeholder_in(file_info['content']):
+        if file_info['content'] and _late_bind_placeholder_in(file_info['content']):
             found_files.append(file_info)
         else:
             left_files.append(file_info)
@@ -414,11 +432,11 @@ def get_dcosconfig_source_target_and_templates(
     log.info("Generating configuration files...")
 
     # TODO(cmaloney): Make these all just defined by the base calc.py
-    config_package_names = ['dcos-config', 'dcos-metadata']
-
     if is_windows:
+        config_package_names = ['dcos-config', 'dcos-metadata'] # 2Do: We expect to change these
         template_filenames = ['dcos-windows-config.yaml', 'cloud-config-windows.yaml', 'dcos-metadata.yaml', 'dcos-windows-services.yaml']
     else:
+        config_package_names = ['dcos-config', 'dcos-metadata']
         template_filenames = ['dcos-config.yaml', 'cloud-config.yaml', 'dcos-metadata.yaml', 'dcos-services.yaml']
 
     # TODO(cmaloney): Check there are no duplicates between templates and extra_template_files
@@ -441,28 +459,30 @@ def get_dcosconfig_source_target_and_templates(
     base_source = gen.internals.Source(is_user=False)
     base_source.add_entry(gen.calc.entry, replace_existing=False)
 
-    # Allow overriding calculators with a `gen_extra/calc.py` if it exists
-    if os.path.exists('gen_extra/calc.py'):
-        mod = importlib.machinery.SourceFileLoader('gen_extra.calc', 'gen_extra/calc.py').load_module()
-        base_source.add_entry(mod.entry, replace_existing=True)
+    if gen_extra_calc:
+        base_source.add_entry(gen_extra_calc.entry, replace_existing=True)
 
     def add_builtin(name, value):
         base_source.add_must(name, json_prettyprint(value))
 
     sources = [base_source, user_arguments_to_source(user_arguments)] + extra_sources
 
+    # Add builtin variables.
     # TODO(cmaloney): Hash the contents of all the templates rather than using the list of filenames
     # since the filenames might not live in this git repo, or may be locally modified.
     add_builtin('template_filenames', template_filenames)
     add_builtin('config_package_names', list(config_package_names))
-    # TODO(cmaloney): user_arguments needs to be a temporary_str since we need to only include used
-    # arguments inside of it.
-    add_builtin('user_arguments', user_arguments)
 
-    # Add a builtin for expanded_config, so that we won't get unset argument errors. The temporary
-    # value will get replaced with the set of all arguments once calculation is complete
+    # Add placeholders for builtin variables whose values will be calculated after all others, so that we won't get
+    # unset argument errors. The placeholder value with be replaced with the actual value after all other variables are
+    # calculated.
     temporary_str = 'DO NOT USE THIS AS AN ARGUMENT TO OTHER ARGUMENTS. IT IS TEMPORARY'
+    add_builtin('user_arguments_full', temporary_str)
+    add_builtin('user_arguments', temporary_str)
+    add_builtin('config_yaml_full', temporary_str)
+    add_builtin('config_yaml', temporary_str)
     add_builtin('expanded_config', temporary_str)
+    add_builtin('expanded_config_full', temporary_str)
 
     # Note: must come last so the hash of the "base_source" this is beign added to contains all the
     # variables but this.
@@ -529,8 +549,23 @@ def get_late_variables(resolver, sources):
     return late_variables
 
 
+def get_secret_variables(sources):
+    return list(set(var_name for source in sources for var_name in source.secret))
+
+
 def get_final_arguments(resolver):
     return {k: v.value for k, v in resolver.arguments.items() if v.is_finalized}
+
+
+def format_expanded_config(config):
+    return textwrap.indent(json_prettyprint(config), prefix=('  ' * 3))
+
+
+def user_arguments_to_yaml(user_arguments: dict):
+    return textwrap.indent(
+        yaml.dump(user_arguments, default_style='|', default_flow_style=False, indent=2),
+        prefix=('  ' * 3),
+    )
 
 
 def generate(
@@ -545,24 +580,39 @@ def generate(
     sources, targets, templates = get_dcosconfig_source_target_and_templates(
         user_arguments, extra_templates, extra_sources)
 
-    import pdb; pdb.set_trace()
     resolver = validate_and_raise(sources, targets + extra_targets)
     argument_dict = get_final_arguments(resolver)
     late_variables = get_late_variables(resolver, sources)
+    secret_builtins = ['expanded_config_full', 'user_arguments_full', 'config_yaml_full']
+    secret_variables = set(get_secret_variables(sources) + secret_builtins)
+    masked_value = '**HIDDEN**'
 
-    # expanded_config is a special result which contains all other arguments. It has to come after
-    # the calculation of all the other arguments so it can be filled with everything which was
-    # calculated. Can't be calculated because that would have an infinite recursion problem (the set
-    # of all arguments would want to include itself).
-    # Explicitly / manaully setup so that it'll fit where we want it.
+    # Calculate values for builtin variables.
+    user_arguments_masked = {k: (masked_value if k in secret_variables else v) for k, v in user_arguments.items()}
+    argument_dict['user_arguments_full'] = json_prettyprint(user_arguments)
+    argument_dict['user_arguments'] = json_prettyprint(user_arguments_masked)
+    argument_dict['config_yaml_full'] = user_arguments_to_yaml(user_arguments)
+    argument_dict['config_yaml'] = user_arguments_to_yaml(user_arguments_masked)
+
+    # The expanded_config and expanded_config_full variables contain all other variables and their values.
+    # expanded_config is a copy of expanded_config_full with secret values removed. Calculating these variables' values
+    # must come after the calculation of all other variables to prevent infinite recursion.
     # TODO(cmaloney): Make this late-bound by gen.internals
-    argument_dict['expanded_config'] = textwrap.indent(
-        json_prettyprint(
-            {k: v for k, v in argument_dict.items() if not v.startswith(gen.internals.LATE_BIND_PLACEHOLDER_START)}
-        ),
-        prefix='  ' * 3,
+    expanded_config_full = {
+        k: v for k, v in argument_dict.items()
+        # Omit late-bound variables whose values have not yet been calculated.
+        if not v.startswith(gen.internals.LATE_BIND_PLACEHOLDER_START)
+    }
+    expanded_config_scrubbed = {k: v for k, v in expanded_config_full.items() if k not in secret_variables}
+    argument_dict['expanded_config_full'] = format_expanded_config(expanded_config_full)
+    argument_dict['expanded_config'] = format_expanded_config(expanded_config_scrubbed)
+
+    log.debug(
+        "Final arguments:" + json_prettyprint({
+            # Mask secret config values.
+            k: (masked_value if k in secret_variables else v) for k, v in argument_dict.items()
+        })
     )
-    log.debug("Final arguments:" + json_prettyprint(argument_dict))
 
     # Fill in the template parameters
     # TODO(cmaloney): render_templates should ideally take the template targets.
@@ -581,12 +631,24 @@ def generate(
             log.debug("validating template file %s", name)
             assert template.keys() <= PACKAGE_KEYS, template.keys()
 
+    stable_artifacts = []
+    channel_artifacts = []
+
     # Find all files which contain late bind variables and turn them into a "late bind package"
     # TODO(cmaloney): check there are no late bound variables in cloud-config.yaml
     late_files, regular_files = extract_files_containing_late_variables(
         rendered_templates['dcos-config.yaml']['package'])
     # put the regular files right back
     rendered_templates['dcos-config.yaml'] = {'package': regular_files}
+
+    # Render cluster package list artifact.
+    cluster_package_list_filename = 'package_lists/{}.package_list.json'.format(
+        argument_dict['cluster_package_list_id']
+    )
+    os.makedirs(os.path.dirname(cluster_package_list_filename), mode=0o755, exist_ok=True)
+    write_string(cluster_package_list_filename, argument_dict['cluster_packages'])
+    log.info('Cluster package list: {}'.format(cluster_package_list_filename))
+    stable_artifacts.append(cluster_package_list_filename)
 
     def make_package_filename(package_id, extension):
         return 'packages/{0}/{1}{2}'.format(
@@ -608,6 +670,7 @@ def generate(
         os.makedirs(os.path.dirname(late_package_filename), mode=0o755)
         write_yaml(late_package_filename, {'package': late_package['package']}, default_flow_style=False)
         log.info('Package filename: {}'.format(late_package_filename))
+        stable_artifacts.append(late_package_filename)
 
         # Add the late config file to cloud config. The expressions in
         # late_variables will be resolved by the service handling the cloud
@@ -639,7 +702,9 @@ def generate(
     config_package_ids = json.loads(argument_dict['config_package_ids'])
     for package_id_str in config_package_ids:
         package_id = PackageId(package_id_str)
+        package_filename = cluster_package_info[package_id.name]['filename']
         do_gen_package(rendered_templates[package_id.name + '.yaml'], cluster_package_info[package_id.name]['filename'])
+        stable_artifacts.append(package_filename)
 
     # Convert cloud-config to just contain write_files rather than root
     cc = rendered_templates['cloud-config.yaml']
@@ -657,18 +722,29 @@ def generate(
         cc['write_files'].append(item)
     rendered_templates['cloud-config.yaml'] = cc
 
-    # Add in the add_services util. Done here instead of the initial
-    # map since we need to bind in parameters
+    # Add utils that need to be defined here so they can be bound to locals.
     def add_services(cloudconfig, cloud_init_implementation):
         return add_units(cloudconfig, rendered_templates['dcos-services.yaml'], cloud_init_implementation)
 
     utils.add_services = add_services
 
+    def add_stable_artifact(filename):
+        assert filename not in stable_artifacts + channel_artifacts
+        stable_artifacts.append(filename)
+
+    utils.add_stable_artifact = add_stable_artifact
+
+    def add_channel_artifact(filename):
+        assert filename not in stable_artifacts + channel_artifacts
+        channel_artifacts.append(filename)
+
+    utils.add_channel_artifact = add_channel_artifact
+
     return Bunch({
         'arguments': argument_dict,
         'cluster_packages': cluster_package_info,
-        'config_package_ids': config_package_ids,
-        'late_package_id': late_package['name'] if late_package else None,
+        'stable_artifacts': stable_artifacts,
+        'channel_artifacts': channel_artifacts,
         'templates': rendered_templates,
         'utils': utils
     })
