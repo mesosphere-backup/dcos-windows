@@ -17,9 +17,6 @@ root:
       MaxLevelConsole=warning
       RateLimitInterval=1s
       RateLimitBurst=20000
-  - path: /etc/rexray/config.yml
-    permissions: "0644"
-    content: {{ rexray_config_contents }}
 {% switch cluster_docker_credentials_dcos_owned %}
 {% case "true" %}
 {% case "false" %}

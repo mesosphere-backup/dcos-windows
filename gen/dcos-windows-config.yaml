@@ -1006,8 +1006,6 @@ package:
       admin: {{ exhibitor_admin_password }},admin
 {% case "false" %}
 {% endswitch %}
-  - path: /etc/rexray.conf
-    content: {{ rexray_config_contents }}
 {% switch fault_domain_enabled %}
 {% case "true" %}
   - path: /bin/detect_fault_domain
