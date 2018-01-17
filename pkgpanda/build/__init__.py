@@ -1,7 +1,7 @@
 import copy
 import json
 import multiprocessing
-import os.path
+import os
 import random
 import shutil
 import string
@@ -42,33 +42,34 @@ class DockerCmd:
 
     def run(self, name, cmd):
         print("***DOCKER!!!*** name = "+name+"command = "+cmd[0])
-        if is_windows:
-            check_call(cmd)
-        else:
-            container_name = "{}-{}".format(
-                name, ''.join(
-                    random.choice(string.ascii_lowercase) for _ in range(10)
-                )
+        #if is_windows:
+        #    check_call(cmd)
+        #else:
+        container_name = "{}-{}".format(
+            name, ''.join(
+                random.choice(string.ascii_lowercase) for _ in range(10)
             )
-            docker = ["docker", "run", "--name={}".format(container_name)]
-            for host_path, container_path in self.volumes.items():
-                docker += ["-v", "{0}:{1}".format(host_path, container_path)]
+        )
+        numprocs = int(os.environ.get('NUMBER_OF_PROCESSORS'))
+        docker = ["docker", "run", "-m", "{0}gb".format(numprocs*4), "--cpu-count", os.environ.get('NUMBER_OF_PROCESSORS'), "--name={}".format(container_name)]
+        for host_path, container_path in self.volumes.items():
+            docker += ["-v", "{0}:{1}".format(host_path, container_path)]
 
-            for k, v in self.environment.items():
-                docker += ["-e", "{0}={1}".format(k, v)]
+        for k, v in self.environment.items():
+            docker += ["-e", "{0}={1}".format(k, v)]
 
-            docker.append(self.container)
-            docker += cmd
-            check_call(docker)
-            DockerCmd.clean(container_name)
+        docker.append(self.container)
+        docker += cmd
+        check_call(docker)
+        DockerCmd.clean(container_name)
 
     @staticmethod
     def clean(name):
         """Cleans up the specified container"""
-        if not is_windows:
-            check_call(["docker", "rm", "-v", name])
-        else:
-            print("2DO: dockercmd clean?")
+        #if not is_windows:
+        check_call(["docker", "rm", "-v", name])
+        #else:
+        #    print("2DO: dockercmd clean?")
 
 
 def get_variants_from_filesystem(directory, extension):
@@ -519,7 +520,8 @@ def load_buildinfo(path, variant):
         buildinfo.setdefault('build_script', 'build.ps1')
     else:
         buildinfo.setdefault('build_script', 'build')
-        buildinfo.setdefault('docker', 'dcos/dcos-builder:dcos-builder_dockerdir-latest')
+
+    buildinfo.setdefault('docker', 'dcos/dcos-builder:dcos-builder_dockerdir-latest')
 
     buildinfo.setdefault('environment', dict())
     buildinfo.setdefault('requires', list())
@@ -924,7 +926,10 @@ def _build(package_store, name, variant, clean_after_build, recursive):
     builder.update('sources', checkout_ids)
     build_script = src_abs(builder.take('build_script'))
     # TODO(cmaloney): Change dest name to build_script_sha1
-    builder.replace('build_script', 'build', pkgpanda.util.sha1(build_script))
+    if is_windows:
+        builder.replace('build_script', 'build', pkgpanda.util.sha1(build_script))
+    else:
+        builder.replace('build_script', 'build', pkgpanda.util.sha1(build_script))
 
     builder.add('pkgpanda_version', pkgpanda.build.constants.version)
 
@@ -936,20 +941,20 @@ def _build(package_store, name, variant, clean_after_build, recursive):
         builder.add('extra_source', extra_id)
         final_buildinfo['extra_source'] = extra_id
 
-    if not is_windows: 
-        # Figure out the docker name.
-        docker_name = builder.take('docker')
-        cmd.container = docker_name
+    #if not is_windows: 
+    # Figure out the docker name.
+    docker_name = builder.take('docker')
+    cmd.container = docker_name
 
-        # Add the id of the docker build environment to the build_ids.
-        try:
-            docker_id = get_docker_id(docker_name)
-        except CalledProcessError:
-            # docker pull the container and try again
-            check_call(['docker', 'pull', docker_name])
-            docker_id = get_docker_id(docker_name)
+    # Add the id of the docker build environment to the build_ids.
+    try:
+        docker_id = get_docker_id(docker_name)
+    except CalledProcessError:
+        # docker pull the container and try again
+        check_call(['docker', 'pull', docker_name])
+        docker_id = get_docker_id(docker_name)
 
-        builder.update('docker', docker_id)
+    builder.update('docker', docker_id)
 
     # TODO(cmaloney): The environment variables should be generated during build
     # not live in buildinfo.json.
@@ -1060,7 +1065,7 @@ def _build(package_store, name, variant, clean_after_build, recursive):
             active_package_ids.add(pkg_id_str)
 
             # Mount the package into the docker container.
-            cmd.volumes[pkg_path] = "/opt/mesosphere/packages/{}:ro".format(pkg_id_str)
+            cmd.volumes[pkg_path] = "c:/opt/mesosphere/packages/{}:ro".format(pkg_id_str)
             os.makedirs(os.path.join(install_dir, "packages/{}".format(pkg_id_str)))
 
             # Add the dependencies of the package to the set which will be
@@ -1208,7 +1213,7 @@ def _build(package_store, name, variant, clean_after_build, recursive):
     # paths to the packages will change.
     # TODO(cmaloney): This isn't very clean, it would be much nicer to
     # just run pkgpanda inside the package.
-    rewrite_symlinks(install_dir, repository.path, "/opt/mesosphere/packages/")
+    rewrite_symlinks(install_dir, repository.path, "c:/opt/mesosphere/packages/")
 
     print("Building package in docker")
 
@@ -1231,22 +1236,22 @@ def _build(package_store, name, variant, clean_after_build, recursive):
     # Source we checked out
     cmd.volumes.update({
         # TODO(cmaloney): src should be read only...
-        cache_abs("src"): "/pkg/src:rw",
+        cache_abs("src"): "c:/pkg/src:rw",
         # The build script
-        build_script: "/pkg/build:ro",
+        package_dir: "c:/pkg/build/:ro",
         # Getting the result out
-        cache_abs("result"): "/opt/mesosphere/packages/{}:rw".format(pkg_id),
-        install_dir: "/opt/mesosphere:ro"
+        cache_abs("result"): "c:/opt/mesosphere/packages/{}:rw".format(pkg_id),
+        install_dir: "c:/opt/mesosphere/install:ro"
     })
 
     if os.path.exists(extra_dir):
-        cmd.volumes[extra_dir] = "/pkg/extra:ro"
+        cmd.volumes[extra_dir] = "c:\pkg\extra:ro"
 
     cmd.environment = {
         "PKG_VERSION": version,
         "PKG_NAME": name,
         "PKG_ID": pkg_id,
-        "PKG_PATH": "/opt/mesosphere/packages/{}".format(pkg_id),
+        "PKG_PATH": "c:/opt/mesosphere/packages/{}".format(pkg_id),
         "PKG_VARIANT": variant if variant is not None else "<default>",
         "NUM_CORES": multiprocessing.cpu_count()
     }
@@ -1260,7 +1265,9 @@ def _build(package_store, name, variant, clean_after_build, recursive):
             cmd.run("package-builder", [
              "powershell.exe",
              "-file",
-             package_dir + "\\build.ps1"])
+             "c:/pkg/build/build.ps1",
+             "c:/pkg/src/",
+             "c:/opt/mesosphere/packages/{}".format(pkg_id)])
         else:
             cmd.run("package-builder", [
              "/bin/bash",

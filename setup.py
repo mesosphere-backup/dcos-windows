@@ -46,7 +46,7 @@ if is_windows:
             'coreos/cloud-config.yaml'
         ] + get_advanced_templates(),
         'pkgpanda': [
-            'docker/dcos-builder/Dockerfile'
+            'docker/dcos-builder-windows/Dockerfile'
         ]
     }
     zip_safe=True

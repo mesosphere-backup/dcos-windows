@@ -112,7 +112,7 @@ class GitSrcFetcher(SourceFetcher):
                                                   origin_commit))
 
         # Clone into `src/`.
-        check_call(["git", "clone", "-q", self.bare_folder, directory])
+        check_call(["git", "clone", "-q", "--config", "core.autocrlf=true", self.bare_folder, directory])
 
         # Checkout from the bare repo in the cache folder at the specific sha1
         check_call([

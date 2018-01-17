@@ -3,24 +3,21 @@ $LOG_SERVER_BASE_URL = "http://dcos-win.westus.cloudapp.azure.com"
 $SERVICE_WRAPPER_URL = "$LOG_SERVER_BASE_URL/downloads/WinSW.NET4.exe"
 $VS2017_URL = "https://download.visualstudio.microsoft.com/download/pr/10930949/045b56eb413191d03850ecc425172a7d/vs_Community.exe"
 $CMAKE_URL = "https://cmake.org/files/v3.9/cmake-3.9.0-win64-x64.msi"
-$PATCH_URL = "https://10gbps-io.dl.sourceforge.net/project/gnuwin32/patch/2.5.9-7/patch-2.5.9-7-setup.exe"
+$GNU_WIN32_URL = "https://10gbps-io.dl.sourceforge.net/project/gnuwin32/patch/2.5.9-7/patch-2.5.9-7-setup.exe"
 $GIT_URL = "$LOG_SERVER_BASE_URL/downloads/Git-2.14.1-64-bit.exe"
 $PYTHON_URL = "https://www.python.org/ftp/python/2.7.13/python-2.7.13.msi"
 $PUTTY_URL = "https://the.earth.li/~sgtatham/putty/0.70/w64/putty-64bit-0.70-installer.msi"
 $7ZIP_URL = "http://d.7-zip.org/a/7z1700-x64.msi"
 $VCREDIST_2013_URL = "https://download.microsoft.com/download/2/E/6/2E61CFA4-993B-4DD4-91DA-3737CD5CD6E3/vcredist_x64.exe"
 $DEVCON_CAB_URL = "https://download.microsoft.com/download/7/D/D/7DD48DE6-8BDA-47C0-854A-539A800FAA90/wdk/Installers/787bee96dbd26371076b37b13c405890.cab"
-$JAVA_URL = "http://javadl.oracle.com/webapps/download/AutoDL?BundleId=230542_2f38c3b165be4555a1fa6e98c45e0808"
-
 # Tools installation directories
 $GIT_DIR = Join-Path $env:ProgramFiles "Git"
 $CMAKE_DIR = Join-Path $env:ProgramFiles "CMake"
 $VS2017_DIR = Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio\2017\Community"
-$PATCH_DIR = Join-Path ${env:ProgramFiles(x86)} "GnuWin32"
+$GNU_WIN32_DIR = Join-Path ${env:ProgramFiles(x86)} "GnuWin32"
 $PYTHON_DIR = Join-Path $env:SystemDrive "Python27"
 $PUTTY_DIR = Join-Path $env:ProgramFiles "PuTTY"
 $7ZIP_DIR = Join-Path $env:ProgramFiles "7-Zip"
-$JAVA_DIR = Join-Path $env:ProgramFiles "Java\jre1.8.0_161"
 
 function Install-Prerequisites {
     $prerequisites = @{
@@ -34,10 +31,10 @@ function Install-Prerequisites {
             'install_args'= @("/quiet")
             'install_dir'= $CMAKE_DIR
         }
-        'patch'= @{
-            'url'= $PATCH_URL
+        'gnuwin32'= @{
+            'url'= $GNU_WIN32_URL
             'install_args'= @("/VERYSILENT","/SUPPRESSMSGBOXES","/SP-")
-            'install_dir'= $PATCH_DIR
+            'install_dir'= $GNU_WIN32_DIR
         }
         'python27'= @{
             'url'= $PYTHON_URL
@@ -58,19 +55,16 @@ function Install-Prerequisites {
             'url'= $VS2017_URL
             'install_args'= @(
                 "--quiet",
-                "--norestart"
+                "--add", "Microsoft.VisualStudio.Component.CoreEditor",
                 "--add", "Microsoft.VisualStudio.Workload.NativeDesktop",
                 "--add", "Microsoft.VisualStudio.Component.VC.Tools.x86.x64",
+                "--add", "Microsoft.VisualStudio.Component.VC.DiagnosticTools",
                 "--add", "Microsoft.VisualStudio.Component.Windows10SDK.15063.Desktop",
+                "--add", "Microsoft.VisualStudio.Component.VC.CMake.Project",
                 "--add", "Microsoft.VisualStudio.Component.VC.ATL"
             )
             'install_dir'= $VS2017_DIR
         }
-#        'java8'= @{
-#            'url'= $JAVA_URL
-#            'install_args'= @("/s,INSTALLDIR=c:\Java\jre1.8.0_91,/L,install64.log")
-#            'install_dir'= $JAVA_DIR
-#        }
     }
     foreach($program in $prerequisites.Keys) {
         if(Test-Path $prerequisites[$program]['install_dir']) {
@@ -78,11 +72,7 @@ function Install-Prerequisites {
             continue
         }
         Write-Output "Downloading $program from $($prerequisites[$program]['url'])"
-        if($program -eq "java8") {
-            $fileName = "jre-8u161-windows-x64.exe"
-        } else {
-            $fileName = $prerequisites[$program]['url'].Split('/')[-1]
-        }
+        $fileName = $prerequisites[$program]['url'].Split('/')[-1]
         $programFile = Join-Path $env:TEMP $fileName
         Invoke-WebRequest -UseBasicParsing -Uri $prerequisites[$program]['url'] -OutFile $programFile
         $parameters = @{
@@ -103,7 +93,7 @@ function Install-Prerequisites {
     }
     # Add all the tools to PATH
     $toolsDirs = @("$CMAKE_DIR\bin", "$GIT_DIR\cmd", "$GIT_DIR\bin", "$PYTHON_DIR",
-                   "$PYTHON_DIR\Scripts", "$7ZIP_DIR", "$PATCH_DIR\bin")
+                   "$PYTHON_DIR\Scripts", "$7ZIP_DIR", "$GNU_WIN32_DIR\bin")
     $env:PATH += ';' + ($toolsDirs -join ';')
 }
 
