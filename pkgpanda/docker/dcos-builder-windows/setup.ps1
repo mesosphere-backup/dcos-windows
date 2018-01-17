@@ -145,9 +145,11 @@ function Start-MesosCIProcess {
 try {
     Install-Prerequisites
 } catch {
+    $errMsg = $_.ToString()
+    Write-Output $errMsg
     write-host("Failed to set up container")
     exit 1
 } finally {
 }
-write-host("succeeded to set up container")
+write-host("Container successfully set up")
 exit 0
