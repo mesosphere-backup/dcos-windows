@@ -41,10 +41,6 @@ class DockerCmd:
         self.container = str()
 
     def run(self, name, cmd):
-        print("***DOCKER!!!*** name = "+name+"command = "+cmd[0])
-        #if is_windows:
-        #    check_call(cmd)
-        #else:
         container_name = "{}-{}".format(
             name, ''.join(
                 random.choice(string.ascii_lowercase) for _ in range(10)
@@ -66,10 +62,7 @@ class DockerCmd:
     @staticmethod
     def clean(name):
         """Cleans up the specified container"""
-        #if not is_windows:
         check_call(["docker", "rm", "-v", name])
-        #else:
-        #    print("2DO: dockercmd clean?")
 
 
 def get_variants_from_filesystem(directory, extension):
@@ -859,10 +852,6 @@ def _build(package_store, name, variant, clean_after_build, recursive):
     def cache_abs(filename):
         return package_store.get_package_cache_folder(name) + '/' + filename
 
-    if is_windows:
-        print("2DO: Windows: Removing everything from under " + package_store.get_package_cache_folder(name) + "\n")
-        rm_r(package_store.get_package_cache_folder(name))
-
     # Build pkginfo over time, translating fields from buildinfo.
     pkginfo = {}
 
@@ -941,7 +930,6 @@ def _build(package_store, name, variant, clean_after_build, recursive):
         builder.add('extra_source', extra_id)
         final_buildinfo['extra_source'] = extra_id
 
-    #if not is_windows: 
     # Figure out the docker name.
     docker_name = builder.take('docker')
     cmd.container = docker_name
@@ -1144,16 +1132,15 @@ def _build(package_store, name, variant, clean_after_build, recursive):
 
     # Clean out src, result so later steps can use them freely for building.
     def clean():
+        # Run a docker container to remove src/ and result/
+        cmd = DockerCmd()
         if is_windows:
-            print("2DO: CLEAN UP "+package_store.get_package_cache_folder(name)+"\n")
-            try:
-                rm_r(package_store.get_package_cache_folder(name)+"/src")
-                rm_r(package_store.get_package_cache_folder(name)+"/result")
-            except:
-                pass
+            cmd.volumes = {
+                package_store.get_package_cache_folder(name): "c:/pkg/:rw",
+            }
+            cmd.container = "microsoft/windowsservercore:1709"
+            cmd.run("package-cleaner", ["powershell.exe", "-command", "{ remove-item -recurse -force -path c:/pkg/src,c:/pkg/result }"])
         else:
-            # Run a docker container to remove src/ and result/
-            cmd = DockerCmd()
             cmd.volumes = {
                 package_store.get_package_cache_folder(name): "/pkg/:rw",
             }
@@ -1261,7 +1248,6 @@ def _build(package_store, name, variant, clean_after_build, recursive):
         # /opt/mesosphere/environment then runs a build. Also should fix
         # ownership of /opt/mesosphere/packages/{pkg_id} post build.
         if is_windows:
-            print("2DO: Trying to run " + package_dir + "\\build.ps1")
             cmd.run("package-builder", [
              "powershell.exe",
              "-file",
