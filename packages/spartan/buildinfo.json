@@ -1,5 +1,5 @@
 {
-  "requires": ["openssl", "erlang"],
+  "requires": ["erlang"],
   "sources": {
     "spartan": {
       "kind": "git",
