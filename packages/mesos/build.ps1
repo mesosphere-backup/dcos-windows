@@ -64,7 +64,6 @@ function New-Environment {
     Write-Output "Creating new tests environment"
     New-Directory $MESOS_BUILD_DIR
     New-Directory $MESOS_BUILD_OUT_DIR -RemoveExisting
-    Set-LatestMesosCommit    
     # Set Visual Studio variables based on tested branch
     Set-VCVariables "15.0"
     Write-Output "New tests environment was successfully created"
