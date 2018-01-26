@@ -12,5 +12,13 @@ param(
 
 )
 
+$METRICS_DIR = Join-Path $env:TEMP "metrics-src"
+
 Write-Host "Building project"
-.\scripts\build.ps1 collector stdsd-emitter plugins
+copy-item -Recurse "$pkgSrc" -destination "$METRICS_DIR"
+Push-Location $METRICS_DIR
+. .\scripts\build.ps1 collector stdsd-emitter plugins
+Copy-Item -Path "$METRICS_DIR\build\collector\" -Destination "$pkgDest" -filter "*.exe"
+Copy-Item -Path "$METRICS_DIR\build\plugins\" -Destination "$pkgDest" -filter "*.exe"
+Copy-Item -Path "$METRICS_DIR\build\statsd-emitter\" -Destination "$pkgDest" -filter "*.exe"
+Pop-Location
