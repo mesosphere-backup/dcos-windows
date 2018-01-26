@@ -13,3 +13,4 @@ param(
 )
 
 Write-Host "Building project"
+.\scripts\build.ps1 collector stdsd-emitter plugins
