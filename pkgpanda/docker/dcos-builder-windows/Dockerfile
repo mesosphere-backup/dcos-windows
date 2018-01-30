@@ -16,6 +16,10 @@ COPY ./setup-patch.ps1 /tmp/
 RUN  /tmp/setup-patch.ps1;
 ENV PATCH_PATH 'C:\Program Files (x86)\GnuWin32\bin'
 
+COPY ./setup-make.ps1 /tmp/
+RUN  /tmp/setup-make.ps1;
+ENV MAKE_PATH 'C:\Program Files (x86)\GnuWin32\bin'
+
 COPY ./setup-python27.ps1 /tmp/
 RUN  /tmp/setup-python27.ps1
 ENV PYTHON_PATH 'C:\Python27;C:\Python27\scripts'
@@ -35,6 +39,7 @@ ENV GOLANG_PATH 'C:\gopath\bin;c:\go\bin'
 RUN $env:Path = "$env:GIT_PATH" + ';' + `
                 "$env:CMAKE_PATH" + ';' + `
                 "$env:PATCH_PATH" + ';' + `
+                "$env:PATCH_MAKE" + ';' + `
                 "$env:PYTHON_PATH" + ';' + `
                 "$env:ZIP_PATH" + ';' + `
                 "$env:ERLANG_PATH" + ';' + `

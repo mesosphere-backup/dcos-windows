@@ -11,14 +11,12 @@ param(
     $pkgDest  # Location of the packages tree compiled binaries
 
 )
-
-$METRICS_DIR = Join-Path $env:TEMP "metrics-src"
-
-Write-Host "Building project"
-copy-item -Recurse "$pkgSrc" -destination "$METRICS_DIR"
-Push-Location $METRICS_DIR
-. .\scripts\build.ps1 collector stdsd-emitter plugins
-Copy-Item -Path "$METRICS_DIR\build\collector\" -Destination "$pkgDest" -filter "*.exe"
-Copy-Item -Path "$METRICS_DIR\build\plugins\" -Destination "$pkgDest" -filter "*.exe"
-Copy-Item -Path "$METRICS_DIR\build\statsd-emitter\" -Destination "$pkgDest" -filter "*.exe"
+$SRC_DIR = "c:\gopath\src\github.com\dcos\dcos-metrics\"
+new-item -itemtype directory "c:\gopath\src\github.com\dcos"
+copy-item -recurse  "c:\pkg\src\dcos-metrics" -destination "c:\gopath\src\github.com\dcos\"
+Push-Location $SRC_DIR
+& .\scripts\build.ps1 "collector" "statsd-emitter" "plugins"
+new-item -itemtype directory "$env:PKG_PATH/bin"
+Copy-Item -Path "$SRC_DIR\build\collector\dcos-metrics-collector-*" -Destination "$env:PKG_PATH/bin/dcos-metrics"
+Copy-Item -Path "$SRC_DIR\build\statsd-emitter\dcos-metrics-statsd-emitter-*" -Destination "$env:PKG_PATH/bin/statsd-emitter"
 Pop-Location
