@@ -216,5 +216,6 @@ Start-MesosBuild
 
 #Copy build directory to destination directory. 
 #For now we grab the whole lot
-Copy-Item  -Path "$MESOS_BUILD_DIR\src\*" -Destination "$pkgDest" -Filter "*.exe"
+Copy-Item -Path "$MESOS_BUILD_DIR\src\*" -Destination "$pkgDest" -Filter "*.exe"
+Copy-Item -Path "c:\pkg\build\extra\* -destination "$pkgDest"
 #Copy-Item -path "$pkgSrc\extra\*" -Destination "$pkgDest"

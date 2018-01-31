@@ -12,6 +12,6 @@ param(
 
 )
 
-copy-item "c:\pkg\build\Application-Request-Routing\requestRouter_amd64.msi" "$env:PKG_PATH"
+copy-item "c:\pkg\src\Application-Request-Routing\requestRouter_amd64.msi" "$env:PKG_PATH"
 copy-item "c:\pkg\build\URLRewrite\rewrite_amd64-US.msi" "$env:PKG_PATH"
 copy-item "c:\pkg\build\extra\*" "$env:PKG_PATH"
