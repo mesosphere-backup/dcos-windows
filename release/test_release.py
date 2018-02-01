@@ -19,7 +19,7 @@ except:
     pass
 
 from pkgpanda.build import BuildError
-from pkgpanda.util import is_windows variant_prefix, write_json, write_string
+from pkgpanda.util import is_windows, variant_prefix, write_json, write_string
 
 pytestmark = pytest.mark.skipif(is_windows)
 
