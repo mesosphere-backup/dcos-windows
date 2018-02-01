@@ -11,7 +11,10 @@ param(
     $pkgDest  # Location of the packages tree compiled binaries
 
 )
+copy-item -recurse  "c:\pkg\src\openstackservice" -destination "c:\"
+push-location "c:\openstackservice"
+nuget restore openstackservice.sln
+msbuild openstackservice.sln /p:configuration=release
+new-item -itemtype directory "$pkgDest\bin"
+copy-item "release\openstackservice.exe" -destination "$pkgDest\bin"
 
-copy-item "c:\pkg\src\Application-Request-Routing\requestRouter_amd64.msi" "$env:PKG_PATH"
-copy-item "c:\pkg\src\URLRewrite\rewrite_amd64_en-US.msi" "$env:PKG_PATH"
-copy-item "c:\pkg\build\extra\*" "$env:PKG_PATH"
