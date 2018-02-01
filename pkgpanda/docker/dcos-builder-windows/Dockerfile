@@ -18,12 +18,9 @@ RUN  powershell.exe -file /tmp/setup-cmake.ps1
 COPY ./setup-patch.ps1 /tmp/
 RUN  powershell.exe -file /tmp/setup-patch.ps1
 
-<<<<<<< Updated upstream
 COPY ./setup-make.ps1 /tmp/
 RUN  powershell.exe -file /tmp/setup-make.ps1
 
-=======
->>>>>>> Stashed changes
 COPY ./setup-python27.ps1 /tmp/
 RUN  powershell.exe -file /tmp/setup-python27.ps1
 #ENV PYTHON_PATH 'C:\Python27;C:\Python27\scripts'
