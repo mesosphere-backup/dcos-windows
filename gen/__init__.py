@@ -46,6 +46,7 @@ role_names = {"master", "slave", "slave_public"}
 role_template = '/etc/mesosphere/roles/{}'
 
 CLOUDCONFIG_KEYS = {'coreos', 'runcmd', 'apt_sources', 'root', 'mounts', 'disk_setup', 'fs_setup', 'bootcmd'}
+#PACKAGE_KEYS = {'package', 'root'}
 PACKAGE_KEYS = {'package', 'root'}
 
 
@@ -636,10 +637,15 @@ def generate(
 
     # Find all files which contain late bind variables and turn them into a "late bind package"
     # TODO(cmaloney): check there are no late bound variables in cloud-config.yaml
+    if is_windows:
+        cfg = 'dcos-windows-config.yaml'
+    else:
+        cfg = 'dcos-config.yaml'
+
     late_files, regular_files = extract_files_containing_late_variables(
         rendered_templates['dcos-config.yaml']['package'])
     # put the regular files right back
-    rendered_templates['dcos-config.yaml'] = {'package': regular_files}
+    rendered_templates[cfg] = {'package': regular_files}
 
     # Render cluster package list artifact.
     cluster_package_list_filename = 'package_lists/{}.package_list.json'.format(
