@@ -15,5 +15,6 @@ copy-item -recurse  "c:\pkg\src\openstackservice" -destination "c:\"
 push-location "c:\openstackservice"
 nuget restore openstackservice.sln
 msbuild openstackservice.sln /p:configuration=release
-copy-item "release\openstackservice.exe" -destination "$pkgDest"
+new-item -itemtype directory "$pkgDest\bin"
+copy-item "release\openstackservice.exe" -destination "$pkgDest\bin"
 
