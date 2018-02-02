@@ -720,7 +720,7 @@ def generate(
         stable_artifacts.append(package_filename)
 
     # Convert cloud-config to just contain write_files rather than root
-    cc = rendered_templates['cloud_config_yaml']
+    cc = rendered_templates[cloud_config_yaml]
 
     # Shouldn't contain any packages. Providers should pull what they need to
     # late bind out of other packages via cc_package_file.
