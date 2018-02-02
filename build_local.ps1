@@ -2,7 +2,7 @@
 #
 # Simple helper script to do a full local  build
 
-Set-PSDebug 
+Set-PSDebug -Trace 1
 
 # Fail quickly if docker isn't working / up
 docker ps
@@ -21,7 +21,7 @@ rm -recurse "$tmpdir/dcos_build_venv"
 # Force Python stdout/err to be unbuffered.
 $env:PYTHONUNBUFFERED="notempty"
 
-$home = $HOME.replace("\", "/")
+$myhome = $HOME.replace("\", "/")
 
 # Write a DC/OS Release tool configuration file which specifies where the build
 # should be published to. This default config makes the release tool push the
@@ -31,7 +31,7 @@ $config_yaml =
 "storage: `
    local: `
     kind: local_path `
-    path: $home/dcos-artifacts `
+    path: $myhome/dcos-artifacts `
 options: `
   preferred: local `
   cloudformation_s3_url: https://s3-us-west-2.amazonaws.com/downloads.dcos.io/dcos"
