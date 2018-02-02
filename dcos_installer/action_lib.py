@@ -6,9 +6,9 @@ from typing import Optional
 
 import pkgpanda
 import ssh.utils
+
 from dcos_installer.constants import BOOTSTRAP_DIR, CHECK_RUNNER_CMD, CLUSTER_PACKAGES_PATH, SERVE_DIR, SSH_KEY_PATH
 from ssh.runner import Node
-
 
 REMOTE_TEMP_DIR = '/opt/dcos_install_tmp'
 

@@ -13,6 +13,7 @@ import gen.build_deploy.aws
 import gen.calc
 import release
 import release.storage.aws
+
 import release.storage.local
 from dcos_installer import config_util, upgrade
 from dcos_installer.config import (
