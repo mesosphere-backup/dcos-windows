@@ -437,7 +437,7 @@ def get_dcosconfig_source_target_and_templates(
 
     # TODO(cmaloney): Make these all just defined by the base calc.py
     if is_windows:
-        config_package_names = ['dcos-config', 'dcos-metadata'] # 2Do: We expect to change these
+        config_package_names = ['dcos-windows-config', 'dcos-metadata'] # 2Do: We expect to change these
         template_filenames = ['dcos-windows-config.yaml', 'cloud-config-windows.yaml', 'dcos-metadata.yaml', 'dcos-windows-services.yaml']
     else:
         config_package_names = ['dcos-config', 'dcos-metadata']
