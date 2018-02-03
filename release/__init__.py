@@ -27,8 +27,8 @@ import pkgpanda.util
 import release.storage
 from pkgpanda.util import logger
 
+provider_names = ['azure', 'bash']
 #provider_names = ['aws', 'azure', 'bash']
-provider_names = ['azure']
 
 
 class ConfigError(Exception):

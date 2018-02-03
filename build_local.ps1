@@ -6,8 +6,8 @@ Set-PSDebug -Trace 1
 
 # Fail quickly if docker isn't working / up
 docker ps
-if ( $_ -ne 0 ) {
-#    exit -1
+if ( $LASTEXITCODE -ne 0 ) {
+    exit -1
 }
 
 $tmpdir = $env:TMPDIR
@@ -47,6 +47,6 @@ python -m venv "$tmpdir/dcos_build_venv/Scripts/Activate.ps1"
 ./prep_local
 
 # Build a release of DC/OS
-release create $(whoami) local_build
+release create $env:USERNAME local_build
 
 Set-PSDebug -Off
