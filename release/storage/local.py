@@ -2,9 +2,7 @@ import os.path
 import subprocess
 from typing import Optional
 
-from pkgpanda.util import (
-    is_windows
-)
+from pkgpanda.util import is_windows
 from release.storage import AbstractStorageProvider
 
 
