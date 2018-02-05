@@ -104,10 +104,13 @@ function New-MesosWindowsAgent {
         $mesosAgentArguments += " --default_role=`"slave_public`""
     }
     $environmentFile = Join-Path $MESOS_SERVICE_DIR "environment-file"
-    Set-Content -Path $environmentFile -Value @(
-        "MESOS_AUTHENTICATE_HTTP_READONLY=false",
-        "MESOS_AUTHENTICATE_HTTP_READWRITE=false"
-    )
+    if (!(Test-Path $environmentFile))
+    {
+      Set-Content -Path $environmentFile -Value @(
+          "MESOS_AUTHENTICATE_HTTP_READONLY=false",
+          "MESOS_AUTHENTICATE_HTTP_READWRITE=false"
+      )
+    }
     $wrapperPath = Join-Path $MESOS_SERVICE_DIR "service-wrapper.exe"
     Invoke-WebRequest -UseBasicParsing -Uri $SERVICE_WRAPPER_URL -OutFile $wrapperPath
     New-DCOSWindowsService -Name $MESOS_SERVICE_NAME -DisplayName $MESOS_SERVICE_DISPLAY_NAME -Description $MESOS_SERVICE_DESCRIPTION `
