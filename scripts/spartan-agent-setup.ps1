@@ -68,7 +68,7 @@ function Set-SpartanDevice {
     if(!$spartanDevice) {
         Throw "Spartan network device was not found"
     }
-    $spartanIPs = @("192.51.100.1", "192.51.100.2", "192.51.100.3")
+    $spartanIPs = $SPARTAN_LOCAL_ADDRESSES
     foreach($ip in $spartanIPs) {
         $address = Get-NetIPAddress -InterfaceAlias $SPARTAN_DEVICE_NAME -AddressFamily "IPv4" -IPAddress $ip -ErrorAction SilentlyContinue
         if($address) {
@@ -78,10 +78,6 @@ function Set-SpartanDevice {
     }
     Disable-NetAdapter $SPARTAN_DEVICE_NAME -Confirm:$false
     Enable-NetAdapter $SPARTAN_DEVICE_NAME -Confirm:$false
-    $spartanIPs = @("192.51.100.1", "192.51.100.2", "192.51.100.3")
-    foreach($ip in $spartanIPs) {
-        ping.exe -n 10 $ip
-    }
 }
 
 function Get-UpstreamDNSResolvers {
@@ -104,9 +100,7 @@ function New-SpartanWindowsAgent {
     }
     $upstreamDNSResolvers = Get-UpstreamDNSResolvers | ForEach-Object { "{{" + ($_.Split('.') -join ', ') + "}, 53}" }
     $dnsZonesFile = "${SPARTAN_RELEASE_DIR}\spartan\data\zones.json" -replace '\\', '\\'
-    # TODO(ibalutoiu): Instead of taking one of the masters' addresses for the exhibitor URL, we might
-    #                  add an internal load balancer and use that address for the exhibitor URL.
-    $exhibitorURL = "http://$($MasterAddress[0]):${EXHIBITOR_PORT}/exhibitor/v1/cluster/status"
+    $exhibitorURL = "http://master.mesos:${EXHIBITOR_PORT}/exhibitor/v1/cluster/status"
     $context = @{
         "exhibitor_url" = $exhibitorURL
         "dns_zones_file" = $dnsZonesFile
@@ -131,25 +125,14 @@ function New-SpartanWindowsAgent {
     $environmentFile = Join-Path $SPARTAN_SERVICE_DIR "environment-file"
     Set-Content -Path $environmentFile -Value @(
         "MASTER_SOURCE=exhibitor",
-        "EXHIBITOR_ADDRESS=$($MasterAddress[0])"
+        "EXHIBITOR_ADDRESS=leader.mesos"
     )
     $wrapperPath = Join-Path $SPARTAN_SERVICE_DIR "service-wrapper.exe"
     Invoke-WebRequest -UseBasicParsing -Uri $SERVICE_WRAPPER_URL -OutFile $wrapperPath
     New-DCOSWindowsService -Name $SPARTAN_SERVICE_NAME -DisplayName $SPARTAN_SERVICE_DISPLAY_NAME -Description $SPARTAN_SERVICE_DESCRIPTION `
                            -WrapperPath $wrapperPath -EnvironmentFiles @($environmentFile) -BinaryPath "`"$erlBinary $spartanArguments`""
-    # Temporary stop Docker service because we have port 53 bound and this needs to be used by Spartan
-    # TODO(ibalutoiu): Permanently disable the Docker embedded DNS and remove this workaround
-    Stop-Service "Docker"
-    # TODO(ibalutoiu): If we start Spartan right after after we stop "Docker", it will sometimes report "address in use"
-    #                  We leave a sleep here until Docker gets updated and the hack will be removed
-    Start-Sleep 5
     Start-Service $SPARTAN_SERVICE_NAME
-    # TODO(ibalutoiu): Wait until Spartan properly initializes the DNS and then start Docker.
-    #                  To be removed once Docker gets updated.
-    Start-Sleep 5
-    # Point the DNS from the host to the Spartan local DNS
-    Set-DnsClientServerAddress -InterfaceAlias * -ServerAddresses @('192.51.100.1', '192.51.100.2', '192.51.100.3')
-    # TODO(ibalutoiu): Remove this workaround of stopping/starting the Docker service once the embedded Docker DNS is disabled
+    Set-DnsClientServerAddress -InterfaceAlias * -ServerAddresses $SPARTAN_LOCAL_ADDRESSES
     Start-Service "Docker"
 }
 
