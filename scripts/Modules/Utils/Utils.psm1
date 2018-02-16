@@ -127,6 +127,8 @@ function New-DCOSWindowsService {
         [Parameter(Mandatory=$true)]
         [string]$BinaryPath,
         [Parameter(Mandatory=$false)]
+        [string]$LogFile,
+        [Parameter(Mandatory=$false)]
         [string[]]$EnvironmentFiles,
         [Parameter(Mandatory=$false)]
         [string]$PreStartCommand
@@ -150,6 +152,9 @@ function New-DCOSWindowsService {
     $binaryPathName = "`"$WrapperPath`" --service-name `"$Name`""
     if($PreStartCommand) {
         $binaryPathName += " --exec-start-pre `"$PreStartCommand`""
+    }
+    if($LogFile) {
+        $binaryPathName += " --log-file `"$LogFile`""
     }
     foreach($file in $EnvironmentFiles) {
         $binaryPathName += " --environment-file `"$file`""
