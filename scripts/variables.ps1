@@ -35,6 +35,7 @@ $EPMD_DIR = Join-Path $DCOS_DIR "epmd"
 $EPMD_SERVICE_DIR = Join-Path $EPMD_DIR "service"
 
 # Spartan configurations
+$SPARTAN_LOCAL_ADDRESSES = @("192.51.100.1", "192.51.100.2", "192.51.100.3")
 $SPARTAN_SERVICE_NAME = "dcos-spartan"
 $SPARTAN_SERVICE_DISPLAY_NAME = "DCOS Spartan Windows Agent"
 $SPARTAN_SERVICE_DESCRIPTION = "Windows Service for the DCOS Spartan Windows Agent"
