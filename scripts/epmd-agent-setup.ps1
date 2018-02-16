@@ -18,6 +18,7 @@ function New-Environment {
     }
     New-Directory -RemoveExisting $EPMD_DIR
     New-Directory $EPMD_SERVICE_DIR
+    New-Directory $EPMD_LOG_DIR
 }
 
 function New-EPMDWindowsAgent {
@@ -27,8 +28,9 @@ function New-EPMDWindowsAgent {
     }
     $wrapperPath = Join-Path $EPMD_SERVICE_DIR "service-wrapper.exe"
     Invoke-WebRequest -UseBasicParsing -Uri $SERVICE_WRAPPER_URL -OutFile $wrapperPath
+    $logFile = Join-Path $EPMD_LOG_DIR "epmd.log"
     New-DCOSWindowsService -Name $EPMD_SERVICE_NAME -DisplayName $EPMD_SERVICE_DISPLAY_NAME -Description $EPMD_SERVICE_DESCRIPTION `
-                           -WrapperPath $wrapperPath -BinaryPath "$epmdBinary -port $EPMD_PORT"
+                           -LogFile $logFile -WrapperPath $wrapperPath -BinaryPath "$epmdBinary -port $EPMD_PORT"
     Start-Service $EPMD_SERVICE_NAME
 }
 

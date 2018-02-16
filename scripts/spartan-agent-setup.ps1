@@ -15,7 +15,7 @@ $variables = (Resolve-Path "$PSScriptRoot\variables.ps1").Path
 
 
 $TEMPLATES_DIR = Join-Path $PSScriptRoot "templates"
-$SPARTAN_LATEST_RELEASE_URL = "$SPARTAN_BUILD_BASE_URL/master/latest/release.zip"
+$SPARTAN_LATEST_RELEASE_URL = "$LOG_SERVER_BASE_URL/spartan-build/master/latest/release.zip"
 
 
 function New-Environment {
@@ -27,6 +27,7 @@ function New-Environment {
     New-Directory -RemoveExisting $SPARTAN_DIR
     New-Directory $SPARTAN_RELEASE_DIR
     New-Directory $SPARTAN_SERVICE_DIR
+    New-Directory $SPARTAN_LOG_DIR
     $spartanReleaseZip = Join-Path $env:TEMP "spartan-release.zip"
     Write-Output "Downloading latest Spartan build"
     Invoke-WebRequest -UseBasicParsing -Uri $SPARTAN_LATEST_RELEASE_URL -OutFile $spartanReleaseZip
@@ -123,17 +124,19 @@ function New-SpartanWindowsAgent {
                          "-args_file `"${spartanVMArgsFile}`" -pa " + `
                          "-- foreground")
     $environmentFile = Join-Path $SPARTAN_SERVICE_DIR "environment-file"
+    $mastersListFile = Join-Path $DCOS_DIR "master_list"
+    ConvertTo-Json -InputObject $MasterAddress -Compress | Out-File -Encoding ascii -PSPath $mastersListFile
     Set-Content -Path $environmentFile -Value @(
-        "MASTER_SOURCE=exhibitor",
-        "EXHIBITOR_ADDRESS=leader.mesos"
+        "MASTER_SOURCE=master_list",
+        "MASTER_LIST_FILE=${mastersListFile}"
     )
     $wrapperPath = Join-Path $SPARTAN_SERVICE_DIR "service-wrapper.exe"
     Invoke-WebRequest -UseBasicParsing -Uri $SERVICE_WRAPPER_URL -OutFile $wrapperPath
+    $logFile = Join-Path $SPARTAN_LOG_DIR "spartan.log"
     New-DCOSWindowsService -Name $SPARTAN_SERVICE_NAME -DisplayName $SPARTAN_SERVICE_DISPLAY_NAME -Description $SPARTAN_SERVICE_DESCRIPTION `
-                           -WrapperPath $wrapperPath -EnvironmentFiles @($environmentFile) -BinaryPath "`"$erlBinary $spartanArguments`""
+                           -LogFile $logFile -WrapperPath $wrapperPath -EnvironmentFiles @($environmentFile) -BinaryPath "`"$erlBinary $spartanArguments`""
     Start-Service $SPARTAN_SERVICE_NAME
     Set-DnsClientServerAddress -InterfaceAlias * -ServerAddresses $SPARTAN_LOCAL_ADDRESSES
-    Start-Service "Docker"
 }
 
 
