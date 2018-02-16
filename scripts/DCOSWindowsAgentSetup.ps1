@@ -123,6 +123,16 @@ function Install-SpartanAgent {
     }
 }
 
+function Update-Docker {
+    $dockerHome = Join-Path $env:ProgramFiles "Docker"
+    $baseUrl = "http://dcos-win.westus.cloudapp.azure.com/downloads/docker"
+    $version = "18.02.0-ce"
+    Stop-Service "Docker"
+    Invoke-WebRequest -UseBasicParsing -Uri "${baseUrl}/${version}/docker.exe" -OutFile "${dockerHome}\docker.exe"
+    Invoke-WebRequest -UseBasicParsing -Uri "${baseUrl}/${version}/dockerd.exe" -OutFile "${dockerHome}\dockerd.exe"
+    Start-Service "Docker"
+}
+
 function New-DockerNATNetwork {
     #
     # This needs to be used by all the containers since DCOS Spartan DNS server
@@ -137,6 +147,7 @@ function New-DockerNATNetwork {
 }
 
 try {
+    Update-Docker
     New-DockerNATNetwork
     New-ScriptsDirectory
     Install-MesosAgent
