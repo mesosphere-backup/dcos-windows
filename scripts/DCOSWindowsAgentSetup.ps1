@@ -140,7 +140,7 @@ function New-DockerNATNetwork {
     # The Docker gateway address is added to the DNS server list unless
     # disable_gatewaydns network option is enabled.
     #
-    docker.exe network create --driver="nat" --opt "com.docker.network.windowsshim.disable_gatewaydns=true" "nat_network"
+    docker.exe network create --driver="nat" --opt "com.docker.network.windowsshim.disable_gatewaydns=true" "customnat"
     if($LASTEXITCODE -ne 0) {
         Throw "Failed to create the new Docker NAT network with disable_gatewaydns flag"
     }
