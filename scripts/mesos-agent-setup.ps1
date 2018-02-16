@@ -113,8 +113,9 @@ function New-MesosWindowsAgent {
     }
     $wrapperPath = Join-Path $MESOS_SERVICE_DIR "service-wrapper.exe"
     Invoke-WebRequest -UseBasicParsing -Uri $SERVICE_WRAPPER_URL -OutFile $wrapperPath
+    $logFile = Join-Path $MESOS_LOG_DIR "mesos-slave.log"
     New-DCOSWindowsService -Name $MESOS_SERVICE_NAME -DisplayName $MESOS_SERVICE_DISPLAY_NAME -Description $MESOS_SERVICE_DESCRIPTION `
-                           -WrapperPath $wrapperPath -BinaryPath "$mesosBinary $mesosAgentArguments" -EnvironmentFiles @($environmentFile)
+                           -LogFile $logFile -WrapperPath $wrapperPath -BinaryPath "$mesosBinary $mesosAgentArguments" -EnvironmentFiles @($environmentFile)
     Start-Service $MESOS_SERVICE_NAME
 }
 
