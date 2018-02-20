@@ -69,8 +69,7 @@ function Set-SpartanDevice {
     if(!$spartanDevice) {
         Throw "Spartan network device was not found"
     }
-    $spartanIPs = $SPARTAN_LOCAL_ADDRESSES
-    foreach($ip in $spartanIPs) {
+    foreach($ip in $SPARTAN_LOCAL_ADDRESSES) {
         $address = Get-NetIPAddress -InterfaceAlias $SPARTAN_DEVICE_NAME -AddressFamily "IPv4" -IPAddress $ip -ErrorAction SilentlyContinue
         if($address) {
             continue
@@ -79,6 +78,14 @@ function Set-SpartanDevice {
     }
     Disable-NetAdapter $SPARTAN_DEVICE_NAME -Confirm:$false
     Enable-NetAdapter $SPARTAN_DEVICE_NAME -Confirm:$false
+    foreach($ip in $SPARTAN_LOCAL_ADDRESSES) {
+        $startTime = Get-Date
+        while(!(Test-Connection $ip -Count 1 -Quiet)) {
+            if(((Get-Date) - $startTime).Minutes -ge 5) {
+                Throw "Spartan address $ip didn't become reachable within 5 minutes"
+            }
+        }
+    }
 }
 
 function Get-UpstreamDNSResolvers {
