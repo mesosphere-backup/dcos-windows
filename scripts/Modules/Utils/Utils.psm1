@@ -165,3 +165,33 @@ function New-DCOSWindowsService {
     Start-ExternalCommand { sc.exe failure $Name reset=5 actions=restart/1000 }
     Start-ExternalCommand { sc.exe failureflag $Name 1 }
 }
+
+function Start-ExecuteWithRetry {
+    Param(
+        [Parameter(Mandatory=$true)]
+        [Alias("Command")]
+        [ScriptBlock]$ScriptBlock,
+        [int]$MaxRetryCount=10,
+        [int]$RetryInterval=3,
+        [array]$ArgumentList=@()
+    )
+    $currentErrorActionPreference = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    $retryCount = 0
+    while ($true) {
+        try {
+            $res = Invoke-Command -ScriptBlock $ScriptBlock `
+                                  -ArgumentList $ArgumentList
+            $ErrorActionPreference = $currentErrorActionPreference
+            return $res
+        } catch [System.Exception] {
+            $retryCount++
+            if ($retryCount -gt $MaxRetryCount) {
+                $ErrorActionPreference = $currentErrorActionPreference
+                Throw
+            } else {
+                Start-Sleep $RetryInterval
+            }
+        }
+    }
+}
