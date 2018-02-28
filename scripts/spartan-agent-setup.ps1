@@ -30,7 +30,7 @@ function New-Environment {
     New-Directory $SPARTAN_LOG_DIR
     $spartanReleaseZip = Join-Path $env:TEMP "spartan-release.zip"
     Write-Output "Downloading latest Spartan build"
-    Invoke-WebRequest -UseBasicParsing -Uri $SPARTAN_LATEST_RELEASE_URL -OutFile $spartanReleaseZip
+    Start-ExecuteWithRetry { Invoke-WebRequest -UseBasicParsing -Uri $SPARTAN_LATEST_RELEASE_URL -OutFile $spartanReleaseZip }
     Write-Output "Extracting Spartan zip archive to $SPARTAN_RELEASE_DIR"
     Expand-Archive -LiteralPath $spartanReleaseZip -DestinationPath $SPARTAN_RELEASE_DIR
     Remove-Item $spartanReleaseZip
@@ -43,7 +43,7 @@ function New-DevConBinary {
     }
     New-Item -ItemType Directory -Path $devConDir | Out-Null
     $devConCab = Join-Path $devConDir "devcon.cab"
-    Invoke-WebRequest -UseBasicParsing -Uri $DEVCON_CAB_URL -OutFile $devConCab | Out-Null
+    Start-ExecuteWithRetry { Invoke-WebRequest -UseBasicParsing -Uri $DEVCON_CAB_URL -OutFile $devConCab | Out-Null }
     $devConFile = "filbad6e2cce5ebc45a401e19c613d0a28f"
     Start-ExternalCommand { expand.exe $devConCab -F:$devConFile $devConDir } -ErrorMessage "Failed to expand $devConCab" | Out-Null
     $devConBinary = Join-Path $env:TEMP "devcon.exe"
@@ -138,7 +138,7 @@ function New-SpartanWindowsAgent {
         "MASTER_LIST_FILE=${mastersListFile}"
     )
     $wrapperPath = Join-Path $SPARTAN_SERVICE_DIR "service-wrapper.exe"
-    Invoke-WebRequest -UseBasicParsing -Uri $SERVICE_WRAPPER_URL -OutFile $wrapperPath
+    Start-ExecuteWithRetry { Invoke-WebRequest -UseBasicParsing -Uri $SERVICE_WRAPPER_URL -OutFile $wrapperPath }
     $logFile = Join-Path $SPARTAN_LOG_DIR "spartan.log"
     New-DCOSWindowsService -Name $SPARTAN_SERVICE_NAME -DisplayName $SPARTAN_SERVICE_DISPLAY_NAME -Description $SPARTAN_SERVICE_DESCRIPTION `
                            -LogFile $logFile -WrapperPath $wrapperPath -EnvironmentFiles @($environmentFile) -BinaryPath "`"$erlBinary $spartanArguments`""

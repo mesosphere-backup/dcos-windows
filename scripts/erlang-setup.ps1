@@ -14,7 +14,7 @@ $TEMPLATES_DIR = Join-Path $PSScriptRoot "templates"
 function Install-VCredist {
     Write-Output "Install VCredist 2013"
     $installerPath = Join-Path $env:TEMP "vcredist_2013_x64.exe"
-    Invoke-WebRequest -UseBasicParsing -Uri $VCREDIST_2013_URL -OutFile $installerPath
+    Start-ExecuteWithRetry { Invoke-WebRequest -UseBasicParsing -Uri $VCREDIST_2013_URL -OutFile $installerPath }
     $p = Start-Process -Wait -PassThru -FilePath $installerPath -ArgumentList @("/install", "/passive")
     if ($p.ExitCode -ne 0) {
         Throw ("Failed install VCredist 2013. Exit code: {0}" -f $p.ExitCode)
@@ -27,7 +27,7 @@ function Install-Erlang {
     New-Directory -RemoveExisting $ERLANG_DIR
     $erlangZip = Join-Path $env:TEMP "erlang.zip"
     Write-Output "Downloading the Windows Erlang runtime zip"
-    Invoke-WebRequest -UseBasicParsing -Uri $ERLANG_URL -OutFile $erlangZip
+    Start-ExecuteWithRetry { Invoke-WebRequest -UseBasicParsing -Uri $ERLANG_URL -OutFile $erlangZip }
     Write-Output "Extracting the Windows Erlang zip to $ERLANG_DIR"
     Expand-Archive -LiteralPath $erlangZip -DestinationPath $ERLANG_DIR
     Remove-Item $erlangZip
