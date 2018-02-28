@@ -48,6 +48,36 @@ function Add-ToSystemPath {
     }
 }
 
+function Start-ExecuteWithRetry {
+    Param(
+        [Parameter(Mandatory=$true)]
+        [Alias("Command")]
+        [ScriptBlock]$ScriptBlock,
+        [int]$MaxRetryCount=10,
+        [int]$RetryInterval=3,
+        [array]$ArgumentList=@()
+    )
+    $currentErrorActionPreference = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    $retryCount = 0
+    while ($true) {
+        try {
+            $res = Invoke-Command -ScriptBlock $ScriptBlock `
+                                  -ArgumentList $ArgumentList
+            $ErrorActionPreference = $currentErrorActionPreference
+            return $res
+        } catch [System.Exception] {
+            $retryCount++
+            if ($retryCount -gt $MaxRetryCount) {
+                $ErrorActionPreference = $currentErrorActionPreference
+                Throw
+            } else {
+                Start-Sleep $RetryInterval
+            }
+        }
+    }
+}
+
 function Install-Git {
     $gitInstallerURL = "http://dcos-win.westus.cloudapp.azure.com/downloads/Git-2.14.1-64-bit.exe"
     $gitInstallDir = Join-Path $env:ProgramFiles "Git"
