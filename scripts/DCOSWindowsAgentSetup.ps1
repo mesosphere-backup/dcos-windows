@@ -89,7 +89,7 @@ function Install-Git {
     }
     Write-Output "Downloading Git from $gitInstallerURL"
     $programFile = Join-Path $env:TEMP "git.exe"
-    Invoke-WebRequest -UseBasicParsing -Uri $gitInstallerURL -OutFile $programFile
+    Start-ExecuteWithRetry { Invoke-WebRequest -UseBasicParsing -Uri $gitInstallerURL -OutFile $programFile }
     $parameters = @{
         'FilePath' = $programFile
         'ArgumentList' = @("/SILENT")
@@ -109,7 +109,7 @@ function New-ScriptsDirectory {
         Remove-Item -Recurse -Force -Path $SCRIPTS_DIR
     }
     Install-Git
-    $p = Start-Process -FilePath 'git.exe' -Wait -PassThru -NoNewWindow -ArgumentList @('clone', $SCRIPTS_REPO_URL, $SCRIPTS_DIR)
+    $p = Start-ExecuteWithRetry { Start-Process -FilePath 'git.exe' -Wait -PassThru -NoNewWindow -ArgumentList @('clone', $SCRIPTS_REPO_URL, $SCRIPTS_DIR) }
     if($p.ExitCode -ne 0) {
         Throw "Failed to clone $SCRIPTS_REPO_URL repository"
     }
@@ -158,8 +158,8 @@ function Update-Docker {
     $baseUrl = "http://dcos-win.westus.cloudapp.azure.com/downloads/docker"
     $version = "18.02.0-ce"
     Stop-Service "Docker"
-    Invoke-WebRequest -UseBasicParsing -Uri "${baseUrl}/${version}/docker.exe" -OutFile "${dockerHome}\docker.exe"
-    Invoke-WebRequest -UseBasicParsing -Uri "${baseUrl}/${version}/dockerd.exe" -OutFile "${dockerHome}\dockerd.exe"
+    Start-ExecuteWithRetry { Invoke-WebRequest -UseBasicParsing -Uri "${baseUrl}/${version}/docker.exe" -OutFile "${dockerHome}\docker.exe" }
+    Start-ExecuteWithRetry { Invoke-WebRequest -UseBasicParsing -Uri "${baseUrl}/${version}/dockerd.exe" -OutFile "${dockerHome}\dockerd.exe" }
     Start-Service "Docker"
 }
 

@@ -54,7 +54,7 @@ function Add-ToSystemPath {
 function Install-MesosBinaries {
     $binariesPath = Join-Path $env:TEMP "mesos-binaries.zip"
     Write-Output "Downloading Mesos binaries"
-    Invoke-WebRequest -Uri $MesosWindowsBinariesURL -OutFile $binariesPath
+    Start-ExecuteWithRetry { Invoke-WebRequest -Uri $MesosWindowsBinariesURL -OutFile $binariesPath }
     Write-Output "Extracting binaries archive in: $MESOS_BIN_DIR"
     Expand-Archive -LiteralPath $binariesPath -DestinationPath $MESOS_BIN_DIR
     Add-ToSystemPath $MESOS_BIN_DIR
@@ -112,7 +112,7 @@ function New-MesosWindowsAgent {
       )
     }
     $wrapperPath = Join-Path $MESOS_SERVICE_DIR "service-wrapper.exe"
-    Invoke-WebRequest -UseBasicParsing -Uri $SERVICE_WRAPPER_URL -OutFile $wrapperPath
+    Start-ExecuteWithRetry { Invoke-WebRequest -UseBasicParsing -Uri $SERVICE_WRAPPER_URL -OutFile $wrapperPath }
     $logFile = Join-Path $MESOS_LOG_DIR "mesos-slave.log"
     New-DCOSWindowsService -Name $MESOS_SERVICE_NAME -DisplayName $MESOS_SERVICE_DISPLAY_NAME -Description $MESOS_SERVICE_DESCRIPTION `
                            -LogFile $logFile -WrapperPath $wrapperPath -BinaryPath "$mesosBinary $mesosAgentArguments" -EnvironmentFiles @($environmentFile)
