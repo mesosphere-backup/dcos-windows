@@ -210,9 +210,9 @@ function New-DCOSEnvironmentFile {
 
 
 try {
+    New-ScriptsDirectory
     Update-Docker
     New-DockerNATNetwork
-    New-ScriptsDirectory
     New-DCOSEnvironmentFile
     Install-MesosAgent
     Install-ErlangRuntime
