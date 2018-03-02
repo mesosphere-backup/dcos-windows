@@ -86,13 +86,13 @@ function New-MesosWindowsAgent {
     $mesosAttributes = Get-MesosAgentAttributes
     $masterZkAddress = "zk://" + ($MasterAddress -join ":2181,") + ":2181/mesos"
     $mesosPath = ($DOCKER_HOME -replace '\\', '\\') + ';' + ($MESOS_BIN_DIR -replace '\\', '\\')
-    $externalLogFile = Join-Path $MESOS_LOG_DIR "mesos-service.err.log"
-    New-Item -ItemType File -Path $externalLogFile
+    $logFile = Join-Path $MESOS_LOG_DIR "mesos-agent.log"
+    New-Item -ItemType File -Path $logFile
     $mesosAgentArguments = ("--master=`"${masterZkAddress}`"" + `
                            " --work_dir=`"${MESOS_WORK_DIR}`"" + `
                            " --runtime_dir=`"${MESOS_WORK_DIR}`"" + `
                            " --launcher_dir=`"${MESOS_BIN_DIR}`"" + `
-                           " --external_log_file=`"${externalLogFile}`"" + `
+                           " --external_log_file=`"${logFile}`"" + `
                            " --ip=`"${agentAddress}`"" + `
                            " --isolation=`"windows/cpu,filesystem/windows`"" + `
                            " --containerizers=`"docker,mesos`"" + `
@@ -112,7 +112,6 @@ function New-MesosWindowsAgent {
     }
     $wrapperPath = Join-Path $MESOS_SERVICE_DIR "service-wrapper.exe"
     Start-ExecuteWithRetry { Invoke-WebRequest -UseBasicParsing -Uri $SERVICE_WRAPPER_URL -OutFile $wrapperPath }
-    $logFile = Join-Path $MESOS_LOG_DIR "mesos-slave.log"
     New-DCOSWindowsService -Name $MESOS_SERVICE_NAME -DisplayName $MESOS_SERVICE_DISPLAY_NAME -Description $MESOS_SERVICE_DESCRIPTION `
                            -LogFile $logFile -WrapperPath $wrapperPath -BinaryPath "$mesosBinary $mesosAgentArguments" -EnvironmentFiles @($environmentFile)
     Start-Service $MESOS_SERVICE_NAME
