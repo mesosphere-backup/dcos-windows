@@ -7,6 +7,7 @@ $DCOS_DIR = Join-Path $env:SystemDrive "DCOS"
 $ERLANG_DIR = Join-Path $DCOS_DIR "erl8.3"
 $ERTS_DIR = Join-Path $ERLANG_DIR "erts-8.3"
 $DOCKER_HOME = Join-Path $env:ProgramFiles "Docker"
+$SERVICE_WRAPPER = Join-Path $DCOS_DIR "service-wrapper.exe"
 
 # Mesos configurations
 $MESOS_SERVICE_NAME = "dcos-mesos-slave"

@@ -218,6 +218,7 @@ function New-DCOSEnvironmentFile {
         New-Item -ItemType "Directory" -Path $DCOS_DIR
     }
     $envFile = Join-Path $DCOS_DIR "environment"
+    $masterIPs = Get-MasterIPs
     Write-Output "Trying to find the DC/OS version by querying the API of the masters: $($masterIPs -join ', ')"
     $dcosVersion = Get-DCOSVersion
     Set-Content -Path $envFile -Value @(
@@ -226,12 +227,22 @@ function New-DCOSEnvironmentFile {
     )
 }
 
+function New-DCOSServiceWrapper {
+    . "$SCRIPTS_DIR\scripts\variables.ps1"
+    $parent = Split-Path -Parent -Path $SERVICE_WRAPPER
+    if(!(Test-Path -Path $parent)) {
+        New-Item -ItemType "Directory" -Path $parent
+    }
+    Start-ExecuteWithRetry { Invoke-WebRequest -UseBasicParsing -Uri $SERVICE_WRAPPER_URL -OutFile $SERVICE_WRAPPER }
+}
+
 
 try {
     New-ScriptsDirectory
     Update-Docker
     New-DockerNATNetwork
     New-DCOSEnvironmentFile
+    New-DCOSServiceWrapper
     Install-MesosAgent
     Install-ErlangRuntime
     Install-EPMDAgent
