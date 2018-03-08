@@ -47,31 +47,28 @@ function Install-DiagnosticsFiles {
     Write-Output "Downloading Diagnostics binaries"
     Start-ExecuteWithRetry { Invoke-WebRequest -Uri $DiagnosticsWindowsBinariesURL -OutFile $filesPath }
     Write-Output "Extracting binaries archive in: $DIAGNOSTICS_DIR"
-    Expand-Archive -LiteralPath $binariesPath -DestinationPath $DIAGNOSTICS_DIR
-    Add-ToSystemPath $DIAGNOSTICS_BIN_DIR
+    Expand-Archive -LiteralPath $filesPath -DestinationPath $DIAGNOSTICS_DIR
+    Add-ToSystemPath $DIAGNOSTICS_DIR
     Remove-item $filesPath
 }
 
 function New-DiagnosticsAgent {
-    $diagnosticsBinary = Join-Path $DIAGNOSTICS_BIN_DIR "dcos-diagnostics.exe"
+    $diagnosticsBinary = Join-Path $DIAGNOSTICS_DIR "dcos-diagnostics.exe"
     $logFile = Join-Path $DIAGNOSTICS_LOG_DIR "diagnostics-agent.log"
     New-Item -ItemType File -Path $logFile
 
     $dcos_endpoint_config_dir = Join-Path $DIAGNOSTICS_DIR "dcos-diagnostics-endpoint-config.json"
 
-    $diagnosticsAgentArguments = (  "--master=`"${masterZkAddress}`"" + `
-                                    "daemon" + `
-                                    "--role agent" + `
-                                    "--debug" + `
-                                    "--no-unix-socket" + `
-                                    "--port `"${DIAGNOSTICS_AGENT_PORT}`"" + `
+    $diagnosticsAgentArguments = (  "daemon " + `
+                                    "--role agent " + `
+                                    "--debug " + `
+                                    "--no-unix-socket " + `
+                                    "--port `"${DIAGNOSTICS_AGENT_PORT}`" " + `
                                     "--endpoint-config `"${dcos_endpoint_config_dir}`"")
 
     $environmentFile = Join-Path $DCOS_DIR "environment"
-    $wrapperPath = Join-Path $DIAGNOSTICS_SERVICE_DIR "service-wrapper.exe"
-    Start-ExecuteWithRetry { Invoke-WebRequest -UseBasicParsing -Uri $SERVICE_WRAPPER_URL -OutFile $wrapperPath }
     New-DCOSWindowsService -Name $DIAGNOSTICS_SERVICE_NAME -DisplayName $DIAGNOSTICS_SERVICE_DISPLAY_NAME -Description $DIAGNOSTICS_SERVICE_DESCRIPTION `
-                           -LogFile $logFile -WrapperPath $wrapperPath -BinaryPath "$diagnosticsBinary $diagnosticsAgentArguments" -EnvironmentFiles @($environmentFile)
+                           -LogFile $logFile -WrapperPath $SERVICE_WRAPPER -BinaryPath "$diagnosticsBinary $diagnosticsAgentArguments" -EnvironmentFiles @($environmentFile)
     Start-Service $DIAGNOSTICS_SERVICE_NAME
 }
 

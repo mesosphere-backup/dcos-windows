@@ -218,6 +218,7 @@ function New-DCOSEnvironmentFile {
         New-Item -ItemType "Directory" -Path $DCOS_DIR
     }
     $envFile = Join-Path $DCOS_DIR "environment"
+    $masterIPs = Get-MasterIPs
     Write-Output "Trying to find the DC/OS version by querying the API of the masters: $($masterIPs -join ', ')"
     $dcosVersion = Get-DCOSVersion
     Set-Content -Path $envFile -Value @(
