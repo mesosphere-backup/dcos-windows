@@ -26,11 +26,9 @@ function New-EPMDWindowsAgent {
     if(!(Test-Path $epmdBinary)) {
         Throw "The EPMD binary $epmdBinary doesn't exist. Cannot configure the EPMD agent Windows service"
     }
-    $wrapperPath = Join-Path $EPMD_SERVICE_DIR "service-wrapper.exe"
-    Start-ExecuteWithRetry { Invoke-WebRequest -UseBasicParsing -Uri $SERVICE_WRAPPER_URL -OutFile $wrapperPath }
     $logFile = Join-Path $EPMD_LOG_DIR "epmd.log"
     New-DCOSWindowsService -Name $EPMD_SERVICE_NAME -DisplayName $EPMD_SERVICE_DISPLAY_NAME -Description $EPMD_SERVICE_DESCRIPTION `
-                           -LogFile $logFile -WrapperPath $wrapperPath -BinaryPath "$epmdBinary -port $EPMD_PORT"
+                           -LogFile $logFile -WrapperPath $SERVICE_WRAPPER -BinaryPath "$epmdBinary -port $EPMD_PORT"
     Start-Service $EPMD_SERVICE_NAME
 }
 

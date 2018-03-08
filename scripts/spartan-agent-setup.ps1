@@ -137,11 +137,9 @@ function New-SpartanWindowsAgent {
         "MASTER_SOURCE=master_list",
         "MASTER_LIST_FILE=${mastersListFile}"
     )
-    $wrapperPath = Join-Path $SPARTAN_SERVICE_DIR "service-wrapper.exe"
-    Start-ExecuteWithRetry { Invoke-WebRequest -UseBasicParsing -Uri $SERVICE_WRAPPER_URL -OutFile $wrapperPath }
     $logFile = Join-Path $SPARTAN_LOG_DIR "spartan.log"
     New-DCOSWindowsService -Name $SPARTAN_SERVICE_NAME -DisplayName $SPARTAN_SERVICE_DISPLAY_NAME -Description $SPARTAN_SERVICE_DESCRIPTION `
-                           -LogFile $logFile -WrapperPath $wrapperPath -EnvironmentFiles @($environmentFile) -BinaryPath "`"$erlBinary $spartanArguments`""
+                           -LogFile $logFile -WrapperPath $SERVICE_WRAPPER -EnvironmentFiles @($environmentFile) -BinaryPath "`"$erlBinary $spartanArguments`""
     Start-Service $SPARTAN_SERVICE_NAME
     Set-DnsClientServerAddress -InterfaceAlias * -ServerAddresses $SPARTAN_LOCAL_ADDRESSES
 }
