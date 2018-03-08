@@ -59,8 +59,7 @@ function New-DiagnosticsAgent {
 
     $dcos_endpoint_config_dir = Join-Path $DIAGNOSTICS_DIR "dcos-diagnostics-endpoint-config.json"
 
-    $diagnosticsAgentArguments = (  "--master=`"${masterZkAddress}`"" + `
-                                    "daemon" + `
+    $diagnosticsAgentArguments = (  " daemon " + `
                                     "--role agent" + `
                                     "--debug" + `
                                     "--no-unix-socket" + `
@@ -68,10 +67,8 @@ function New-DiagnosticsAgent {
                                     "--endpoint-config `"${dcos_endpoint_config_dir}`"")
 
     $environmentFile = Join-Path $DCOS_DIR "environment"
-    $wrapperPath = Join-Path $DIAGNOSTICS_SERVICE_DIR "service-wrapper.exe"
-    Start-ExecuteWithRetry { Invoke-WebRequest -UseBasicParsing -Uri $SERVICE_WRAPPER_URL -OutFile $wrapperPath }
     New-DCOSWindowsService -Name $DIAGNOSTICS_SERVICE_NAME -DisplayName $DIAGNOSTICS_SERVICE_DISPLAY_NAME -Description $DIAGNOSTICS_SERVICE_DESCRIPTION `
-                           -LogFile $logFile -WrapperPath $wrapperPath -BinaryPath "$diagnosticsBinary $diagnosticsAgentArguments" -EnvironmentFiles @($environmentFile)
+                           -LogFile $logFile -WrapperPath $SERVICE_WRAPPER -BinaryPath "$diagnosticsBinary $diagnosticsAgentArguments" -EnvironmentFiles @($environmentFile)
     Start-Service $DIAGNOSTICS_SERVICE_NAME
 }
 
