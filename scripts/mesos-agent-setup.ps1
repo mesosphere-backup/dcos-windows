@@ -110,10 +110,8 @@ function New-MesosWindowsAgent {
           "MESOS_AUTHENTICATE_HTTP_READWRITE=false"
       )
     }
-    $wrapperPath = Join-Path $MESOS_SERVICE_DIR "service-wrapper.exe"
-    Start-ExecuteWithRetry { Invoke-WebRequest -UseBasicParsing -Uri $SERVICE_WRAPPER_URL -OutFile $wrapperPath }
     New-DCOSWindowsService -Name $MESOS_SERVICE_NAME -DisplayName $MESOS_SERVICE_DISPLAY_NAME -Description $MESOS_SERVICE_DESCRIPTION `
-                           -LogFile $logFile -WrapperPath $wrapperPath -BinaryPath "$mesosBinary $mesosAgentArguments" -EnvironmentFiles @($environmentFile)
+                           -LogFile $logFile -WrapperPath $SERVICE_WRAPPER -BinaryPath "$mesosBinary $mesosAgentArguments" -EnvironmentFiles @($environmentFile)
     Start-Service $MESOS_SERVICE_NAME
 }
 

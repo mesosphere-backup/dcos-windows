@@ -226,12 +226,22 @@ function New-DCOSEnvironmentFile {
     )
 }
 
+function New-DCOSServiceWrapper {
+    . "$SCRIPTS_DIR\scripts\variables.ps1"
+    $parent = Split-Path -Parent -Path $SERVICE_WRAPPER
+    if(!(Test-Path -Path $parent)) {
+        New-Item -ItemType "Directory" -Path $parent
+    }
+    Start-ExecuteWithRetry { Invoke-WebRequest -UseBasicParsing -Uri $SERVICE_WRAPPER_URL -OutFile $SERVICE_WRAPPER }
+}
+
 
 try {
     New-ScriptsDirectory
     Update-Docker
     New-DockerNATNetwork
     New-DCOSEnvironmentFile
+    New-DCOSServiceWrapper
     Install-MesosAgent
     Install-ErlangRuntime
     Install-EPMDAgent
