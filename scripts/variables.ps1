@@ -40,6 +40,18 @@ $SPARTAN_LOG_DIR = Join-Path $SPARTAN_DIR "log"
 $SPARTAN_RELEASE_DIR = Join-Path $SPARTAN_DIR "release"
 $SPARTAN_SERVICE_DIR = Join-Path $SPARTAN_DIR "service"
 
+
+# Diagnostics configurations
+$DIAGNOSTICS_SERVICE_NAME = "dcos-diagnostics"
+$DIAGNOSTICS_SERVICE_DISPLAY_NAME = "DCOS Diagnostics Windows agent"
+$DIAGNOSTICS_SERVICE_DESCRIPTION = "Windows Service for the DCOS Diagnostics agent"
+$DIAGNOSTICS_AGENT_PORT = 9003
+$DIAGNOSTICS_DIR = Join-Path $DCOS_DIR "diagnostics"
+$DIAGNOSTICS_CONFIG_DIR = Join-Path $DIAGNOSTICS_DIR "config"
+$DIAGNOSTICS_BIN_DIR = Join-Path $DIAGNOSTICS_DIR "bin"
+$DIAGNOSTICS_LOG_DIR = Join-Path $DIAGNOSTICS_DIR "log"
+$DIAGNOSTICS_SERVICE_DIR = Join-Path $DIAGNOSTICS_DIR "service"
+
 # Installers URLs
 $SERVICE_WRAPPER_URL = "$LOG_SERVER_BASE_URL/downloads/service-wrapper.exe"
 $VCREDIST_2013_URL = "https://download.microsoft.com/download/2/E/6/2E61CFA4-993B-4DD4-91DA-3737CD5CD6E3/vcredist_x64.exe"
