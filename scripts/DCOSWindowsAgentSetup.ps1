@@ -25,6 +25,7 @@ $ErrorActionPreference = "Stop"
 $SCRIPTS_REPO_URL = "https://github.com/dcos/dcos-windows"
 $SCRIPTS_DIR = Join-Path $env:TEMP "dcos-windows"
 $MESOS_BINARIES_URL = "$BootstrapUrl/mesos.zip"
+$DIAGNOSTICS_BINARIES_URL = "$BootstrapUrl/diagnostics.zip"
 
 function Add-ToSystemPath {
     Param(
@@ -153,6 +154,20 @@ function Install-SpartanAgent {
     }
 }
 
+function Install-AdminRouterAgent {
+    & "$SCRIPTS_DIR\scripts\adminrouter-agent-setup.ps1" -AgentPrivateIP $AgentPrivateIP
+    if($LASTEXITCODE) {
+        Throw "Failed to setup the DCOS AdminRouter Windows agent"
+    }
+}
+
+function Install-DiagnosticsAgent {
+    & "$SCRIPTS_DIR\scripts\diagnostics-agent-setup.ps1" -DiagnosticsWindowsBinariesURL $DIAGNOSTICS_BINARIES_URL
+    if($LASTEXITCODE) {
+        Throw "Failed to setup the DCOS Diagnostics Windows agent"
+    }
+}
+
 function Update-Docker {
     $dockerHome = Join-Path $env:ProgramFiles "Docker"
     $baseUrl = "http://dcos-win.westus.cloudapp.azure.com/downloads/docker"
@@ -229,6 +244,8 @@ try {
     Install-ErlangRuntime
     Install-EPMDAgent
     Install-SpartanAgent
+    Install-AdminRouterAgent
+    Install-DiagnosticsAgent
 } catch {
     Write-Output $_.ToString()
     exit 1

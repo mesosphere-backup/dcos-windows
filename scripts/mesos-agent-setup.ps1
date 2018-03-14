@@ -37,20 +37,6 @@ function New-MesosEnvironment {
     New-Directory $MESOS_SERVICE_DIR
 }
 
-function Add-ToSystemPath {
-    Param(
-        [Parameter(Mandatory=$true)]
-        [string]$Path
-    )
-    $systemPath = [System.Environment]::GetEnvironmentVariable("PATH", "Machine")
-    if ($Path -in $systemPath.Split(';')) {
-        return
-    }
-    $newPath = $systemPath + ";" + $Path
-    Start-ExternalCommand -ScriptBlock { setx.exe /M PATH $newPath } -ErrorMessage "Failed to set the system path"
-    $env:PATH += ";$Path"
-}
-
 function Install-MesosBinaries {
     $binariesPath = Join-Path $env:TEMP "mesos-binaries.zip"
     Write-Output "Downloading Mesos binaries"
