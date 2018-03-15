@@ -1,15 +1,10 @@
 {
-  "sources": {
-        "URLRewrite": {
-          "kind": "url_extract",
-          "url": "http://download.microsoft.com/download/D/D/E/DDE57C26-C62C-4C59-A1BB-31D58B36ADA2/rewrite_amd64_en-US.msi",
-          "sha1": ""
-        },
-        "Application-Request-Routing": {
-          "kind": "url_extract",
-          "url": "http://go.microsoft.com/fwlink/?LinkID=615136",
-          "sha1": ""
-        }
+  "requires": ["mesos"],
+  "single_source" : {
+    "kind": "git",
+    "git": "https://github.com/dcos/dcos-metrics.git",
+    "ref": "d9f7341c9d68a243c4f4c2c288651ad9a6462728",
+    "ref_origin": "master"
   },
-  "username": "dcos_epmd"
+  "username": "dcos_metrics"
 }

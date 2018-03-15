@@ -1,0 +1,69 @@
+#!/usr/bin/pwsh
+# variant: {variant}
+#
+# All logging and tool output should be redirected to stderr
+# as the Docker container might output json that would
+# otherwise be tainted.
+#
+#set -o errexit -o nounset -o pipefail
+
+$TAR=bsdtar
+$ErrorActionPreference = "Stop"
+
+# preflight checks
+try {
+    &docker version >$NULL 2>&1 
+}
+catch {
+    Write-Host "docker should be installed and running. Aborting;"
+    exit 1;
+}
+
+func backout() {
+	if ( Test-Path -Path "{genconf_tar}" -PathType leaf ) {
+        rm -f {genconf_tar}
+    }
+    exit 1
+}
+
+trap 'backout' INT
+
+# if the tarball was previously extracted
+if ( Test-Path -Path "{genconf_tar}" -PathType leaf ) {
+    # but not successfully loaded into Docker
+    if ( $(docker images -q {docker_image_name} 2>$NULL ) == 0 ) {
+        # remove the potentially corrupted tarball and
+        # cause it to be re-extracted in the next step
+        rm -f {genconf_tar}
+    }
+}
+
+# extract payload and load into docker if not extracted
+if ( ! (Test-Path -Path "{genconf_tar}" -PathType leaf ) {
+    >&2 Write-Host "Extracting image from this script and loading into docker daemon, this step can take a few minutes"
+    sed '1,/^#EOF#$/d' $0 | tar xv
+    >&2 docker load -i {genconf_tar}
+}
+trap - INT
+
+if ( !( Test-Path -Path genconf/state -PathType Container ) ) {
+    mkdir -p genconf/state
+}
+
+$PORT=${{PORT:-9000}}
+$DCOS_INSTALLER_DAEMONIZE=${{DCOS_INSTALLER_DAEMONIZE:-false}}
+$DCOS_INSTALLER_CONTAINER_NAME=${{DCOS_INSTALLER_CONTAINER_NAME:-{genconf_tar}}}
+
+if ( "$DCOS_INSTALLER_DAEMONIZE" == $true ) {
+    &docker run --name=$DCOS_INSTALLER_CONTAINER_NAME -d -p $PORT:9000 -v $(pwd)/genconf/:/genconf {docker_image_name} "$@"
+} else {
+    try {
+        trap { "signal ignored" } 
+        &docker kill {genconf_tar}
+    }
+    catch {
+        // Ignore errors
+    }
+    &docker run --rm --name=$DCOS_INSTALLER_CONTAINER_NAME -i -p $PORT:9000 -v $PWD/genconf/:/genconf {docker_image_name} "$@"
+}
+exit $?

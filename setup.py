@@ -1,6 +1,6 @@
 from setuptools import setup
 import platform
-is_windows = platform.system() is "Windows"
+is_windows = (platform.system() == "Windows")
 
 def get_advanced_templates():
     template_base = 'aws/templates/advanced/'
@@ -10,13 +10,13 @@ def get_advanced_templates():
 
 if is_windows:
     packages=[
-        'dcos/gen',
-        'dcos/gen.build_deploy',
-        'dcos/pkgpanda',
-        'dcos/pkgpanda.build',
-        'dcos/pkgpanda.http',
-        'dcos/release',
-        'dcos/release.storage',
+        'gen',
+        'gen.build_deploy',
+        'pkgpanda',
+        'pkgpanda.build',
+        'pkgpanda.http',
+        'release',
+        'release.storage',
         ]
 
     package_data={
@@ -27,14 +27,14 @@ if is_windows:
             'ip-detect/vagrant.ps1',
             'fault-domain-detect/aws.ps1',
             'fault-domain-detect/azure.ps1',
-            'cloud-config.yaml',
+            'cloud-config-windows.yaml',
             'dcos-windows-config.yaml',
             'dcos-metadata.yaml',
             'dcos-windows-services.yaml',
             'aws/dcos-config.yaml',
             'aws/templates/aws.html',
             'aws/templates/cloudformation.json',
-            'azure/cloud-config.yaml',
+            'azure/cloud-config-windows.yaml',
             'azure/azuredeploy-parameters.json',
             'azure/templates/acs.json',
             'azure/templates/azure.html',
@@ -46,7 +46,7 @@ if is_windows:
             'coreos/cloud-config.yaml'
         ] + get_advanced_templates(),
         'pkgpanda': [
-            'docker/dcos-builder/Dockerfile'
+            'docker/dcos-builder-windows/Dockerfile'
         ]
     }
     zip_safe=True
