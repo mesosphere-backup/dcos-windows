@@ -26,6 +26,8 @@ $SCRIPTS_REPO_URL = "https://github.com/dcos/dcos-windows"
 $SCRIPTS_DIR = Join-Path $env:TEMP "dcos-windows"
 $MESOS_BINARIES_URL = "$BootstrapUrl/mesos.zip"
 $DIAGNOSTICS_BINARIES_URL = "$BootstrapUrl/diagnostics.zip"
+$DCOS_NET_ZIP_PACKAGE_URL = "$BootstrapUrl/dcos-net.zip"
+
 
 function Add-ToSystemPath {
     Param(
@@ -168,6 +170,13 @@ function Install-DiagnosticsAgent {
     }
 }
 
+function Install-DCOSNetAgent {
+    & "$SCRIPTS_DIR\scripts\dcos-net-agent-setup.ps1" -AgentPrivateIP $AgentPrivateIP -DCOSNetZipPackageUrl $DCOS_NET_ZIP_PACKAGE_URL
+    if($LASTEXITCODE) {
+        Throw "Failed to setup the dcos-net Windows agent"
+    }
+}
+
 function Update-Docker {
     $dockerHome = Join-Path $env:ProgramFiles "Docker"
     $baseUrl = "http://dcos-win.westus.cloudapp.azure.com/downloads/docker"
@@ -214,14 +223,22 @@ function New-DCOSEnvironmentFile {
     if(!(Test-Path -Path $DCOS_DIR)) {
         New-Item -ItemType "Directory" -Path $DCOS_DIR
     }
-    $envFile = Join-Path $DCOS_DIR "environment"
     $masterIPs = Get-MasterIPs
     Write-Output "Trying to find the DC/OS version by querying the API of the masters: $($masterIPs -join ', ')"
     $dcosVersion = Get-DCOSVersion
-    Set-Content -Path $envFile -Value @(
+    Set-Content -Path $GLOBAL_ENV_FILE -Value @(
         "PROVIDER=azure",
         "DCOS_VERSION=${dcosVersion}"
     )
+}
+
+function New-DCOSMastersListFile {
+    . "$SCRIPTS_DIR\scripts\variables.ps1"
+    if(!(Test-Path -Path $DCOS_DIR)) {
+        New-Item -ItemType "Directory" -Path $DCOS_DIR
+    }
+    $masterIPs = Get-MasterIPs
+    ConvertTo-Json -InputObject $masterIPs -Compress | Out-File -Encoding ascii -PSPath $MASTERS_LIST_FILE
 }
 
 function New-DCOSServiceWrapper {
@@ -239,11 +256,18 @@ try {
     Update-Docker
     New-DockerNATNetwork
     New-DCOSEnvironmentFile
+    New-DCOSMastersListFile
     New-DCOSServiceWrapper
     Install-MesosAgent
-    Install-ErlangRuntime
-    Install-EPMDAgent
-    Install-SpartanAgent
+    $dcosVersion = Get-DCOSVersion
+    if($dcosVersion.StartsWith("1.8") -or $dcosVersion.StartsWith("1.9") -or $dcosVersion.StartsWith("1.10")) {
+        Install-ErlangRuntime
+        Install-EPMDAgent
+        Install-SpartanAgent
+    } else {
+        # DC/OS release >= 1.11
+        Install-DCOSNetAgent
+    }
     Install-AdminRouterAgent
     Install-DiagnosticsAgent
 } catch {
