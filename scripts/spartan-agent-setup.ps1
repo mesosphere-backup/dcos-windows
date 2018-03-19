@@ -22,7 +22,7 @@ function New-Environment {
     $service = Get-Service $SPARTAN_SERVICE_NAME -ErrorAction SilentlyContinue
     if($service) {
         Stop-Service -Force -Name $SPARTAN_SERVICE_NAME
-        Start-ExternalCommand { sc.exe delete $SPARTAN_SERVICE_NAME } -ErrorMessage "Failed to delete exiting EPMD service"
+        Start-ExternalCommand { sc.exe delete $SPARTAN_SERVICE_NAME } -ErrorMessage "Failed to delete exiting DC/OS Spartan service"
     }
     New-Directory -RemoveExisting $SPARTAN_DIR
     New-Directory $SPARTAN_RELEASE_DIR
@@ -131,11 +131,9 @@ function New-SpartanWindowsAgent {
                          "-args_file `"${spartanVMArgsFile}`" -pa " + `
                          "-- foreground")
     $environmentFile = Join-Path $SPARTAN_SERVICE_DIR "environment-file"
-    $mastersListFile = Join-Path $DCOS_DIR "master_list"
-    ConvertTo-Json -InputObject $MasterAddress -Compress | Out-File -Encoding ascii -PSPath $mastersListFile
     Set-Content -Path $environmentFile -Value @(
         "MASTER_SOURCE=master_list",
-        "MASTER_LIST_FILE=${mastersListFile}"
+        "MASTER_LIST_FILE=${MASTERS_LIST_FILE}"
     )
     $logFile = Join-Path $SPARTAN_LOG_DIR "spartan.log"
     New-DCOSWindowsService -Name $SPARTAN_SERVICE_NAME -DisplayName $SPARTAN_SERVICE_DISPLAY_NAME -Description $SPARTAN_SERVICE_DESCRIPTION `
