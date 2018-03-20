@@ -22,12 +22,11 @@ Param(
 
 $ErrorActionPreference = "Stop"
 
-#$SCRIPTS_REPO_URL = "https://github.com/dcos/dcos-windows"
-$SCRIPTS_REPO_URL = "https://github.com/soccerGB/dcos-windows"
-
+$SCRIPTS_REPO_URL = "https://github.com/dcos/dcos-windows"
 $SCRIPTS_DIR = Join-Path $env:TEMP "dcos-windows"
 $MESOS_BINARIES_URL = "$BootstrapUrl/mesos.zip"
 $DIAGNOSTICS_BINARIES_URL = "$BootstrapUrl/diagnostics.zip"
+$METRICS_BINARIES_URL = "$BootstrapUrl/metrics.zip"
 
 function Add-ToSystemPath {
     Param(
@@ -164,10 +163,16 @@ function Install-AdminRouterAgent {
 }
 
 function Install-DiagnosticsAgent {
-    $masterIPs = Get-MasterIPs
     & "$SCRIPTS_DIR\scripts\diagnostics-agent-setup.ps1" -DiagnosticsWindowsBinariesURL $DIAGNOSTICS_BINARIES_URL
     if($LASTEXITCODE) {
         Throw "Failed to setup the DCOS Diagnostics Windows agent"
+    }
+}
+
+function Install-MetricsAgent {
+    & "$SCRIPTS_DIR\scripts\metrics-agent-setup.ps1" -MetricsWindowsBinariesURL $METRICS_BINARIES_URL
+    if($LASTEXITCODE) {
+        Throw "Failed to setup the DCOS Metrics Windows agent"
     }
 }
 
@@ -249,6 +254,7 @@ try {
     Install-SpartanAgent
     Install-AdminRouterAgent
     Install-DiagnosticsAgent
+    Install-MetricsAgent
 } catch {
     Write-Output $_.ToString()
     exit 1
