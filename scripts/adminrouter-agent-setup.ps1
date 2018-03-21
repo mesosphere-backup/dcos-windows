@@ -111,7 +111,14 @@ function Add-Routes{
     Add-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST'  -filter "system.webServer/rewrite/rules" -name "." -value @{name='Reverse Proxy for the DC/OS Diagnostics agent service';stopProcessing='True'}
     Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST'  -filter "system.webServer/rewrite/rules/rule[@name='Reverse Proxy for the DC/OS Diagnostics agent service']/match" -name "url" -value "^system/health/v1(.*)"
     Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST'  -filter "system.webServer/rewrite/rules/rule[@name='Reverse Proxy for the DC/OS Diagnostics agent service']/action" -name "type" -value "Rewrite"
-    Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST'  -filter "system.webServer/rewrite/rules/rule[@name='Reverse Proxy for the DC/OS Diagnostics agent service']/action" -name "url" -value "http://localhost:9003/{R:0}"
+    Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST'  -filter "system.webServer/rewrite/rules/rule[@name='Reverse Proxy for the DC/OS Diagnostics agent service']/action" -name "url" -value "http://localhost:$DIAGNOSTICS_AGENT_PORT/{R:0}"
+
+    Write-Output "setup url rewrite rule for DC/OS Metrics service"
+    Add-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST'  -filter "system.webServer/rewrite/rules" -name "." -value @{name='Reverse Proxy for the DC/OS Metrics agent service';stopProcessing='True'}
+    Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST'  -filter "system.webServer/rewrite/rules/rule[@name='Reverse Proxy for the DC/OS Metrics agent service']/match" -name "url" -value "^system/v1/metrics/(.*)"
+    Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST'  -filter "system.webServer/rewrite/rules/rule[@name='Reverse Proxy for the DC/OS Metrics agent service']/action" -name "type" -value "Rewrite"
+    Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST'  -filter "system.webServer/rewrite/rules/rule[@name='Reverse Proxy for the DC/OS Metrics agent service']/action" -name "url" -value "http://localhost:$METRICS_AGENT_PORT/{R:1}"
+
 
     # setup up outbound rules
     Add-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST/adminrouter'  -filter "system.webServer/rewrite/outboundRules/preConditions" -name "." -value @{name='IsHTML';logicalGrouping='MatchAll'}
@@ -121,14 +128,14 @@ function Add-Routes{
     Add-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST/adminrouter'  -filter "system.webServer/rewrite/outboundRules" -name "." -value @{name='outbound rewrite';preCondition='IsHTML'}
     Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST/adminrouter'  -filter "system.webServer/rewrite/outboundRules/rule[@name='outbound rewrite']/match" -name "filterByTags" -value "A"
     Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST/adminrouter'  -filter "system.webServer/rewrite/outboundRules/rule[@name='outbound rewrite']/match" -name "pattern" -value "^(.*)"
-    Add-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST/adminrouter'  -filter "system.webServer/rewrite/outboundRules/rule[@name='outbound rewrite']/conditions" -name "." -value @{input='{URL}';pattern='^/(system/health/v1)/.\*'}
+    Add-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST/adminrouter'  -filter "system.webServer/rewrite/outboundRules/rule[@name='outbound rewrite']/conditions" -name "." -value @{input='{URL}';pattern='^/(system/health/v1|system/v1/metrics)/.\*'}
     Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST/adminrouter'  -filter "system.webServer/rewrite/outboundRules/rule[@name='outbound rewrite']/action" -name "type" -value "Rewrite"
     Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST/adminrouter'  -filter "system.webServer/rewrite/outboundRules/rule[@name='outbound rewrite']/action" -name "value" -value "/{C:1}/{R:1}"
     Add-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST/adminrouter'  -filter "system.webServer/rewrite/outboundRules" -name "." -value @{name='Rewrite location header';preCondition='IsRedirection'}
     Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST/adminrouter'  -filter "system.webServer/rewrite/outboundRules/rule[@name='Rewrite location header']/match" -name "serverVariable" -value "RESPONSE_Location"
     Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST/adminrouter'  -filter "system.webServer/rewrite/outboundRules/rule[@name='Rewrite location header']/match" -name "pattern" -value "http://[^/]+/(.*)"
     Add-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST/adminrouter'  -filter "system.webServer/rewrite/outboundRules/rule[@name='Rewrite location header']/conditions" -name "." -value @{input='{ORIGINAL_HOST}';pattern='.+'}
-    Add-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST/adminrouter'  -filter "system.webServer/rewrite/outboundRules/rule[@name='Rewrite location header']/conditions" -name "." -value @{input='{URL}';pattern='^(system/health/v1)/.\*'}
+    Add-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST/adminrouter'  -filter "system.webServer/rewrite/outboundRules/rule[@name='Rewrite location header']/conditions" -name "." -value @{input='{URL}';pattern='^(system/health/v1|system/v1/metrics)/.\*'}
     Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST/adminrouter'  -filter "system.webServer/rewrite/outboundRules/rule[@name='Rewrite location header']/action" -name "type" -value "Rewrite"
     Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST/adminrouter'  -filter "system.webServer/rewrite/outboundRules/rule[@name='Rewrite location header']/action" -name "value" -value "http://{ORIGINAL_URL}/{C:1}/{R:1}"
 }

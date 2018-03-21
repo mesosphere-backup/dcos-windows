@@ -27,7 +27,7 @@ $SCRIPTS_DIR = Join-Path $env:TEMP "dcos-windows"
 $MESOS_BINARIES_URL = "$BootstrapUrl/mesos.zip"
 $DIAGNOSTICS_BINARIES_URL = "$BootstrapUrl/diagnostics.zip"
 $DCOS_NET_ZIP_PACKAGE_URL = "$BootstrapUrl/dcos-net.zip"
-
+$METRICS_BINARIES_URL = "$BootstrapUrl/metrics.zip"
 
 function Add-ToSystemPath {
     Param(
@@ -177,6 +177,13 @@ function Install-DCOSNetAgent {
     }
 }
 
+function Install-MetricsAgent {
+    & "$SCRIPTS_DIR\scripts\metrics-agent-setup.ps1" -MetricsWindowsBinariesURL $METRICS_BINARIES_URL
+    if($LASTEXITCODE) {
+        Throw "Failed to setup the DCOS Metrics Windows agent"
+    }
+}
+
 function Update-Docker {
     $dockerHome = Join-Path $env:ProgramFiles "Docker"
     $baseUrl = "http://dcos-win.westus.cloudapp.azure.com/downloads/docker"
@@ -269,6 +276,10 @@ try {
         Install-DCOSNetAgent
     }
     Install-AdminRouterAgent
+    Install-MetricsAgent
+
+    # To get collect a complete list of services for node health monitoring,
+    # the Diagnostics needs always to be the last one to install
     Install-DiagnosticsAgent
 } catch {
     Write-Output $_.ToString()

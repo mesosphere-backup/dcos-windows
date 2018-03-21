@@ -64,6 +64,17 @@ $DCOS_NET_BIN_DIR = Join-Path $DCOS_NET_DIR "bin"
 $DCOS_NET_LOG_DIR = Join-Path $DCOS_NET_DIR "log"
 $DCOS_NET_SERVICE_DIR = Join-Path $DCOS_NET_DIR "service"
 
+# Metrics configurations
+$METRICS_SERVICE_NAME = "dcos-metrics"
+$METRICS_SERVICE_DISPLAY_NAME = "DCOS Metrics Windows agent"
+$METRICS_SERVICE_DESCRIPTION = "Windows Service for the DCOS Metrics agent"
+$METRICS_AGENT_PORT = 9000
+$METRICS_DIR = Join-Path $DCOS_DIR "metrics"
+$METRICS_CONFIG_DIR = Join-Path $METRICS_DIR "config"
+$METRICS_BIN_DIR = Join-Path $METRICS_DIR "bin"
+$METRICS_LOG_DIR = Join-Path $METRICS_DIR "log"
+$METRICS_SERVICE_DIR = Join-Path $METRICS_DIR "service"
+
 # Installers URLs
 $SERVICE_WRAPPER_URL = "$LOG_SERVER_BASE_URL/downloads/service-wrapper.exe"
 $VCREDIST_2013_URL = "https://download.microsoft.com/download/2/E/6/2E61CFA4-993B-4DD4-91DA-3737CD5CD6E3/vcredist_x64.exe"
