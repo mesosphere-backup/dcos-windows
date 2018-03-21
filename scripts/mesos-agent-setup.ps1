@@ -101,8 +101,21 @@ function New-MesosWindowsAgent {
     Start-Service $MESOS_SERVICE_NAME
 }
 
+function Install-2017VCRuntime {
+    Write-Output "Install Visual Studio 2017 runtime"
+    $installerPath = Join-Path $env:TEMP "vcredist_2017_x64.exe"
+    Start-ExecuteWithRetry { Invoke-WebRequest -UseBasicParsing -Uri $VCREDIST_2017_URL -OutFile $installerPath }
+    $p = Start-Process -Wait -PassThru -FilePath $installerPath -ArgumentList @("/install", "/passive")
+    if($p.ExitCode -ne 0) {
+        Throw ("Failed install Visual Studio 2017 runtime. Exit code: {0}" -f $p.ExitCode)
+    }
+    Write-Output "Finished to install Visual Studio 2017 runtime"
+    Remove-Item $installerPath
+}
+
 try {
     New-MesosEnvironment
+    Install-2017VCRuntime
     Install-MesosBinaries
     New-MesosWindowsAgent
     Open-WindowsFirewallRule -Name "Allow inbound TCP Port $MESOS_AGENT_PORT for Mesos Slave" -Direction "Inbound" -LocalPort $MESOS_AGENT_PORT -Protocol "TCP"

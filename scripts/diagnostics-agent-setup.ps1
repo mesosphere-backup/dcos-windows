@@ -38,19 +38,42 @@ function Install-DiagnosticsFiles {
     Remove-item $filesPath
 }
 
+function Get-DCOSVersionFromFile {
+    if(!(Test-Path $GLOBAL_ENV_FILE)) {
+        Throw "ERORR: Global environment file $GLOBAL_ENV_FILE doesn't exist"
+    }
+    # Get the $dcosVersion by parsing the global DC/OS environment file
+    $dcosVersion = Get-Content $GLOBAL_ENV_FILE | Where-Object { $_.StartsWith('DCOS_VERSION=') } | ForEach-Object { $_.Split('=')[1] }
+    if(!$dcosVersion) {
+        Throw "ERROR: Cannot get the DC/OS from $GLOBAL_ENV_FILE"
+    }
+    return $dcosVersion
+}
+
+function Get-MonitoredServices {
+    $services = @('dcos-diagnostics', 'dcos-mesos-slave')
+    $dcosVersion = Get-DCOSVersionFromFile
+    if($dcosVersion.StartsWith("1.8") -or $dcosVersion.StartsWith("1.9") -or $dcosVersion.StartsWith("1.10")) {
+        $services += @('dcos-epmd', 'dcos-spartan')
+    } else {
+        # DC/OS release >= 1.11
+        $services += @('dcos-net')
+    }
+    return $services
+}
+
 function New-DiagnosticsAgent {
     $diagnosticsBinary = Join-Path $DIAGNOSTICS_DIR "dcos-diagnostics.exe"
     $logFile = Join-Path $DIAGNOSTICS_LOG_DIR "diagnostics-agent.log"
     New-Item -ItemType File -Path $logFile
-
     $dcos_endpoint_config_dir = Join-Path $DIAGNOSTICS_DIR "dcos-diagnostics-endpoint-config.json"
-
     $diagnosticsAgentArguments = (  "daemon " + `
                                     "--role agent " + `
                                     "--debug " + `
                                     "--no-unix-socket " + `
                                     "--port `"${DIAGNOSTICS_AGENT_PORT}`" " + `
                                     "--endpoint-config `"${dcos_endpoint_config_dir}`"")
+    Get-MonitoredServices | Out-File -Encoding ascii -FilePath "${DIAGNOSTICS_DIR}\servicelist.txt"
     $environmentFile = Join-Path $DCOS_DIR "environment"
     New-DCOSWindowsService -Name $DIAGNOSTICS_SERVICE_NAME -DisplayName $DIAGNOSTICS_SERVICE_DISPLAY_NAME -Description $DIAGNOSTICS_SERVICE_DESCRIPTION `
                            -LogFile $logFile -WrapperPath $SERVICE_WRAPPER -BinaryPath "$diagnosticsBinary $diagnosticsAgentArguments" -EnvironmentFiles @($environmentFile)

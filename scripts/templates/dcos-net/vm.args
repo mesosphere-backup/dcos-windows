@@ -1,0 +1,12 @@
+-name navstar@{{ agent_private_ip }}
+-setcookie minuteman
+-env ERL_MAX_PORTS 16384
++A 10
++K true
++P 256000
++C multi_time_warp
++c true
+-connect_all false
++t 4194304
+-stbt nnts
++SDio 0

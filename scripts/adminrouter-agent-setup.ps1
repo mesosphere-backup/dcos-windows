@@ -81,6 +81,9 @@ function Setup-AdminRouter(
     Install-IISAndTools
     import-module WebAdministration
 
+    # Remove default IIS website listening on port 80
+    Get-Website 'Default Web Site' | Remove-Website -Confirm:$false
+
     #  Install URL Rewrite and Application Request Routing modules
     Install-URLRewriteAndARRModules
 
