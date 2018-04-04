@@ -122,7 +122,7 @@ function Get-MasterIPs {
     [string[]]$ips = ConvertFrom-Json $MasterIP
     # NOTE(ibalutoiu): ACS-Engine adds the Zookeper port to every master IP and we need only the address
     [string[]]$masterIPs = $ips | ForEach-Object { $_.Split(':')[0] }
-    return $masterIPs
+    return ,$masterIPs
 }
 
 function Install-MesosAgent {
