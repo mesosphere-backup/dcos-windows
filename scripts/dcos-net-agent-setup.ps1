@@ -134,6 +134,7 @@ function New-DCOSNetWindowsAgent {
         "upstream_resolvers" = "[$($upstreamDNSResolvers -join ', ')]"
         "lashup_dir" = ("${DCOS_NET_DIR}\lashup" -replace '\\', '\\')
         "mnesia_dir" = ("${DCOS_NET_DIR}\mnesia" -replace '\\', '\\')
+        "config_dir" = ("${DCOS_NET_DIR}\config.d" -replace '\\', '\\')
     }
     $configFile = Join-Path $DCOS_NET_DIR "sys.config"
     Start-RenderTemplate -TemplateFile "$TEMPLATES_DIR\dcos-net\sys.config" `
@@ -160,7 +161,6 @@ function New-DCOSNetWindowsAgent {
     Set-Content -Path $environmentFile -Value @(
         "MASTER_SOURCE=master_list",
         "MASTER_LIST_FILE=${MASTERS_LIST_FILE}"
-        "DCOS_NET_CONFIG_DIR=${DCOS_NET_DIR}\config.d"
         "ERL_FLAGS=-epmd_module dcos_net_epmd -start_epmd false -no_epmd -proto_dist dcos_net"
     )
     $logFile = Join-Path $DCOS_NET_LOG_DIR "dcos-net.log"
