@@ -225,6 +225,24 @@ function Get-DCOSVersion {
     Throw "ERROR: Cannot find the DC/OS version from any of the masters $($masterIPs -join ', ') within a timeout of $timeout seconds"
 }
 
+function Get-MesosFlags {
+    $masterIPs = Get-MasterIPs
+    $timeout = 7200.0
+    $startTime = Get-Date
+    while(((Get-Date) - $startTime).TotalSeconds -lt $timeout) {
+        foreach($ip in $masterIPs) {
+            try {
+                $response = Invoke-WebRequest -UseBasicParsing -Uri "http://${ip}:5050/flags"
+            } catch {
+                continue
+            }
+            return (ConvertFrom-Json -InputObject $response.Content).flags
+        }
+        Start-Sleep -Seconds 30
+    }
+    Throw "ERROR: Cannot find the DC/OS version from any of the masters $($masterIPs -join ', ') within a timeout of $timeout seconds"
+}
+
 function New-DCOSEnvironmentFile {
     . "$SCRIPTS_DIR\scripts\variables.ps1"
     if(!(Test-Path -Path $DCOS_DIR)) {
@@ -276,8 +294,11 @@ try {
         Install-DCOSNetAgent
     }
     Install-AdminRouterAgent
-    Install-MetricsAgent
-
+    $mesosFlags = Get-MesosFlags
+    if(!$mesosFlags.authenticate_agents) {
+        # Install Metrics only if mesos_authentication is disabled
+        Install-MetricsAgent
+    }
     # To get collect a complete list of services for node health monitoring,
     # the Diagnostics needs always to be the last one to install
     Install-DiagnosticsAgent
