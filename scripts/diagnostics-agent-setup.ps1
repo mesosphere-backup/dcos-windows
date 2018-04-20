@@ -1,6 +1,7 @@
 Param(
     [Parameter(Mandatory=$true)]
-    [string]$DiagnosticsWindowsBinariesURL
+    [string]$DiagnosticsWindowsBinariesURL,
+    [bool]$IncludeMetricsToMonitoredSericeList 
 )
 
 $ErrorActionPreference = "Stop"
@@ -51,7 +52,10 @@ function Get-DCOSVersionFromFile {
 }
 
 function Get-MonitoredServices {
-    $services = @('dcos-diagnostics', 'dcos-mesos-slave', 'dcos-metrics')
+    $services = @('dcos-diagnostics', 'dcos-mesos-slave')
+    if ($IncludeMetricsToMonitoredSericeList) {
+        $services += @('dcos-metrics') 
+    }
     $dcosVersion = Get-DCOSVersionFromFile
     if($dcosVersion.StartsWith("1.8") -or $dcosVersion.StartsWith("1.9") -or $dcosVersion.StartsWith("1.10")) {
         $services += @('dcos-epmd', 'dcos-spartan')
