@@ -28,6 +28,7 @@ $MESOS_BINARIES_URL = "$BootstrapUrl/mesos.zip"
 $DIAGNOSTICS_BINARIES_URL = "$BootstrapUrl/diagnostics.zip"
 $DCOS_NET_ZIP_PACKAGE_URL = "$BootstrapUrl/dcos-net.zip"
 $METRICS_BINARIES_URL = "$BootstrapUrl/metrics.zip"
+$ADMINROUTER_BINARIES_URL = "$BootstrapUrl/adminrouter.zip"
 
 function Add-ToSystemPath {
     Param(
@@ -157,7 +158,7 @@ function Install-SpartanAgent {
 }
 
 function Install-AdminRouterAgent {
-    & "$SCRIPTS_DIR\scripts\adminrouter-agent-setup.ps1" -AgentPrivateIP $AgentPrivateIP
+    & "$SCRIPTS_DIR\scripts\adminrouter-agent-setup.ps1" -AgentPrivateIP $AgentPrivateIP -AdminRouterWindowsBinariesURL $ADMINROUTER_BINARIES_URL
     if($LASTEXITCODE) {
         Throw "Failed to setup the DCOS AdminRouter Windows agent"
     }
@@ -165,9 +166,9 @@ function Install-AdminRouterAgent {
 
 function Install-DiagnosticsAgent {
     Param(
-        [bool]$IncludeMatricsService
+        [bool]$IncludeMetricsToSericeList
     )
-    & "$SCRIPTS_DIR\scripts\diagnostics-agent-setup.ps1" -IncludeMetricsToMonitoredSericeList $IncludeMatricsService
+    & "$SCRIPTS_DIR\scripts\diagnostics-agent-setup.ps1" -DiagnosticsWindowsBinariesURL $DIAGNOSTICS_BINARIES_URL -IncludeMetrics $IncludeMetricsToSericeList
     if($LASTEXITCODE) {
         Throw "Failed to setup the DCOS Diagnostics Windows agent"
     }

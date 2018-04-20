@@ -1,7 +1,7 @@
 Param(
     [Parameter(Mandatory=$true)]
     [string]$DiagnosticsWindowsBinariesURL,
-    [bool]$IncludeMetricsToMonitoredSericeList 
+    [bool]$IncludeMetrics
 )
 
 $ErrorActionPreference = "Stop"
@@ -23,9 +23,7 @@ function New-DiagnosticsEnvironment {
         Write-Output "Deleted existing $DIAGNOSTICS_SERVICE_NAME service"
     }
     New-Directory -RemoveExisting $DIAGNOSTICS_DIR
-    New-Directory $DIAGNOSTICS_BIN_DIR
     New-Directory $DIAGNOSTICS_LOG_DIR
-    New-Directory $DIAGNOSTICS_SERVICE_DIR
     New-Directory $DIAGNOSTICS_CONFIG_DIR
 }
 
@@ -67,6 +65,9 @@ function Get-MonitoredServices {
 }
 
 function New-DiagnosticsAgent {
+    Param(
+        [bool]$NeedToMonitorMetricsService
+    )      
     $diagnosticsBinary = Join-Path $DIAGNOSTICS_DIR "dcos-diagnostics.exe"
     $logFile = Join-Path $DIAGNOSTICS_LOG_DIR "diagnostics-agent.log"
     New-Item -ItemType File -Path $logFile
@@ -77,7 +78,7 @@ function New-DiagnosticsAgent {
                                     "--no-unix-socket " + `
                                     "--port `"${DIAGNOSTICS_AGENT_PORT}`" " + `
                                     "--endpoint-config `"${dcos_endpoint_config_dir}`"")
-    Get-MonitoredServices | Out-File -Encoding ascii -FilePath "${DIAGNOSTICS_DIR}\servicelist.txt"
+    Get-MonitoredServices -AddMetricsService $NeedToMonitorMetricsService | Out-File -Encoding ascii -FilePath "${DIAGNOSTICS_DIR}\servicelist.txt"
     $environmentFile = Join-Path $DCOS_DIR "environment"
     New-DCOSWindowsService -Name $DIAGNOSTICS_SERVICE_NAME -DisplayName $DIAGNOSTICS_SERVICE_DISPLAY_NAME -Description $DIAGNOSTICS_SERVICE_DESCRIPTION `
                            -LogFile $logFile -WrapperPath $SERVICE_WRAPPER -BinaryPath "$diagnosticsBinary $diagnosticsAgentArguments" -EnvironmentFiles @($environmentFile)
@@ -87,7 +88,7 @@ function New-DiagnosticsAgent {
 try {
     New-DiagnosticsEnvironment
     Install-DiagnosticsFiles
-    New-DiagnosticsAgent
+    New-DiagnosticsAgent -NeedToMonitorMetricsService $IncludeMetrics
 } catch {
     Write-Output $_.ToString()
     exit 1
