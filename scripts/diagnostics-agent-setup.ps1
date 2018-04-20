@@ -22,9 +22,7 @@ function New-DiagnosticsEnvironment {
         Write-Output "Deleted existing $DIAGNOSTICS_SERVICE_NAME service"
     }
     New-Directory -RemoveExisting $DIAGNOSTICS_DIR
-    New-Directory $DIAGNOSTICS_BIN_DIR
     New-Directory $DIAGNOSTICS_LOG_DIR
-    New-Directory $DIAGNOSTICS_SERVICE_DIR
     New-Directory $DIAGNOSTICS_CONFIG_DIR
 }
 
@@ -51,7 +49,7 @@ function Get-DCOSVersionFromFile {
 }
 
 function Get-MonitoredServices {
-    $services = @('dcos-diagnostics', 'dcos-mesos-slave', 'dcos-metrics')
+    $services = @('dcos-diagnostics', 'dcos-mesos-slave', 'dcos-adminrouter')
     $dcosVersion = Get-DCOSVersionFromFile
     if($dcosVersion.StartsWith("1.8") -or $dcosVersion.StartsWith("1.9") -or $dcosVersion.StartsWith("1.10")) {
         $services += @('dcos-epmd', 'dcos-spartan')
