@@ -299,15 +299,13 @@ try {
     }
     Install-AdminRouterAgent
     $mesosFlags = Get-MesosFlags
-    $IsMatricsServiceInstalled = $false
     if(!$mesosFlags.authenticate_agents) {
         # Install Metrics only if mesos_authentication is disabled
         Install-MetricsAgent
-        $IsMatricsServiceInstalled = $true
     }
     # To get collect a complete list of services for node health monitoring,
     # the Diagnostics needs always to be the last one to install
-    Install-DiagnosticsAgent -IncludeMetricsToSericeList $IsMatricsServiceInstalled
+    Install-DiagnosticsAgent
 } catch {
     Write-Output $_.ToString()
     exit 1
