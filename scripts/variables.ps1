@@ -49,9 +49,7 @@ $DIAGNOSTICS_SERVICE_DESCRIPTION = "Windows Service for the DCOS Diagnostics age
 $DIAGNOSTICS_AGENT_PORT = 9003
 $DIAGNOSTICS_DIR = Join-Path $DCOS_DIR "diagnostics"
 $DIAGNOSTICS_CONFIG_DIR = Join-Path $DIAGNOSTICS_DIR "config"
-$DIAGNOSTICS_BIN_DIR = Join-Path $DIAGNOSTICS_DIR "bin"
 $DIAGNOSTICS_LOG_DIR = Join-Path $DIAGNOSTICS_DIR "log"
-$DIAGNOSTICS_SERVICE_DIR = Join-Path $DIAGNOSTICS_DIR "service"
 
 # dcos-net configurations
 $DCOS_NET_LOCAL_ADDRESSES = @("192.51.100.1", "192.51.100.2", "192.51.100.3")
@@ -75,10 +73,19 @@ $METRICS_BIN_DIR = Join-Path $METRICS_DIR "bin"
 $METRICS_LOG_DIR = Join-Path $METRICS_DIR "log"
 $METRICS_SERVICE_DIR = Join-Path $METRICS_DIR "service"
 
+# AdminRouter configurations
+$ADMINROUTER_SERVICE_NAME = "dcos-adminrouter"
+$ADMINROUTER_SERVICE_DISPLAY_NAME = "DCOS AdminRouter Windows agent"
+$ADMINROUTER_SERVICE_DESCRIPTION = "Windows Service for the DCOS AdminRouter agent"
+$ADMINROUTER_AGENT_PORT = 61001
+$ADMINROUTER_DIR = Join-Path $DCOS_DIR "adminrouter"
+$ADMINROUTER_LOG_DIR = Join-Path $ADMINROUTER_DIR "log"
+$ADMINROUTER_APACHE_DIR = Join-Path $ADMINROUTER_DIR "Apache24"
+$ADMINROUTER_APACHE_CONF_DIR = Join-Path $ADMINROUTER_APACHE_DIR "conf"
+$ADMINROUTER_APACHE_BIN_DIR = Join-Path $ADMINROUTER_APACHE_DIR "bin"
+
 # Installers URLs
 $SERVICE_WRAPPER_URL = "$LOG_SERVER_BASE_URL/downloads/service-wrapper.exe"
 $VCREDIST_2013_URL = "https://download.microsoft.com/download/2/E/6/2E61CFA4-993B-4DD4-91DA-3737CD5CD6E3/vcredist_x64.exe"
 $VCREDIST_2017_URL = "https://download.visualstudio.microsoft.com/download/pr/11687625/2cd2dba5748dc95950a5c42c2d2d78e4/VC_redist.x64.exe"
 $DEVCON_CAB_URL = "https://download.microsoft.com/download/7/D/D/7DD48DE6-8BDA-47C0-854A-539A800FAA90/wdk/Installers/787bee96dbd26371076b37b13c405890.cab"
-$URL_REWRITE_MODULE_URL = 'http://download.microsoft.com/download/D/D/E/DDE57C26-C62C-4C59-A1BB-31D58B36ADA2/rewrite_amd64_en-US.msi'
-$ARR_MODULE_URL = "https://download.microsoft.com/download/E/9/8/E9849D6A-020E-47E4-9FD0-A023E99B54EB/requestRouter_amd64.msi"
