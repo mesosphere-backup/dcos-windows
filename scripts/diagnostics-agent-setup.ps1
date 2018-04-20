@@ -50,13 +50,10 @@ function Get-DCOSVersionFromFile {
 }
 
 function Get-MonitoredServices {
-    Param(
-        [bool]$AddMetricsService
-    )
-    [System.Collections.ArrayList]$services = @('dcos-diagnostics', 'dcos-mesos-slave')
-    if ($AddMetricsService) {
-        $services.Add("dcos-adminrouter")
-    }    
+    $services = @('dcos-diagnostics', 'dcos-mesos-slave')
+    if ($IncludeMetricsToMonitoredSericeList) {
+        $services += @('dcos-metrics') 
+    }
     $dcosVersion = Get-DCOSVersionFromFile
     if($dcosVersion.StartsWith("1.8") -or $dcosVersion.StartsWith("1.9") -or $dcosVersion.StartsWith("1.10")) {
         $services += @('dcos-epmd', 'dcos-spartan')
