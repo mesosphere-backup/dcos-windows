@@ -165,7 +165,11 @@ function Install-AdminRouterAgent {
 }
 
 function Install-DiagnosticsAgent {
-    & "$SCRIPTS_DIR\scripts\diagnostics-agent-setup.ps1" -DiagnosticsWindowsBinariesURL $DIAGNOSTICS_BINARIES_URL
+    Param(
+        [bool]$IsMetricsServiceExpected
+    )
+
+    & "$SCRIPTS_DIR\scripts\diagnostics-agent-setup.ps1" -DiagnosticsWindowsBinariesURL $DIAGNOSTICS_BINARIES_URL -IncludeMetrics $IsMetricsServiceExpected
     if($LASTEXITCODE) {
         Throw "Failed to setup the DCOS Diagnostics Windows agent"
     }
@@ -296,13 +300,15 @@ try {
     }
     Install-AdminRouterAgent
     $mesosFlags = Get-MesosFlags
+    $IsMetricsServiceInstalled = $false
     if(!$mesosFlags.authenticate_agents) {
         # Install Metrics only if mesos_authentication is disabled
         Install-MetricsAgent
+        $IsMetricsServiceInstalled = $true
     }
     # To get collect a complete list of services for node health monitoring,
     # the Diagnostics needs always to be the last one to install
-    Install-DiagnosticsAgent
+    Install-DiagnosticsAgent -IsMetricsServiceExpected $IsMetricsServiceInstalled
 } catch {
     Write-Output $_.ToString()
     exit 1
