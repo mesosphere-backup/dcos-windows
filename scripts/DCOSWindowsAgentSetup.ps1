@@ -28,6 +28,7 @@ $MESOS_BINARIES_URL = "$BootstrapUrl/mesos.zip"
 $DIAGNOSTICS_BINARIES_URL = "$BootstrapUrl/diagnostics.zip"
 $DCOS_NET_ZIP_PACKAGE_URL = "$BootstrapUrl/dcos-net.zip"
 $METRICS_BINARIES_URL = "$BootstrapUrl/metrics.zip"
+$ADMINROUTER_BINARIES_URL = "$BootstrapUrl/adminrouter.zip"
 
 function Add-ToSystemPath {
     Param(
@@ -157,14 +158,17 @@ function Install-SpartanAgent {
 }
 
 function Install-AdminRouterAgent {
-    & "$SCRIPTS_DIR\scripts\adminrouter-agent-setup.ps1" -AgentPrivateIP $AgentPrivateIP
+    & "$SCRIPTS_DIR\scripts\adminrouter-agent-setup.ps1" -AgentPrivateIP $AgentPrivateIP -AdminRouterWindowsBinariesURL $ADMINROUTER_BINARIES_URL
     if($LASTEXITCODE) {
         Throw "Failed to setup the DCOS AdminRouter Windows agent"
     }
 }
 
 function Install-DiagnosticsAgent {
-    & "$SCRIPTS_DIR\scripts\diagnostics-agent-setup.ps1" -DiagnosticsWindowsBinariesURL $DIAGNOSTICS_BINARIES_URL
+    Param(
+        [bool]$IncludeMetricsToSericeList
+    )
+    & "$SCRIPTS_DIR\scripts\diagnostics-agent-setup.ps1" -DiagnosticsWindowsBinariesURL $DIAGNOSTICS_BINARIES_URL -IncludeMetrics $IncludeMetricsToSericeList
     if($LASTEXITCODE) {
         Throw "Failed to setup the DCOS Diagnostics Windows agent"
     }
@@ -295,13 +299,15 @@ try {
     }
     Install-AdminRouterAgent
     $mesosFlags = Get-MesosFlags
+    $IsMatricsServiceInstalled = $false
     if(!$mesosFlags.authenticate_agents) {
         # Install Metrics only if mesos_authentication is disabled
         Install-MetricsAgent
+        $IsMatricsServiceInstalled = $true
     }
     # To get collect a complete list of services for node health monitoring,
     # the Diagnostics needs always to be the last one to install
-    Install-DiagnosticsAgent
+    Install-DiagnosticsAgent -IncludeMetricsToSericeList $IsMatricsServiceInstalled
 } catch {
     Write-Output $_.ToString()
     exit 1
