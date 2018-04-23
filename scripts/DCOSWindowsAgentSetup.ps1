@@ -167,7 +167,7 @@ function Install-DiagnosticsAgent {
     Param(
         [bool]$IncludeMatricsService
     )
-    & "$SCRIPTS_DIR\scripts\diagnostics-agent-setup.ps1" -IncludeMetricsToMonitoredSericeList $IncludeMatricsService
+    & "$SCRIPTS_DIR\scripts\diagnostics-agent-setup.ps1" -DiagnosticsWindowsBinariesURL $DIAGNOSTICS_BINARIES_URL -IncludeMetricsToMonitoredSericeList $IncludeMatricsService
     if($LASTEXITCODE) {
         Throw "Failed to setup the DCOS Diagnostics Windows agent"
     }
