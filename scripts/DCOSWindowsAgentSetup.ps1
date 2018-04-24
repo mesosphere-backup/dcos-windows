@@ -243,7 +243,7 @@ function Get-MesosFlags {
         }
         Start-Sleep -Seconds 30
     }
-    Throw "ERROR: Cannot find the DC/OS version from any of the masters $($masterIPs -join ', ') within a timeout of $timeout seconds"
+    Throw "ERROR: Cannot find the Mesos flags from any of the masters $($masterIPs -join ', ') within a timeout of $timeout seconds"
 }
 
 function New-DCOSEnvironmentFile {
