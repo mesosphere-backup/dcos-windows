@@ -162,7 +162,7 @@ function New-DCOSWindowsService {
     $binaryPathName += " $BinaryPath"
     $params['BinaryPathName'] = $binaryPathName
     New-Service @params | Out-Null
-    Start-ExternalCommand { sc.exe failure $Name reset=5 actions=restart/1000 }
+    Start-ExternalCommand { sc.exe failure $Name reset=40 actions=restart/0/restart/0/restart/30000}
     Start-ExternalCommand { sc.exe failureflag $Name 1 }
 }
 
