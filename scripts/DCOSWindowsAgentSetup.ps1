@@ -188,13 +188,13 @@ function Install-MetricsAgent {
 }
 
 function Update-Docker {
-    $dockerHome = Join-Path $env:ProgramFiles "Docker"
-    $baseUrl = "http://dcos-win.westus.cloudapp.azure.com/downloads/docker"
+    . "$SCRIPTS_DIR\scripts\variables.ps1"
+    $baseUrl = "${LOG_SERVER_BASE_URL}/downloads/docker"
     $version = "18.02.0-ce"
-    Stop-Service "Docker"
-    Start-ExecuteWithRetry { Invoke-WebRequest -UseBasicParsing -Uri "${baseUrl}/${version}/docker.exe" -OutFile "${dockerHome}\docker.exe" }
-    Start-ExecuteWithRetry { Invoke-WebRequest -UseBasicParsing -Uri "${baseUrl}/${version}/dockerd.exe" -OutFile "${dockerHome}\dockerd.exe" }
-    Start-Service "Docker"
+    Stop-Service $DOCKER_SERVICE_NAME
+    Start-ExecuteWithRetry { Invoke-WebRequest -UseBasicParsing -Uri "${baseUrl}/${version}/docker.exe" -OutFile "${DOCKER_HOME}\docker.exe" }
+    Start-ExecuteWithRetry { Invoke-WebRequest -UseBasicParsing -Uri "${baseUrl}/${version}/dockerd.exe" -OutFile "${DOCKER_HOME}\dockerd.exe" }
+    Start-Service $DOCKER_SERVICE_NAME
 }
 
 function New-DockerNATNetwork {
