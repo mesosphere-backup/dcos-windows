@@ -50,16 +50,16 @@ function Get-DCOSVersionFromFile {
 }
 
 function Get-MonitoredServices {
-    $services = @('dcos-diagnostics', 'dcos-mesos-slave')
+    $services = @($DIAGNOSTICS_SERVICE_NAME, $MESOS_SERVICE_NAME)
     if ($IncludeMetricsToMonitoredSericeList) {
-        $services += @('dcos-metrics') 
+        $services += @($METRICS_SERVICE_NAME)
     }
     $dcosVersion = Get-DCOSVersionFromFile
     if($dcosVersion.StartsWith("1.8") -or $dcosVersion.StartsWith("1.9") -or $dcosVersion.StartsWith("1.10")) {
-        $services += @('dcos-epmd', 'dcos-spartan')
+        $services += @($EPMD_SERVICE_NAME, $SPARTAN_SERVICE_NAME)
     } else {
         # DC/OS release >= 1.11
-        $services += @('dcos-net')
+        $services += @($DCOS_NET_SERVICE_NAME)
     }
     return $services
 }
