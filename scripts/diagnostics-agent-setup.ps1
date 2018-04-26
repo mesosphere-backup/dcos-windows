@@ -23,9 +23,7 @@ function New-DiagnosticsEnvironment {
         Write-Output "Deleted existing $DIAGNOSTICS_SERVICE_NAME service"
     }
     New-Directory -RemoveExisting $DIAGNOSTICS_DIR
-    New-Directory $DIAGNOSTICS_BIN_DIR
     New-Directory $DIAGNOSTICS_LOG_DIR
-    New-Directory $DIAGNOSTICS_SERVICE_DIR
     New-Directory $DIAGNOSTICS_CONFIG_DIR
 }
 
