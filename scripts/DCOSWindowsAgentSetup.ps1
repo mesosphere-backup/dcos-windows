@@ -188,13 +188,13 @@ function Install-MetricsAgent {
 }
 
 function Update-Docker {
-    $dockerHome = Join-Path $env:ProgramFiles "Docker"
-    $baseUrl = "http://dcos-win.westus.cloudapp.azure.com/downloads/docker"
+    . "$SCRIPTS_DIR\scripts\variables.ps1"
+    $baseUrl = "${LOG_SERVER_BASE_URL}/downloads/docker"
     $version = "18.02.0-ce"
-    Stop-Service "Docker"
-    Start-ExecuteWithRetry { Invoke-WebRequest -UseBasicParsing -Uri "${baseUrl}/${version}/docker.exe" -OutFile "${dockerHome}\docker.exe" }
-    Start-ExecuteWithRetry { Invoke-WebRequest -UseBasicParsing -Uri "${baseUrl}/${version}/dockerd.exe" -OutFile "${dockerHome}\dockerd.exe" }
-    Start-Service "Docker"
+    Stop-Service $DOCKER_SERVICE_NAME
+    Start-ExecuteWithRetry { Invoke-WebRequest -UseBasicParsing -Uri "${baseUrl}/${version}/docker.exe" -OutFile "${DOCKER_HOME}\docker.exe" }
+    Start-ExecuteWithRetry { Invoke-WebRequest -UseBasicParsing -Uri "${baseUrl}/${version}/dockerd.exe" -OutFile "${DOCKER_HOME}\dockerd.exe" }
+    Start-Service $DOCKER_SERVICE_NAME
 }
 
 function New-DockerNATNetwork {
@@ -204,10 +204,13 @@ function New-DockerNATNetwork {
     # The Docker gateway address is added to the DNS server list unless
     # disable_gatewaydns network option is enabled.
     #
-    docker.exe network create --driver="nat" --opt "com.docker.network.windowsshim.disable_gatewaydns=true" "customnat"
-    if($LASTEXITCODE -ne 0) {
-        Throw "Failed to create the new Docker NAT network with disable_gatewaydns flag"
+    Start-ExecuteWithRetry {
+        docker.exe network create --driver="nat" --opt "com.docker.network.windowsshim.disable_gatewaydns=true" "customnat"
+        if($LASTEXITCODE -ne 0) {
+            Throw "Failed to create the new Docker NAT network with disable_gatewaydns flag"
+        }
     }
+    Write-Output "Created customnat network with flag: com.docker.network.windowsshim.disable_gatewaydns=true"
 }
 
 function Get-DCOSVersion {
