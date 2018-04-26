@@ -50,7 +50,7 @@ function Get-DCOSVersionFromFile {
 }
 
 function Get-MonitoredServices {
-    $services = @($DIAGNOSTICS_SERVICE_NAME, $MESOS_SERVICE_NAME)
+    $services = @($DIAGNOSTICS_SERVICE_NAME, $MESOS_SERVICE_NAME, $ADMINROUTER_SERVICE_NAME)
     if ($IncludeMetricsToMonitoredSericeList) {
         $services += @($METRICS_SERVICE_NAME)
     }
