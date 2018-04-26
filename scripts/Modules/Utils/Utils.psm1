@@ -164,6 +164,7 @@ function New-DCOSWindowsService {
     }
 
     $serviceActions = "actions=restart/0/restart/0/restart/30000"
+    $failureCommand = ""
 
     if($LogFile) {
         $binaryPathName += " --log-file `"$LogFile`""
@@ -171,17 +172,22 @@ function New-DCOSWindowsService {
         # Please mind how you use and remove blank characters
         $failureCommand = `
 @"
-powershell.exe
+powershell.exe 
 Move-Item -Path \"$LogFile\" -Destination \"$LogFile`_`$(get-date -f yyyy-MM-dd-hh-mm-ss)\";
 Restart-Service $Name;
 "@
-        $serviceActions = "command=$failureCommand actions=restart/0/restart/0/run/30000"
+        $serviceActions = "actions=restart/0/restart/0/run/30000"
     }
 
     $binaryPathName += " $BinaryPath"
     $params['BinaryPathName'] = $binaryPathName
     New-Service @params | Out-Null
-    Start-ExternalCommand { sc.exe failure $Name reset=40 $serviceActions }
+
+    if($LogFile) {
+        Start-ExternalCommand { sc.exe failure $Name reset=40 command="$failureCommand" $serviceActions }
+    } else {
+        Start-ExternalCommand { sc.exe failure $Name reset=40 $serviceActions }
+    }
     Start-ExternalCommand { sc.exe failureflag $Name 1 }
 }
 
