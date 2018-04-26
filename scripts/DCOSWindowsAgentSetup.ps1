@@ -299,7 +299,7 @@ try {
     Install-AdminRouterAgent
     $mesosFlags = Get-MesosFlags
     $IsMatricsServiceInstalled = $false
-    if(!$mesosFlags.authenticate_agents) {
+    if($mesosFlags.authenticate_agents -eq "false") {
         # Install Metrics only if mesos_authentication is disabled
         Install-MetricsAgent
         $IsMatricsServiceInstalled = $true 
