@@ -213,6 +213,14 @@ function New-DockerNATNetwork {
     Write-Output "Created customnat network with flag: com.docker.network.windowsshim.disable_gatewaydns=true"
 }
 
+function Disable-DockerDefaultNATNetwork {
+    . "$SCRIPTS_DIR\scripts\variables.ps1"
+    Stop-Service $DOCKER_SERVICE_NAME
+    Get-HNSNetwork | Remove-HNSNetwork
+    Set-Content -Path "${DOCKER_DATA}\config\daemon.json" -Value '{ "bridge" : "none" }' -Encoding Ascii
+    Start-Service $DOCKER_SERVICE_NAME
+}
+
 function Get-DCOSVersion {
     $masterIPs = Get-MasterIPs
     $timeout = 7200.0
@@ -284,6 +292,7 @@ function New-DCOSServiceWrapper {
 
 try {
     New-ScriptsDirectory
+    Disable-DockerDefaultNATNetwork
     Update-Docker
     New-DockerNATNetwork
     New-DCOSEnvironmentFile
