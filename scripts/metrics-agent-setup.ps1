@@ -34,7 +34,34 @@ function Install-MetricsFiles {
     Start-ExecuteWithRetry { Invoke-WebRequest -Uri $MetricsWindowsBinariesURL -OutFile $filesPath }
     Write-Output "Extracting binaries archive in: $METRICS_DIR"
     Expand-Archive -LiteralPath $filesPath -DestinationPath $METRICS_DIR
- 
+
+    
+    # This is an outstanding dcos-go PR that would change the default file
+    # paths to new locations matching the Linux's setup.
+    # Old default:
+    #   C:\mesos\var\lib\dcos\cluster-id
+    #   C:\mesos\bin\detect_ip.ps1
+    # New default:
+    #   C:\opt\mesosphere\bin\detect_ip.ps1
+    #   C:\var\lib\dcos\cluster-id
+    #
+    # This is to avoid functionality break that would be caused between
+    # the time right after the PR is merged and before this DC-OS script
+    # is updated for reflecting the path change. 
+    # Once the PR is merged, we will come back to clean the
+    # redudant copies of the files there
+    $stdBin = Join-Path $env:SystemDrive "\opt\mesosphere\bin"
+    If(!(test-path $stdBin)) {
+        New-Item -ItemType Directory -Path $stdBin
+    }
+    Copy-Item -Path $METRICS_DIR\detect_ip.ps1 -Destination $stdBin -Force
+
+    $stdVarLib = Join-Path $env:SystemDrive "var\lib\dcos"
+    If(!(test-path $stdVarLib)) {
+        New-Item -ItemType Directory -Path $stdVarLib
+    }    
+    Copy-Item -Path $METRICS_DIR\cluster-id -Destination $stdVarLib -Force
+
     # Populate the required Metrics service files to the expected locations
     # This is to match what the current dcos-metrics code base expects
     # We might need to adjust the locations for those files once we determine 

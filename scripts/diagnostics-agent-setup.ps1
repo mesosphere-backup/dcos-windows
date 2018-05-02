@@ -33,6 +33,26 @@ function Install-DiagnosticsFiles {
     Start-ExecuteWithRetry { Invoke-WebRequest -Uri $DiagnosticsWindowsBinariesURL -OutFile $filesPath }
     Write-Output "Extracting binaries archive in: $DIAGNOSTICS_DIR"
     Expand-Archive -LiteralPath $filesPath -DestinationPath $DIAGNOSTICS_DIR
+
+
+    # There is an outstanding dcos-go PRs that would change the default
+    # detect_ip.ps1 file path to new location matching the Linux's setup
+    # Old default:
+    #   C:\DCOS\diagnostics\detect_ip.ps1
+    # New default:
+    #   C:\opt\mesosphere\bin\detect_ip.ps1
+    #
+    # This is to avoid functionality break that would be caused between
+    # the time right after the PR is merged and before this DC-OS script
+    # is updated for reflecting the path change. 
+    # Once the PR is merged, we will come back to clean the
+    # redudant copies of the files there
+    $stdBin = Join-Path $env:SystemDrive "\opt\mesosphere\bin"
+    If(!(test-path $stdBin)) {
+        New-Item -ItemType Directory -Path $stdBin
+    }
+    Copy-Item -Path $DIAGNOSTICS_DIR\detect_ip.ps1 -Destination $stdBin -Force
+
     Add-ToSystemPath $DIAGNOSTICS_DIR
     Remove-item $filesPath
 }
