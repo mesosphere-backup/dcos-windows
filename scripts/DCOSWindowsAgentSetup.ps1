@@ -187,14 +187,34 @@ function Install-MetricsAgent {
     }
 }
 
-function Update-Docker {
+function Configure-Docker{
     . "$SCRIPTS_DIR\scripts\variables.ps1"
     $baseUrl = "${LOG_SERVER_BASE_URL}/downloads/docker"
     $version = "18.02.0-ce"
-    Stop-Service $DOCKER_SERVICE_NAME
+
+    $dockerServiceObj = Stop-Service $DOCKER_SERVICE_NAME -PassThru
+    $dockerServiceObj.WaitForStatus('Stopped','00:03:00')
+    if ($dockerServiceObj.Status -ne 'Stopped') { 
+	Throw "Docker service failed to stop"	
+    } else {
+        Write-output "Docker service was stopped successfully"
+    }
+
+    # remove Docker default network: nat 
+    Get-HNSNetwork | Remove-HNSNetwork
+    Set-Content -Path "${DOCKER_DATA}\config\daemon.json" -Value '{ "bridge" : "none" }' -Encoding Ascii
+
+    # update Docker binaries
     Start-ExecuteWithRetry { Invoke-WebRequest -UseBasicParsing -Uri "${baseUrl}/${version}/docker.exe" -OutFile "${DOCKER_HOME}\docker.exe" }
     Start-ExecuteWithRetry { Invoke-WebRequest -UseBasicParsing -Uri "${baseUrl}/${version}/dockerd.exe" -OutFile "${DOCKER_HOME}\dockerd.exe" }
-    Start-Service $DOCKER_SERVICE_NAME
+
+    $dockerServiceObj = Start-Service $DOCKER_SERVICE_NAME -PassThru
+    $dockerServiceObj.WaitForStatus('Running','00:03:00')
+    if ($dockerServiceObj.Status -ne 'Running') { 
+        Throw "Docker service failed to start"
+    } else {
+        Write-output "Docker service was started successfully"
+    }
 }
 
 function New-DockerNATNetwork {
@@ -211,14 +231,6 @@ function New-DockerNATNetwork {
         }
     }
     Write-Output "Created customnat network with flag: com.docker.network.windowsshim.disable_gatewaydns=true"
-}
-
-function Disable-DockerDefaultNATNetwork {
-    . "$SCRIPTS_DIR\scripts\variables.ps1"
-    Stop-Service $DOCKER_SERVICE_NAME
-    Get-HNSNetwork | Remove-HNSNetwork
-    Set-Content -Path "${DOCKER_DATA}\config\daemon.json" -Value '{ "bridge" : "none" }' -Encoding Ascii
-    Start-Service $DOCKER_SERVICE_NAME
 }
 
 function Get-DCOSVersion {
@@ -292,9 +304,7 @@ function New-DCOSServiceWrapper {
 
 try {
     New-ScriptsDirectory
-    Disable-DockerDefaultNATNetwork
-    Update-Docker
-    New-DockerNATNetwork
+    Configure-Docker
     New-DCOSEnvironmentFile
     New-DCOSMastersListFile
     New-DCOSServiceWrapper
@@ -319,6 +329,7 @@ try {
     # To get collect a complete list of services for node health monitoring,
     # the Diagnostics needs always to be the last one to install
     Install-DiagnosticsAgent -IncludeMatricsService $IsMatricsServiceInstalled
+    New-DockerNATNetwork
 } catch {
     Write-Output $_.ToString()
     exit 1
