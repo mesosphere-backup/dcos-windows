@@ -44,7 +44,7 @@ function Install-MesosBinaries {
     Write-Output "Extracting binaries archive in: $MESOS_BIN_DIR"
     Expand-Archive -LiteralPath $binariesPath -DestinationPath $MESOS_BIN_DIR
     Add-ToSystemPath $MESOS_BIN_DIR
-    Remove-item $binariesPath
+    Remove-File -Path $binariesPath -Fatal $false
 }
 
 function Get-MesosAgentAttributes {
@@ -110,7 +110,7 @@ function Install-2017VCRuntime {
         Throw ("Failed install Visual Studio 2017 runtime. Exit code: {0}" -f $p.ExitCode)
     }
     Write-Output "Finished to install Visual Studio 2017 runtime"
-    Remove-Item $installerPath
+    Remove-File -Path $installerPath -Fatal $false
 }
 
 try {

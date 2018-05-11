@@ -49,7 +49,7 @@ function Get-ApacheServerPackage {
 
     Write-Output "Extracting binaries archive in: $ADMINROUTER_DIR"
     Expand-Archive -LiteralPath $filesPath -DestinationPath $ADMINROUTER_DIR -Force
-    Remove-item $filesPath
+    Remove-File -Path $filesPath -Fatal $false
     Write-Output "Finshed downloading"  
 }
 

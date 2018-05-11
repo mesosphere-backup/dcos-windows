@@ -20,7 +20,7 @@ function Install-VCredist {
         Throw ("Failed install VCredist 2013. Exit code: {0}" -f $p.ExitCode)
     }
     Write-Output "Finished to install VCredist 2013 x64"
-    Remove-Item $installerPath
+    Remove-File -Path $installerPath -Fatal $false
 }
 
 function Install-Erlang {
@@ -30,7 +30,7 @@ function Install-Erlang {
     Start-ExecuteWithRetry { Invoke-WebRequest -UseBasicParsing -Uri $ERLANG_URL -OutFile $erlangZip }
     Write-Output "Extracting the Windows Erlang zip to $ERLANG_DIR"
     Expand-Archive -LiteralPath $erlangZip -DestinationPath $ERLANG_DIR
-    Remove-Item $erlangZip
+    Remove-File -Path $erlangZip -Fatal $false
     $binDir = "${ERTS_DIR}\bin" -replace '\\', '\\'
     $rootDir = $ERLANG_DIR -replace '\\', '\\'
     $context = @{

@@ -242,3 +242,25 @@ function Add-ToSystemPath {
         Throw "Failed to set the new system path"
     }
 }
+
+function Remove-File {
+    Param(
+        [Parameter(Mandatory=$true)]
+        [string]$Path,
+        [Parameter(Mandatory=$false)]
+        [switch]$Recurse,
+        [Parameter(Mandatory=$false)]
+        [switch]$Force,
+        [Parameter(Mandatory=$false)]
+        [boolean]$Fatal=$true
+    )
+    try {
+        Remove-Item -Recurse:$Recurse -Force:$Force -Path $Path -ErrorAction "Stop"
+    } catch {
+        if($Fatal) {
+            Throw $_
+        }
+        Write-Output "WARNING: $($_.ToString())"
+        Write-Output "WARNING: Failed to remove file: $Path"
+    }
+}
