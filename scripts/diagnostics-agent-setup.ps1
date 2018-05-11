@@ -54,7 +54,7 @@ function Install-DiagnosticsFiles {
     Copy-Item -Path $DIAGNOSTICS_DIR\detect_ip.ps1 -Destination $stdBin -Force
 
     Add-ToSystemPath $DIAGNOSTICS_DIR
-    Remove-item $filesPath
+    Remove-File -Path $filesPath -Fatal $false
 }
 
 function Get-DCOSVersionFromFile {

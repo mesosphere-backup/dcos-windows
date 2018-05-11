@@ -78,7 +78,7 @@ function Install-MetricsFiles {
     Move-Item -Path $METRICS_DIR\cluster-id $mesosVarLib -Force
 
     Add-ToSystemPath $METRICS_DIR
-    Remove-item $filesPath
+    Remove-File -Path $filesPath -Fatal $false
 }
 
 function New-MetricsAgent {

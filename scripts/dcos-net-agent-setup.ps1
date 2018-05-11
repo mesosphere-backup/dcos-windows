@@ -30,7 +30,7 @@ function Install-VCredist {
         Throw ("Failed install VCredist $InstallerURL. Exit code: {0}" -f $p.ExitCode)
     }
     Write-Output "Finished to install VCredist: $InstallerURL"
-    Remove-Item $installerPath
+    Remove-File -Path $installerPath -Fatal $false
 }
 
 function New-Environment {
@@ -41,7 +41,7 @@ function New-Environment {
     Start-ExecuteWithRetry { Invoke-WebRequest -UseBasicParsing -Uri $DCOSNetZipPackageUrl -OutFile $zipPkg }
     Write-Output "Extracting dcos-net zip archive to $DCOS_NET_DIR"
     Expand-Archive -LiteralPath $zipPkg -DestinationPath $DCOS_NET_DIR
-    Remove-Item $zipPkg
+    Remove-File -Path $zipPkg -Fatal $false
     New-Directory -RemoveExisting "$DCOS_NET_DIR\lashup"
     New-Directory -RemoveExisting "$DCOS_NET_DIR\mnesia"
     New-Directory -RemoveExisting "$DCOS_NET_DIR\config.d"
@@ -69,7 +69,7 @@ function New-DevConBinary {
     Start-ExternalCommand { expand.exe $devConCab -F:$devConFile $devConDir } -ErrorMessage "Failed to expand $devConCab" | Out-Null
     $devConBinary = Join-Path $env:TEMP "devcon.exe"
     Move-Item "$devConDir\$devConFile" $devConBinary
-    Remove-Item -Recurse -Force $devConDir
+    Remove-File -Recurse -Force -Path $devConDir -Fatal $false
     return $devConBinary
 }
 
@@ -81,7 +81,7 @@ function Install-DCOSNetDevice {
     $devCon = New-DevConBinary
     Write-Output "Creating the dcos-net network device"
     Start-ExternalCommand { & $devCon install "${env:windir}\Inf\Netloop.inf" "*MSLOOP" } -ErrorMessage "Failed to install the dcos-net dummy interface"
-    Remove-Item $devCon
+    Remove-File -Path $devCon -Fatal $false
     Get-NetAdapter | Where-Object { $_.DriverDescription -eq "Microsoft KM-TEST Loopback Adapter" } | Rename-NetAdapter -NewName $DCOS_NET_DEVICE_NAME
 }
 
