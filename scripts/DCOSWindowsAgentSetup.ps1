@@ -29,6 +29,11 @@ $DIAGNOSTICS_BINARIES_URL = "$BootstrapUrl/diagnostics.zip"
 $DCOS_NET_ZIP_PACKAGE_URL = "$BootstrapUrl/dcos-net.zip"
 $METRICS_BINARIES_URL = "$BootstrapUrl/metrics.zip"
 
+$WINDOWS_SERVER_RS3_BUILD_NUMBER = "16299"
+$WINDOWS_SERVER_RS4_BUILD_NUMBER = "17134"
+$WINDOWS_SERVER_RS3_DOCKER_IMAGE_TAG = "1709"
+$WINDOWS_SERVER_RS4_DOCKER_IMAGE_TAG = "1803"
+
 function Add-ToSystemPath {
     Param(
         [Parameter(Mandatory=$true)]
@@ -233,6 +238,38 @@ function New-DockerNATNetwork {
     Write-Output "Created customnat network with flag: com.docker.network.windowsshim.disable_gatewaydns=true"
 }
 
+function Generate-MesosHttpHealthCheckImage{
+    $AgentOSBuild = [System.Environment]::OSVersion.Version
+
+    if ($AgentOSBuild.build -eq $WINDOWS_SERVER_RS4_BUILD_NUMBER) {
+        $imageTag=$WINDOWS_SERVER_RS4_DOCKER_IMAGE_TAG
+    } elseif ($AgentOSBuild.build -eq $WINDOWS_SERVER_RS3_BUILD_NUMBER) {
+        $imageTag=$WINDOWS_SERVER_RS3_DOCKER_IMAGE_TAG
+    } else {
+        $imageTag="latest"
+    }
+    # generate dockerfile from template
+    Write-output "Agent node Windows build number: $imageTag"
+    $context = @{
+        "imageTag" = ("$imageTag")
+    }
+    $TEMPLATES_DIR = Join-Path "$SCRIPTS_DIR\scripts" "templates" 
+    $dockerfileTemplate = "$TEMPLATES_DIR\mesos-http-health\dockerfile.template"
+    $dockerfile = "$TEMPLATES_DIR\mesos-http-health\dockerfile"
+    Write-Output "Generating Mesos Http Health Check dockerfile $dockerfile from $dockerfileTemplate ..."
+    Start-RenderTemplate -TemplateFile $dockerfileTemplate `
+                         -Context $context -OutFile $dockerfile
+
+    Set-Location $TEMPLATES_DIR\mesos-http-health
+    Start-ExecuteWithRetry {
+        docker build -t microsoft/powershell:nanoserver .
+        if($LASTEXITCODE -ne 0) {
+            Throw "Failed to build microsoft/powershell:latest for Windows build $imageTag"
+        }
+    }
+    Write-Output "Generate-MesosHttpHealthCheckImage"
+}
+
 function Get-DCOSVersion {
     $masterIPs = Get-MasterIPs
     $timeout = 7200.0
@@ -330,6 +367,7 @@ try {
     # the Diagnostics needs always to be the last one to install
     Install-DiagnosticsAgent -IncludeMatricsService $IsMatricsServiceInstalled
     New-DockerNATNetwork
+    Generate-MesosHttpHealthCheckImage
 } catch {
     Write-Output $_.ToString()
     exit 1
