@@ -342,6 +342,7 @@ function New-DCOSServiceWrapper {
 try {
     New-ScriptsDirectory
     Configure-Docker
+    New-DockerNATNetwork
     New-DCOSEnvironmentFile
     New-DCOSMastersListFile
     New-DCOSServiceWrapper
@@ -366,7 +367,6 @@ try {
     # To get collect a complete list of services for node health monitoring,
     # the Diagnostics needs always to be the last one to install
     Install-DiagnosticsAgent -IncludeMatricsService $IsMatricsServiceInstalled
-    New-DockerNATNetwork
     Generate-MesosHttpHealthCheckImage
 } catch {
     Write-Output $_.ToString()
