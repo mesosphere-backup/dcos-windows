@@ -135,6 +135,7 @@ function New-DCOSNetWindowsAgent {
         "lashup_dir" = ("${DCOS_NET_DIR}\lashup" -replace '\\', '\\')
         "mnesia_dir" = ("${DCOS_NET_DIR}\mnesia" -replace '\\', '\\')
         "config_dir" = ("${DCOS_NET_DIR}\config.d" -replace '\\', '\\')
+        "dcos_root_dir" = ("${DCOS_NET_DIR}" -replace '\\', '\\')
     }
     $configFile = Join-Path $DCOS_NET_DIR "sys.config"
     Start-RenderTemplate -TemplateFile "$TEMPLATES_DIR\dcos-net\sys.config" `
