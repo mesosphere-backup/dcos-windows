@@ -200,7 +200,7 @@ function Configure-Docker{
     $dockerServiceObj = Stop-Service $DOCKER_SERVICE_NAME -PassThru
     $dockerServiceObj.WaitForStatus('Stopped','00:03:00')
     if ($dockerServiceObj.Status -ne 'Stopped') { 
-	Throw "Docker service failed to stop"	
+       Throw "Docker service failed to stop"
     } else {
         Write-output "Docker service was stopped successfully"
     }
