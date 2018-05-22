@@ -195,12 +195,12 @@ function Install-MetricsAgent {
 function Configure-Docker{
     . "$SCRIPTS_DIR\scripts\variables.ps1"
     $baseUrl = "${LOG_SERVER_BASE_URL}/downloads/docker"
-    $version = "18.02.0-ce"
+    $version = "18.03.1-ce"
 
     $dockerServiceObj = Stop-Service $DOCKER_SERVICE_NAME -PassThru
     $dockerServiceObj.WaitForStatus('Stopped','00:03:00')
     if ($dockerServiceObj.Status -ne 'Stopped') { 
-	Throw "Docker service failed to stop"	
+       Throw "Docker service failed to stop"
     } else {
         Write-output "Docker service was stopped successfully"
     }
