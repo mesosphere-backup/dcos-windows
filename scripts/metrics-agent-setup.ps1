@@ -85,9 +85,10 @@ function New-MetricsAgent {
     $metricsBinary = Join-Path $METRICS_DIR "dcos-metrics.exe"
     $logFile = Join-Path $METRICS_LOG_DIR "metrics-agent.log"
     New-Item -ItemType File -Path $logFile
-
+    $configFile = Join-Path $METRICS_DIR "config\dcos-metrics-config.yaml"
     $metricsAgentArguments = (  "-loglevel debug " + `
-                                "-role agent " )
+                                "-role agent " + `
+                                "-config $configFile " )
     $environmentFile = Join-Path $DCOS_DIR "environment"
     New-DCOSWindowsService -Name $METRICS_SERVICE_NAME -DisplayName $METRICS_SERVICE_DISPLAY_NAME -Description $METRICS_SERVICE_DESCRIPTION `
                            -LogFile $logFile -WrapperPath $SERVICE_WRAPPER -BinaryPath "$metricsBinary $metricsAgentArguments" -EnvironmentFiles @($environmentFile)
