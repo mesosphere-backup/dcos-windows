@@ -238,36 +238,14 @@ function New-DockerNATNetwork {
     Write-Output "Created customnat network with flag: com.docker.network.windowsshim.disable_gatewaydns=true"
 }
 
-function Generate-MesosHttpHealthCheckImage{
-    $AgentOSBuild = [System.Environment]::OSVersion.Version
-
-    if ($AgentOSBuild.build -eq $WINDOWS_SERVER_RS4_BUILD_NUMBER) {
-        $imageTag=$WINDOWS_SERVER_RS4_DOCKER_IMAGE_TAG
-    } elseif ($AgentOSBuild.build -eq $WINDOWS_SERVER_RS3_BUILD_NUMBER) {
-        $imageTag=$WINDOWS_SERVER_RS3_DOCKER_IMAGE_TAG
-    } else {
-        $imageTag="latest"
-    }
-    # generate dockerfile from template
-    Write-output "Agent node Windows build number: $imageTag"
-    $context = @{
-        "imageTag" = ("$imageTag")
-    }
-    $TEMPLATES_DIR = Join-Path "$SCRIPTS_DIR\scripts" "templates" 
-    $dockerfileTemplate = "$TEMPLATES_DIR\mesos-http-health\dockerfile.template"
-    $dockerfile = "$TEMPLATES_DIR\mesos-http-health\dockerfile"
-    Write-Output "Generating Mesos Http Health Check dockerfile $dockerfile from $dockerfileTemplate ..."
-    Start-RenderTemplate -TemplateFile $dockerfileTemplate `
-                         -Context $context -OutFile $dockerfile
-
-    Set-Location $TEMPLATES_DIR\mesos-http-health
+function Pull-MesosHealthCheckImage{
     Start-ExecuteWithRetry {
-        docker build -t microsoft/powershell:nanoserver .
+        docker pull mesos/windows-health-check
         if($LASTEXITCODE -ne 0) {
-            Throw "Failed to build microsoft/powershell:latest for Windows build $imageTag"
+            Throw "Failed to pull down Mesos HHTP health check image"
         }
     }
-    Write-Output "Generate-MesosHttpHealthCheckImage"
+    Write-Output "Pull-MesosHealthCheckImage"
 }
 
 function Get-DCOSVersion {
@@ -367,7 +345,7 @@ try {
     # To get collect a complete list of services for node health monitoring,
     # the Diagnostics needs always to be the last one to install
     Install-DiagnosticsAgent -IncludeMatricsService $IsMatricsServiceInstalled
-    Generate-MesosHttpHealthCheckImage
+    Pull-MesosHealthCheckImage
 } catch {
     Write-Output $_.ToString()
     exit 1
