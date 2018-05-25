@@ -238,6 +238,16 @@ function New-DockerNATNetwork {
     Write-Output "Created customnat network with flag: com.docker.network.windowsshim.disable_gatewaydns=true"
 }
 
+function Pull-MesosHealthCheckImage{
+    Start-ExecuteWithRetry {
+        docker pull mesos/windows-health-check
+        if($LASTEXITCODE -ne 0) {
+            Throw "Failed to pull down mesos windows-health-check image"
+        }
+    }
+    Write-Output "Pull-MesosHealthCheckImage"
+}
+
 function Generate-MesosHttpHealthCheckImage{
     $AgentOSBuild = [System.Environment]::OSVersion.Version
 
@@ -368,6 +378,7 @@ try {
     # the Diagnostics needs always to be the last one to install
     Install-DiagnosticsAgent -IncludeMatricsService $IsMatricsServiceInstalled
     Generate-MesosHttpHealthCheckImage
+    Pull-MesosHealthCheckImage
 } catch {
     Write-Output $_.ToString()
     exit 1
