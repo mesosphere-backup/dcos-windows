@@ -39,6 +39,7 @@ function Add-ToSystemPath {
         [Parameter(Mandatory=$true)]
         [string[]]$Path
     )
+    Write-Output "$((Get-Date -Format g).ToString()): Entered Add-ToSystemPath"
     $systemPath = [System.Environment]::GetEnvironmentVariable('Path', 'Machine').Split(';')
     $currentPath = $env:PATH.Split(';')
     foreach($p in $Path) {
@@ -69,17 +70,21 @@ function Start-ExecuteWithRetry {
     $ErrorActionPreference = "Continue"
     $retryCount = 0
     while ($true) {
+        Write-Output "$((Get-Date -Format g).ToString()): Start-ExecuteWithRetry attempt $retryCount"
         try {
             $res = Invoke-Command -ScriptBlock $ScriptBlock `
                                   -ArgumentList $ArgumentList
             $ErrorActionPreference = $currentErrorActionPreference
+             Write-Output "$((Get-Date -Format g).ToString()): Start-ExecuteWithRetry completed"
             return $res
         } catch [System.Exception] {
             $retryCount++
             if ($retryCount -gt $MaxRetryCount) {
                 $ErrorActionPreference = $currentErrorActionPreference
+                 Write-Output "$((Get-Date -Format g).ToString()): Start-ExecuteWithRetry exception thrown"
                 Throw
             } else {
+                Write-Output "$((Get-Date -Format g).ToString()): Start-ExecuteWithRetry Retry: $_.ToString()"
                 Start-Sleep $RetryInterval
             }
         }
@@ -87,15 +92,16 @@ function Start-ExecuteWithRetry {
 }
 
 function Install-Git {
-    $gitInstallerURL = "http://dcos-win.westus.cloudapp.azure.com/downloads/Git-2.14.1-64-bit.exe"
+    Write-Output "$((Get-Date -Format g).ToString()): Entered Install-Git"
+    $gitInstallerURL = "https://dcos-mirror.azureedge.net/win-downloads/Git-2.14.1-64-bit.exe"
     $gitInstallDir = Join-Path $env:ProgramFiles "Git"
     $gitPaths = @("$gitInstallDir\cmd", "$gitInstallDir\bin")
     if(Test-Path $gitInstallDir) {
-        Write-Output "Git is already installed"
+        Write-Output "$((Get-Date -Format g).ToString()): Git is already installed"
         Add-ToSystemPath $gitPaths
         return
     }
-    Write-Output "Downloading Git from $gitInstallerURL"
+    Write-Output "$((Get-Date -Format g).ToString()): Downloading Git from $gitInstallerURL"
     $programFile = Join-Path $env:TEMP "git.exe"
     Start-ExecuteWithRetry { Invoke-WebRequest -UseBasicParsing -Uri $gitInstallerURL -OutFile $programFile }
     $parameters = @{
@@ -104,7 +110,7 @@ function Install-Git {
         'Wait' = $true
         'PassThru' = $true
     }
-    Write-Output "Installing Git"
+    Write-Output "$((Get-Date -Format g).ToString()): Installing Git"
     $p = Start-Process @parameters
     if($p.ExitCode -ne 0) {
         Throw "Failed to install Git during the environment setup"
@@ -113,6 +119,7 @@ function Install-Git {
 }
 
 function New-ScriptsDirectory {
+    Write-Output "$((Get-Date -Format g).ToString()): Entered New-ScriptsDirectory"
     if(Test-Path $SCRIPTS_DIR) {
         Remove-Item -Recurse -Force -Path $SCRIPTS_DIR
     }
@@ -193,6 +200,7 @@ function Install-MetricsAgent {
 }
 
 function Configure-Docker{
+    Write-Output "$((Get-Date -Format g).ToString()): Entered Configure-Docker"
     . "$SCRIPTS_DIR\scripts\variables.ps1"
     $baseUrl = "${LOG_SERVER_BASE_URL}/downloads/docker"
     $version = "18.03.1-ce"
@@ -202,7 +210,7 @@ function Configure-Docker{
     if ($dockerServiceObj.Status -ne 'Stopped') { 
        Throw "Docker service failed to stop"
     } else {
-        Write-output "Docker service was stopped successfully"
+        Write-output "$((Get-Date -Format g).ToString()): Docker service was stopped successfully"
     }
 
     # remove Docker default network: nat 
@@ -229,55 +237,25 @@ function New-DockerNATNetwork {
     # The Docker gateway address is added to the DNS server list unless
     # disable_gatewaydns network option is enabled.
     #
+    Write-Output "$((Get-Date -Format g).ToString()): Entered New-DockerNATNetwork"
     Start-ExecuteWithRetry {
         docker.exe network create --driver="nat" --opt "com.docker.network.windowsshim.disable_gatewaydns=true" "customnat"
         if($LASTEXITCODE -ne 0) {
             Throw "Failed to create the new Docker NAT network with disable_gatewaydns flag"
         }
     }
-    Write-Output "Created customnat network with flag: com.docker.network.windowsshim.disable_gatewaydns=true"
+    Write-Output "$((Get-Date -Format g).ToString()): Created customnat network with flag: com.docker.network.windowsshim.disable_gatewaydns=true"
 }
 
 function Pull-MesosHealthCheckImage{
+    Write-Output "$((Get-Date -Format g).ToString()): Entered Pull-MesosHealthCheckImage"
     Start-ExecuteWithRetry {
         docker pull mesos/windows-health-check
         if($LASTEXITCODE -ne 0) {
             Throw "Failed to pull down mesos windows-health-check image"
         }
     }
-    Write-Output "Pull-MesosHealthCheckImage"
-}
-
-function Generate-MesosHttpHealthCheckImage{
-    $AgentOSBuild = [System.Environment]::OSVersion.Version
-
-    if ($AgentOSBuild.build -eq $WINDOWS_SERVER_RS4_BUILD_NUMBER) {
-        $imageTag=$WINDOWS_SERVER_RS4_DOCKER_IMAGE_TAG
-    } elseif ($AgentOSBuild.build -eq $WINDOWS_SERVER_RS3_BUILD_NUMBER) {
-        $imageTag=$WINDOWS_SERVER_RS3_DOCKER_IMAGE_TAG
-    } else {
-        $imageTag="latest"
-    }
-    # generate dockerfile from template
-    Write-output "Agent node Windows build number: $imageTag"
-    $context = @{
-        "imageTag" = ("$imageTag")
-    }
-    $TEMPLATES_DIR = Join-Path "$SCRIPTS_DIR\scripts" "templates" 
-    $dockerfileTemplate = "$TEMPLATES_DIR\mesos-http-health\dockerfile.template"
-    $dockerfile = "$TEMPLATES_DIR\mesos-http-health\dockerfile"
-    Write-Output "Generating Mesos Http Health Check dockerfile $dockerfile from $dockerfileTemplate ..."
-    Start-RenderTemplate -TemplateFile $dockerfileTemplate `
-                         -Context $context -OutFile $dockerfile
-
-    Set-Location $TEMPLATES_DIR\mesos-http-health
-    Start-ExecuteWithRetry {
-        docker build -t microsoft/powershell:nanoserver .
-        if($LASTEXITCODE -ne 0) {
-            Throw "Failed to build microsoft/powershell:latest for Windows build $imageTag"
-        }
-    }
-    Write-Output "Generate-MesosHttpHealthCheckImage"
+    Write-Output "$((Get-Date -Format g).ToString()): Pull-MesosHealthCheckImage completed"
 }
 
 function Get-DCOSVersion {
@@ -322,7 +300,7 @@ function New-DCOSEnvironmentFile {
         New-Item -ItemType "Directory" -Path $DCOS_DIR
     }
     $masterIPs = Get-MasterIPs
-    Write-Output "Trying to find the DC/OS version by querying the API of the masters: $($masterIPs -join ', ')"
+    Write-Output "$((Get-Date -Format g).ToString()): Trying to find the DC/OS version by querying the API of the masters: $($masterIPs -join ', ')"
     $dcosVersion = Get-DCOSVersion
     Set-Content -Path $GLOBAL_ENV_FILE -Value @(
         "PROVIDER=azure",
@@ -340,6 +318,7 @@ function New-DCOSMastersListFile {
 }
 
 function New-DCOSServiceWrapper {
+    Write-Output "$((Get-Date -Format g).ToString()): Entered New-DCOSServiceWrapper"
     . "$SCRIPTS_DIR\scripts\variables.ps1"
     $parent = Split-Path -Parent -Path $SERVICE_WRAPPER
     if(!(Test-Path -Path $parent)) {
@@ -350,6 +329,7 @@ function New-DCOSServiceWrapper {
 
 
 try {
+    Write-Output "$((Get-Date -Format g).ToString()): Setting up DCOS Windows Agent"
     New-ScriptsDirectory
     Configure-Docker
     New-DockerNATNetwork
@@ -377,11 +357,10 @@ try {
     # To get collect a complete list of services for node health monitoring,
     # the Diagnostics needs always to be the last one to install
     Install-DiagnosticsAgent -IncludeMatricsService $IsMatricsServiceInstalled
-    Generate-MesosHttpHealthCheckImage
     Pull-MesosHealthCheckImage
 } catch {
-    Write-Output $_.ToString()
+    Write-Output "$((Get-Date -Format g).ToString()): Error in setting up DCOS Windows Agent: $_.ToString()"
     exit 1
 }
-Write-Output "Successfully finished setting up the DCOS Windows Agent"
+Write-Output "$((Get-Date -Format g).ToString()): Successfully finished setting up DCOS Windows Agent"
 exit 0
