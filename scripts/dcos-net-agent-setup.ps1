@@ -74,6 +74,7 @@ function New-DevConBinary {
 }
 
 function Install-DCOSNetDevice {
+    try {
     $dcosNetDevice = Get-NetAdapter -Name $DCOS_NET_DEVICE_NAME -ErrorAction SilentlyContinue
     if($dcosNetDevice) {
         return
@@ -83,6 +84,9 @@ function Install-DCOSNetDevice {
     Start-ExternalCommand { & $devCon install "${env:windir}\Inf\Netloop.inf" "*MSLOOP" } -ErrorMessage "Failed to install the dcos-net dummy interface"
     Remove-File -Path $devCon -Fatal $false
     Get-NetAdapter | Where-Object { $_.DriverDescription -eq "Microsoft KM-TEST Loopback Adapter" } | Rename-NetAdapter -NewName $DCOS_NET_DEVICE_NAME
+    } catch {
+        Write-Output "Install-DCOSNetDevice FAILED"
+    }
 }
 
 function Set-DCOSNetDevice {
