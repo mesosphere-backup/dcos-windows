@@ -57,7 +57,12 @@ function New-Environment {
     Add-ToSystemPath $DCOS_NET_BIN_DIR
 }
 
-function New-DevConBinary {
+function Install-DCOSNetDevice {
+    $dcosNetDevice = Get-NetAdapter -Name $DCOS_NET_DEVICE_NAME -ErrorAction SilentlyContinue
+    if($dcosNetDevice) {
+        return
+    }
+    # fetch devcon binary
     $devConDir = Join-Path $env:TEMP "devcon"
     if(Test-Path $devConDir) {
         Remove-Item -Recurse -Force $devConDir
@@ -70,18 +75,10 @@ function New-DevConBinary {
     $devConBinary = Join-Path $env:TEMP "devcon.exe"
     Move-Item "$devConDir\$devConFile" $devConBinary
     Remove-File -Recurse -Force -Path $devConDir -Fatal $false
-    return $devConBinary
-}
 
-function Install-DCOSNetDevice {
-    $dcosNetDevice = Get-NetAdapter -Name $DCOS_NET_DEVICE_NAME -ErrorAction SilentlyContinue
-    if($dcosNetDevice) {
-        return
-    }
-    $devCon = New-DevConBinary
     Write-Output "Creating the dcos-net network device"
-    Start-ExternalCommand { & $devCon install "${env:windir}\Inf\Netloop.inf" "*MSLOOP" } -ErrorMessage "Failed to install the dcos-net dummy interface"
-    Remove-File -Path $devCon -Fatal $false
+    Start-ExternalCommand { & $devConBinary install "${env:windir}\Inf\Netloop.inf" "*MSLOOP" } -ErrorMessage "Failed to install the dcos-net dummy interface"
+    Remove-File -Path $devConBinary -Fatal $false
     Get-NetAdapter | Where-Object { $_.DriverDescription -eq "Microsoft KM-TEST Loopback Adapter" } | Rename-NetAdapter -NewName $DCOS_NET_DEVICE_NAME
 }
 
