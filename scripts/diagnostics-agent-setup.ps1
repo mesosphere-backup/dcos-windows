@@ -1,6 +1,4 @@
 Param(
-    [Parameter(Mandatory=$true)]
-    [string]$DiagnosticsWindowsBinariesURL,
     [bool]$IncludeMetricsToMonitoredSericeList 
 )
 
@@ -20,7 +18,7 @@ function New-DiagnosticsEnvironment {
         if($LASTEXITCODE) {
             Throw "Failed to delete exiting $DIAGNOSTICS_SERVICE_NAME service"
         }
-        Write-Output "Deleted existing $DIAGNOSTICS_SERVICE_NAME service"
+        Write-Log "Deleted existing $DIAGNOSTICS_SERVICE_NAME service"
     }
     New-Directory -RemoveExisting $DIAGNOSTICS_DIR
     New-Directory $DIAGNOSTICS_LOG_DIR
@@ -28,12 +26,9 @@ function New-DiagnosticsEnvironment {
 }
 
 function Install-DiagnosticsFiles {
-    $filesPath = Join-Path $env:TEMP "diagnostics-files.zip"
-    Write-Output "Downloading Diagnostics binaries"
-    Start-ExecuteWithRetry { Invoke-WebRequest -Uri $DiagnosticsWindowsBinariesURL -OutFile $filesPath }
-    Write-Output "Extracting binaries archive in: $DIAGNOSTICS_DIR"
-    Expand-Archive -LiteralPath $filesPath -DestinationPath $DIAGNOSTICS_DIR
-
+    $filesPath = Join-Path $AGENT_BLOB_DEST_DIR "diagnostics.zip"
+    Write-Log "Extracting $filesPath to $DIAGNOSTICS_DIR"
+    Expand-7ZIPFile -File $filesPath -DestinationPath $DIAGNOSTICS_DIR
 
     # There is an outstanding dcos-go PRs that would change the default
     # detect_ip.ps1 file path to new location matching the Linux's setup
@@ -107,8 +102,8 @@ try {
     Install-DiagnosticsFiles
     New-DiagnosticsAgent
 } catch {
-    Write-Output $_.ToString()
+    Write-Log $_.ToString()
     exit 1
 }
-Write-Output "Successfully finished setting up the Windows Diagnostics Service Agent"
+Write-Log "Successfully finished setting up the Windows Diagnostics Service Agent"
 exit 0

@@ -38,8 +38,8 @@ try {
     Open-WindowsFirewallRule -Name "Allow inbound TCP Port $EPMD_PORT for EPMD" -Direction "Inbound" -LocalPort $EPMD_PORT -Protocol "TCP"
     Open-WindowsFirewallRule -Name "Allow inbound UDP Port $EPMD_PORT for EPMD" -Direction "Inbound" -LocalPort $EPMD_PORT -Protocol "UDP"
 } catch {
-    Write-Output $_.ToString()
+    Write-Log $_.ToString()
     exit 1
 }
-Write-Output "Successfully installed the EPMD Windows agent"
+Write-Log "Successfully installed the EPMD Windows agent"
 exit 0

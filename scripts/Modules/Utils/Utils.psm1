@@ -15,7 +15,7 @@
 
 $templating = (Resolve-Path "$PSScriptRoot\..\Templating").Path
 Import-Module $templating
-
+filter Timestamp {"[$(Get-Date -Format o)] $_"}
 
 function Start-ExternalCommand {
     <#
@@ -105,10 +105,10 @@ function Open-WindowsFirewallRule {
         [Parameter(Mandatory=$true)]
         [int]$LocalPort
     )
-    Write-Output "Open firewall rule: $Name"
+    Write-Log "Open firewall rule: $Name"
     $firewallRule = Get-NetFirewallRule -DisplayName $Name -ErrorAction SilentlyContinue
     if($firewallRule) {
-        Write-Output "Firewall rule already exist"
+        Write-Log "Firewall rule already exist"
         return
     }
     New-NetFirewallRule -DisplayName $Name -Direction $Direction -LocalPort $LocalPort -Protocol $Protocol -Action Allow | Out-Null
@@ -135,7 +135,7 @@ function New-DCOSWindowsService {
     )
     $service = Get-Service -Name $Name -ErrorAction SilentlyContinue
     if($service) {
-        Write-Output "The service $Name already exists"
+        Write-Log "The service $Name already exists"
         return
     }
 
@@ -260,7 +260,13 @@ function Remove-File {
         if($Fatal) {
             Throw $_
         }
-        Write-Output "WARNING: $($_.ToString())"
-        Write-Output "WARNING: Failed to remove file: $Path"
+        Write-Log "WARNING: $($_.ToString())"
+        Write-Log "WARNING: Failed to remove file: $Path"
     }
+}
+
+function Write-Log($message)
+{
+    $msg = $message | Timestamp
+    Write-Output $msg
 }

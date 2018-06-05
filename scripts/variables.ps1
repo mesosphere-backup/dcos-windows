@@ -4,12 +4,15 @@ $ERLANG_URL = "$LOG_SERVER_BASE_URL/downloads/erl8.3.zip"
 $ZOOKEEPER_PORT = 2181
 $EXHIBITOR_PORT = 8181
 $DCOS_DIR = Join-Path $env:SystemDrive "DCOS"
+$AGENT_BLOB_ROOT_DIR = Join-Path $env:TEMP "blob"
+$AGENT_BLOB_DEST_DIR = Join-Path $AGENT_BLOB_ROOT_DIR  "agentblob"
 $ERLANG_DIR = Join-Path $DCOS_DIR "erl8.3"
 $ERTS_DIR = Join-Path $ERLANG_DIR "erts-8.3"
 $DOCKER_HOME = Join-Path $env:ProgramFiles "Docker"
 $DOCKER_DATA = Join-Path $env:ProgramData "Docker"
 $DOCKER_SERVICE_NAME = "Docker"
-$SERVICE_WRAPPER = Join-Path $DCOS_DIR "service-wrapper.exe"
+$SERVICE_WRAPPER_FILE = "service-wrapper.exe"
+$SERVICE_WRAPPER = Join-Path $DCOS_DIR $SERVICE_WRAPPER_FILE
 $GLOBAL_ENV_FILE = Join-Path $DCOS_DIR "environment"
 $MASTERS_LIST_FILE = Join-Path $DCOS_DIR "master_list"
 
@@ -91,10 +94,7 @@ $ADMINROUTER_APACHE_BIN_DIR = Join-Path $ADMINROUTER_APACHE_DIR "bin"
 $PKGPANDA_AGENT_PORT = 9001
 $LOGGING_AGENT_PORT = 9002
 
-# Installers URLs
-$SERVICE_WRAPPER_URL = "$LOG_SERVER_BASE_URL/downloads/service-wrapper.exe"
-$VCREDIST_2013_URL = "https://download.microsoft.com/download/2/E/6/2E61CFA4-993B-4DD4-91DA-3737CD5CD6E3/vcredist_x64.exe"
-$VCREDIST_2017_URL = "https://download.visualstudio.microsoft.com/download/pr/11687625/2cd2dba5748dc95950a5c42c2d2d78e4/VC_redist.x64.exe"
-$DEVCON_CAB_URL = "https://download.microsoft.com/download/7/D/D/7DD48DE6-8BDA-47C0-854A-539A800FAA90/wdk/Installers/787bee96dbd26371076b37b13c405890.cab"
-$WINDOWS_APACHEL_HTTP_SERVER_URL = "https://www.apachelounge.com/download/VC15/binaries/httpd-2.4.33-win64-VC15.zip"
-$WINDOWS_APACHEL_HTTP_SERVER_SHA256 = "A9F94DBA6AFFE3BD98FEC01EF77DC932C123E25E360D29D970CC2CDD9F5BA237"
+# Installers
+$VCREDIST_2013_INSTALLER = "VC_redist_2013_x64.exe"
+$VCREDIST_2017_INSTALLER = "VC_redist_2017_x64.exe"
+

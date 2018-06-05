@@ -1,8 +1,6 @@
 Param(
     [Parameter(Mandatory=$true)]
-    [string]$AgentPrivateIP,
-    [Parameter(Mandatory=$true)]
-    [string]$DCOSNetZipPackageUrl
+    [string]$AgentPrivateIP
 )
 
 $ErrorActionPreference = "Stop"
@@ -16,37 +14,32 @@ $variables = (Resolve-Path "$PSScriptRoot\variables.ps1").Path
 
 $TEMPLATES_DIR = Join-Path $PSScriptRoot "templates"
 
-
 function Install-VCredist {
     Param(
         [Parameter(Mandatory=$true)]
-        [string]$InstallerURL
+        [string]$Installer
     )
-    Write-Output "Install VCredist: $InstallerURL"
-    $installerPath = Join-Path $env:TEMP "vcredist_x64.exe"
-    Start-ExecuteWithRetry { Invoke-WebRequest -UseBasicParsing -Uri $InstallerURL -OutFile $installerPath }
+    $installerPath = Join-Path $AGENT_BLOB_DEST_DIR $Installer
+    Write-Log "Install VCredist from $installerPath"
     $p = Start-Process -Wait -PassThru -FilePath $installerPath -ArgumentList @("/install", "/passive")
     if($p.ExitCode -ne 0) {
-        Throw ("Failed install VCredist $InstallerURL. Exit code: {0}" -f $p.ExitCode)
+        Throw ("Failed install VCredist $Installer. Exit code: {0}" -f $p.ExitCode)
     }
-    Write-Output "Finished to install VCredist: $InstallerURL"
+    Write-Log "Finished to install VCredist: $Installer"
     Remove-File -Path $installerPath -Fatal $false
 }
 
 function New-Environment {
     New-Directory -RemoveExisting $DCOS_NET_DIR
     New-Directory $DCOS_NET_SERVICE_DIR
-    $zipPkg = Join-Path $env:TEMP "dcos-net.zip"
-    Write-Output "Downloading latest dcos-net build"
-    Start-ExecuteWithRetry { Invoke-WebRequest -UseBasicParsing -Uri $DCOSNetZipPackageUrl -OutFile $zipPkg }
-    Write-Output "Extracting dcos-net zip archive to $DCOS_NET_DIR"
-    Expand-Archive -LiteralPath $zipPkg -DestinationPath $DCOS_NET_DIR
+    $zipPkg = Join-Path $AGENT_BLOB_DEST_DIR "dcos-net.zip"
+    Write-Log "Expanding $zipPkg"
+    Write-Log "Extracting dcos-net zip archive to $DCOS_NET_DIR"
+    Expand-7ZIPFile -File $zipPkg -DestinationPath $DCOS_NET_DIR
     Remove-File -Path $zipPkg -Fatal $false
     New-Directory -RemoveExisting "$DCOS_NET_DIR\lashup"
     New-Directory -RemoveExisting "$DCOS_NET_DIR\mnesia"
     New-Directory -RemoveExisting "$DCOS_NET_DIR\config.d"
-    Install-VCredist -InstallerURL $VCREDIST_2013_URL
-    Install-VCredist -InstallerURL $VCREDIST_2017_URL
     $binDir = "${DCOS_NET_DIR}\erts-9.2\bin" -replace '\\', '\\'
     $rootDir = "${DCOS_NET_DIR}" -replace '\\', '\\'
     $context = @{
@@ -62,21 +55,10 @@ function Install-DCOSNetDevice {
     if($dcosNetDevice) {
         return
     }
-    # fetch devcon binary
-    $devConDir = Join-Path $env:TEMP "devcon"
-    if(Test-Path $devConDir) {
-        Remove-Item -Recurse -Force $devConDir
-    }
-    New-Item -ItemType Directory -Path $devConDir | Out-Null
-    $devConCab = Join-Path $devConDir "devcon.cab"
-    Start-ExecuteWithRetry { Invoke-WebRequest -UseBasicParsing -Uri $DEVCON_CAB_URL -OutFile $devConCab | Out-Null }
-    $devConFile = "filbad6e2cce5ebc45a401e19c613d0a28f"
-    Start-ExternalCommand { expand.exe $devConCab -F:$devConFile $devConDir } -ErrorMessage "Failed to expand $devConCab" | Out-Null
-    $devConBinary = Join-Path $env:TEMP "devcon.exe"
-    Move-Item "$devConDir\$devConFile" $devConBinary
-    Remove-File -Recurse -Force -Path $devConDir -Fatal $false
+    Write-Log "Install DCOS-NET device with $devConBinary"
+    $devConBinary = Join-Path $AGENT_BLOB_DEST_DIR "devcon.exe"
 
-    Write-Output "Creating the dcos-net network device"
+    Write-Log "Creating the dcos-net network device"
     Start-ExternalCommand { & $devConBinary install "${env:windir}\Inf\Netloop.inf" "*MSLOOP" } -ErrorMessage "Failed to install the dcos-net dummy interface"
     Remove-File -Path $devConBinary -Fatal $false
     Get-NetAdapter | Where-Object { $_.DriverDescription -eq "Microsoft KM-TEST Loopback Adapter" } | Rename-NetAdapter -NewName $DCOS_NET_DEVICE_NAME
@@ -177,8 +159,8 @@ try {
     Open-WindowsFirewallRule -Name "Allow inbound TCP Port 53 for dcos-net" -Direction "Inbound" -LocalPort 53 -Protocol "TCP"
     Open-WindowsFirewallRule -Name "Allow inbound UDP Port 53 for dcos-net" -Direction "Inbound" -LocalPort 53 -Protocol "UDP"
 } catch {
-    Write-Output $_.ToString()
+    Write-Log $_.ToString()
     exit 1
 }
-Write-Output "Successfully finished setting up the Windows dcos-net agent"
+Write-Log "Successfully finished setting up the Windows dcos-net agent"
 exit 0

@@ -28,28 +28,10 @@ function New-Environment {
     New-Directory $SPARTAN_RELEASE_DIR
     New-Directory $SPARTAN_SERVICE_DIR
     New-Directory $SPARTAN_LOG_DIR
-    $spartanReleaseZip = Join-Path $env:TEMP "spartan-release.zip"
-    Write-Output "Downloading latest Spartan build"
-    Start-ExecuteWithRetry { Invoke-WebRequest -UseBasicParsing -Uri $SPARTAN_LATEST_RELEASE_URL -OutFile $spartanReleaseZip }
-    Write-Output "Extracting Spartan zip archive to $SPARTAN_RELEASE_DIR"
-    Expand-Archive -LiteralPath $spartanReleaseZip -DestinationPath $SPARTAN_RELEASE_DIR
+    $spartanReleaseZip = Join-Path $AGENT_BLOB_DEST_DIR "spartan-release.zip"
+    Write-Log "Extracting $spartanReleaseZip to $SPARTAN_RELEASE_DIR"
+    Expand-7ZIPFile -File $spartanReleaseZip -DestinationPath $SPARTAN_RELEASE_DIR
     Remove-File -Path $spartanReleaseZip -Fatal $false
-}
-
-function New-DevConBinary {
-    $devConDir = Join-Path $env:TEMP "devcon"
-    if(Test-Path $devConDir) {
-        Remove-Item -Recurse -Force $devConDir
-    }
-    New-Item -ItemType Directory -Path $devConDir | Out-Null
-    $devConCab = Join-Path $devConDir "devcon.cab"
-    Start-ExecuteWithRetry { Invoke-WebRequest -UseBasicParsing -Uri $DEVCON_CAB_URL -OutFile $devConCab | Out-Null }
-    $devConFile = "filbad6e2cce5ebc45a401e19c613d0a28f"
-    Start-ExternalCommand { expand.exe $devConCab -F:$devConFile $devConDir } -ErrorMessage "Failed to expand $devConCab" | Out-Null
-    $devConBinary = Join-Path $env:TEMP "devcon.exe"
-    Move-Item "$devConDir\$devConFile" $devConBinary
-    Remove-File -Recurse -Force -Path $devConDir -Fatal $false
-    return $devConBinary
 }
 
 function Install-SpartanDevice {
@@ -57,8 +39,8 @@ function Install-SpartanDevice {
     if($spartanDevice) {
         return
     }
-    $devCon = New-DevConBinary
-    Write-Output "Creating the Spartan network device"
+    $devCon = Join-Path $AGENT_BLOB_DEST_DIR "devcon.exe"
+    Write-Log "Creating the Spartan network device"
     Start-ExternalCommand { & $devCon install "${env:windir}\Inf\Netloop.inf" "*MSLOOP" } -ErrorMessage "Failed to install the Spartan dummy interface"
     Remove-File -Path $devCon -Fatal $false
     Get-NetAdapter | Where-Object { $_.DriverDescription -eq "Microsoft KM-TEST Loopback Adapter" } | Rename-NetAdapter -NewName $SPARTAN_DEVICE_NAME
@@ -151,8 +133,8 @@ try {
     Open-WindowsFirewallRule -Name "Allow inbound TCP Port 53 for Spartan" -Direction "Inbound" -LocalPort 53 -Protocol "TCP"
     Open-WindowsFirewallRule -Name "Allow inbound UDP Port 53 for Spartan" -Direction "Inbound" -LocalPort 53 -Protocol "UDP"
 } catch {
-    Write-Output $_.ToString()
+    Write-Log $_.ToString()
     exit 1
 }
-Write-Output "Successfully finished setting up the Windows Spartan Agent"
+Write-Log "Successfully finished setting up the Windows Spartan Agent"
 exit 0

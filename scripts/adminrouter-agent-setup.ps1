@@ -15,6 +15,7 @@ $variables = (Resolve-Path "$PSScriptRoot\variables.ps1").Path
 . $variables
 
 $TEMPLATES_DIR = Join-Path $PSScriptRoot "templates"
+$WINDOWS_APACHEL_HTTP_SERVER_SHA256 = "A9F94DBA6AFFE3BD98FEC01EF77DC932C123E25E360D29D970CC2CDD9F5BA237"
 
 function New-AdminRouterEnvironment {
     $service = Get-Service $ADMINROUTER_SERVICE_NAME -ErrorAction SilentlyContinue
@@ -24,33 +25,32 @@ function New-AdminRouterEnvironment {
         if($LASTEXITCODE) {
             Throw "Failed to delete exiting $ADMINROUTER_SERVICE_NAME service"
         }
-        Write-Output "Deleted existing $ADMINROUTER_SERVICE_NAME service"
+        Write-Log "Deleted existing $ADMINROUTER_SERVICE_NAME service"
     }
     New-Directory -RemoveExisting $ADMINROUTER_DIR
     New-Directory $ADMINROUTER_LOG_DIR
 }
 
-function Get-ApacheServerPackage {
-    Write-Output "Downloading Apache HTTP Server zip file: $WINDOWS_APACHEL_HTTP_SERVER_URL"
-    $filesPath = Join-Path $env:TEMP "httpd-2.4.33-win64-VC15.zip"
-    Start-ExecuteWithRetry { Invoke-WebRequest -UseBasicParsing -Uri $WINDOWS_APACHEL_HTTP_SERVER_URL -OutFile $filesPath}
+function Expand-ApacheServerPackage {
+    $filesPath = Join-Path $AGENT_BLOB_DEST_DIR "httpd-2.4.33-win64-VC15.zip"
+    Write-Log "Expanding Apache HTTP Server zip file $filesPath"
 
     # To be sure that a download is intact and has not been tampered with from the original download side
     # we need to perform biniary hash validation
-    Write-Output "Validating Hash value for downloaded file: $filesPath"
+    Write-Log "Validating Hash value for downloaded file: $filesPath"
     $hashFromDowloadedFile = Get-FileHash $filesPath -Algorithm SHA256
 
     # validate both hashes are the same
     if ($hashFromDowloadedFile.Hash -eq $WINDOWS_APACHEL_HTTP_SERVER_SHA256) {
-        Write-Output 'Hash validation test passed'
+        Write-Log 'Hash validation test passed'
     } else {
         Throw 'Hash validation test FAILED!!'
     }
 
-    Write-Output "Extracting binaries archive in: $ADMINROUTER_DIR"
-    Expand-Archive -LiteralPath $filesPath -DestinationPath $ADMINROUTER_DIR -Force
+    Write-Log "Extracting binaries archive in: $ADMINROUTER_DIR"
+    Expand-7ZIPFile -File $filesPath -DestinationPath $ADMINROUTER_DIR
     Remove-File -Path $filesPath -Fatal $false
-    Write-Output "Finshed downloading"  
+    Write-Log "Finshed expanding"  
 }
 
 function Generate-ApacheConfigFromTemplate {
@@ -73,14 +73,14 @@ function Generate-ApacheConfigFromTemplate {
 }
 
 function Install-ApacheHttpServer {
-    Write-Output "Installing Apache HTTP Server..."
-    Get-ApacheServerPackage
+    Write-Log "Installing Apache HTTP Server..."
+    Expand-ApacheServerPackage
 
     $template = "$TEMPLATES_DIR\adminrouter\apache_template.conf"
     $configfile = "$ADMINROUTER_APACHE_DIR\conf\adminrouter.conf"
-    Write-Output "Generating Apache config file $configfile from $template ..."
+    Write-Log "Generating Apache config file $configfile from $template ..."
     Generate-ApacheConfigFromTemplate -TemplateFile $template -OutputFile $configfile
-    Write-Output "Apache HTTP Server installed"
+    Write-Log "Apache HTTP Server installed"
 }
 
 function New-AdminRouterAgent {
@@ -105,8 +105,8 @@ try {
     Install-ApacheHttpServer
     New-AdminRouterAgent
 } catch {
-    Write-Output $_.ToString()
+    Write-Log $_.ToString()
     exit 1
 }
-Write-Output "Successfully finished setting up the Windows AdminRouter Service Agent"
+Write-Log "Successfully finished setting up the Windows AdminRouter Service Agent"
 exit 0
