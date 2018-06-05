@@ -135,9 +135,11 @@ function New-ScriptsDirectory {
         Remove-Item -Recurse -Force -Path $SCRIPTS_DIR
     }
     Install-Git
-    $p = Start-ExecuteWithRetry { Start-Process -FilePath 'git.exe' -Wait -PassThru -NoNewWindow -ArgumentList @('clone', $SCRIPTS_REPO_URL, $SCRIPTS_DIR) }
-    if($p.ExitCode -ne 0) {
-        Throw "Failed to clone $SCRIPTS_REPO_URL repository"
+    Start-ExecuteWithRetry {
+        $p = Start-Process -FilePath 'git.exe' -Wait -PassThru -NoNewWindow -ArgumentList @('clone', $SCRIPTS_REPO_URL, $SCRIPTS_DIR)
+        if($p.ExitCode -ne 0) {
+            Throw "Failed to clone $SCRIPTS_REPO_URL repository"
+        }
     }
     Write-Log "Exit New-ScriptsDirectory"
 }
