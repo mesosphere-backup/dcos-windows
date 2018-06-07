@@ -263,13 +263,14 @@ function New-DockerNATNetwork {
     # disable_gatewaydns network option is enabled.
     #
     Write-Log "Enter New-DockerNATNetwork"
+    $natNetworkName = "dcosnat"
     Start-ExecuteWithRetry {
-        docker.exe network create --driver="nat" --opt "com.docker.network.windowsshim.disable_gatewaydns=true" "customnat"
+        docker.exe network create --driver="nat" --opt "com.docker.network.windowsshim.disable_gatewaydns=true" "${natNetworkName}"
         if($LASTEXITCODE -ne 0) {
             Throw "Failed to create the new Docker NAT network with disable_gatewaydns flag"
         }
     }
-    Write-Log "Exit New-DockerNATNetwork: created customnat network with flag: com.docker.network.windowsshim.disable_gatewaydns=true"
+    Write-Log "Exit New-DockerNATNetwork: created ${natNetworkName} network with flag: com.docker.network.windowsshim.disable_gatewaydns=true"
 }
 
 function Pull-MesosHealthCheckImage{
