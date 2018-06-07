@@ -153,7 +153,7 @@ function New-DCOSWindowsService {
         $params['Description'] = $Description
     }
 
-    $binaryPathName = "`"$WrapperPath`" --service-name `"$Name`""
+    $binaryPathName = "`"$WrapperPath`" --stop-tree 0 --stop-console 1 --stop-console-timeout 15000 --service-name `"$Name`""
 
     if($PreStartCommand) {
         $binaryPathName += " --exec-start-pre `"$PreStartCommand`""
