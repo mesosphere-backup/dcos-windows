@@ -80,7 +80,7 @@ function New-MesosWindowsAgent {
                            " --launcher_dir=`"${MESOS_BIN_DIR}`"" + `
                            " --external_log_file=`"${logFile}`"" + `
                            " --ip=`"${agentAddress}`"" + `
-                           " --isolation=`"windows/cpu,filesystem/windows`"" + `
+                           " --isolation=`"windows/cpu,windows/mem,filesystem/windows`"" + `
                            " --containerizers=`"docker,mesos`"" + `
                            " --attributes=`"${mesosAttributes}`"" + `
                            " --hostname=`"${AgentPrivateIP}`"" +
