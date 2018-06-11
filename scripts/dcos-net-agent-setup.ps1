@@ -165,7 +165,13 @@ function New-DCOSNetWindowsAgent {
     New-DCOSWindowsService -Name $DCOS_NET_SERVICE_NAME -DisplayName $DCOS_NET_SERVICE_DISPLAY_NAME -Description $DCOS_NET_SERVICE_DESCRIPTION `
                            -LogFile $logFile -WrapperPath $SERVICE_WRAPPER -EnvironmentFiles @($environmentFile) -BinaryPath "`"$erlBinary $dcosNetArguments`""
     Start-Service $DCOS_NET_SERVICE_NAME
-    Set-DnsClientServerAddress -InterfaceAlias * -ServerAddresses $DCOS_NET_LOCAL_ADDRESSES
+
+    # Set new DNS server address only on dcos-net interface
+    $dcosNetDevice = Get-NetAdapter -Name $DCOS_NET_DEVICE_NAME -ErrorAction SilentlyContinue
+    if(!$dcosNetDevice) {
+        Throw "dcos-net network device was not found"
+    }
+    Set-DnsClientServerAddress -InterfaceAlias "$DCOS_NET_DEVICE_NAME" -ServerAddresses $DCOS_NET_LOCAL_ADDRESSES
 }
 
 
