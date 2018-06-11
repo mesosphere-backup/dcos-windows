@@ -34,7 +34,7 @@ $EPMD_LOG_DIR = Join-Path $EPMD_DIR "log"
 $EPMD_SERVICE_DIR = Join-Path $EPMD_DIR "service"
 
 # Spartan configurations
-$SPARTAN_LOCAL_ADDRESSES = @("192.51.100.1", "192.51.100.2", "192.51.100.3")
+$SPARTAN_LOCAL_ADDRESSES = @("198.51.100.1", "198.51.100.2", "198.51.100.3")
 $SPARTAN_SERVICE_NAME = "dcos-spartan"
 $SPARTAN_SERVICE_DISPLAY_NAME = "DCOS Spartan Windows Agent"
 $SPARTAN_SERVICE_DESCRIPTION = "Windows Service for the DCOS Spartan Windows Agent"
@@ -54,7 +54,7 @@ $DIAGNOSTICS_CONFIG_DIR = Join-Path $DIAGNOSTICS_DIR "config"
 $DIAGNOSTICS_LOG_DIR = Join-Path $DIAGNOSTICS_DIR "log"
 
 # dcos-net configurations
-$DCOS_NET_LOCAL_ADDRESSES = @("192.51.100.1", "192.51.100.2", "192.51.100.3")
+$DCOS_NET_LOCAL_ADDRESSES = @("198.51.100.1", "198.51.100.2", "198.51.100.3")
 $DCOS_NET_SERVICE_NAME = "dcos-net"
 $DCOS_NET_SERVICE_DISPLAY_NAME = "DC/OS Net Windows Agent"
 $DCOS_NET_SERVICE_DESCRIPTION = "Windows Service for the DC/OS Net Windows Agent"
