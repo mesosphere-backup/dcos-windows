@@ -83,6 +83,7 @@ function New-MesosWindowsAgent {
                            " --isolation=`"windows/cpu,filesystem/windows`"" + `
                            " --containerizers=`"docker,mesos`"" + `
                            " --attributes=`"${mesosAttributes}`"" + `
+                           " --executor_registration_timeout=$MESOS_REGISTER_TIMEOUT" + `
                            " --hostname=`"${AgentPrivateIP}`"" +
                            " --executor_environment_variables=`"{\\\`"PATH\\\`": \\\`"${mesosPath}\\\`"}`"")
     if($Public) {
