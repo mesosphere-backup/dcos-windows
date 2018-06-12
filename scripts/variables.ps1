@@ -26,6 +26,10 @@ $MESOS_BIN_DIR = Join-Path $MESOS_DIR "bin"
 $MESOS_WORK_DIR = Join-Path $MESOS_DIR "work"
 $MESOS_LOG_DIR = Join-Path $MESOS_DIR "log"
 $MESOS_SERVICE_DIR = Join-Path $MESOS_DIR "service"
+# From documentation:
+# Amount of time to wait for an executor to register with the slave
+# before considering it hung and shutting it down (e.g., 60secs, 3mins, etc)
+$MESOS_REGISTER_TIMEOUT = "15mins"
 
 # EPMD configurations
 $EPMD_SERVICE_NAME = "dcos-epmd"
