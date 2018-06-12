@@ -1,8 +1,3 @@
-Param(
-    [Parameter(Mandatory=$true)]
-    [string]$MetricsWindowsBinariesURL
-)
-
 $ErrorActionPreference = "Stop"
 
 $utils = (Resolve-Path "$PSScriptRoot\Modules\Utils").Path
@@ -19,7 +14,7 @@ function New-MetricsEnvironment {
         if($LASTEXITCODE) {
             Throw "Failed to delete exiting $METRICS_SERVICE_NAME service"
         }
-        Write-Output "Deleted existing $METRICS_SERVICE_NAME service"
+        Write-Log "Deleted existing $METRICS_SERVICE_NAME service"
     }
     New-Directory -RemoveExisting $METRICS_DIR
     New-Directory $METRICS_BIN_DIR
@@ -29,12 +24,9 @@ function New-MetricsEnvironment {
 }
 
 function Install-MetricsFiles {
-    $filesPath = Join-Path $env:TEMP "metrics-files.zip"
-    Write-Output "Downloading Metrics binaries"
-    Start-ExecuteWithRetry { Invoke-WebRequest -Uri $MetricsWindowsBinariesURL -OutFile $filesPath }
-    Write-Output "Extracting binaries archive in: $METRICS_DIR"
-    Expand-Archive -LiteralPath $filesPath -DestinationPath $METRICS_DIR
-
+    $filesPath = Join-Path $AGENT_BLOB_DEST_DIR "metrics.zip"
+    Write-Log "Extracting $filesPath to $METRICS_DIR"
+    Expand-7ZIPFile -File $filesPath -DestinationPath $METRICS_DIR
     
     # This is an outstanding dcos-go PR that would change the default file
     # paths to new locations matching the Linux's setup.
@@ -100,8 +92,8 @@ try {
     Install-MetricsFiles
     New-MetricsAgent
 } catch {
-    Write-Output $_.ToString()
+    Write-Log $_.ToString()
     exit 1
 }
-Write-Output "Successfully finished setting up the Windows Metrics Service Agent"
+Write-Log "Successfully finished setting up the Windows Metrics Service Agent"
 exit 0

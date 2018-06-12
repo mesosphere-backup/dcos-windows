@@ -1,7 +1,5 @@
 Param(
     [Parameter(Mandatory=$true)]
-    [string]$MesosWindowsBinariesURL,
-    [Parameter(Mandatory=$true)]
     [string[]]$MasterAddress,
     [string]$AgentPrivateIP,
     [switch]$Public=$false,
@@ -28,7 +26,7 @@ function New-MesosEnvironment {
         if($LASTEXITCODE) {
             Throw "Failed to delete exiting $MESOS_SERVICE_NAME service"
         }
-        Write-Output "Deleted existing $MESOS_SERVICE_NAME service"
+        Write-Log "Deleted existing $MESOS_SERVICE_NAME service"
     }
     New-Directory -RemoveExisting $MESOS_DIR
     New-Directory $MESOS_BIN_DIR
@@ -38,11 +36,9 @@ function New-MesosEnvironment {
 }
 
 function Install-MesosBinaries {
-    $binariesPath = Join-Path $env:TEMP "mesos-binaries.zip"
-    Write-Output "Downloading Mesos binaries"
-    Start-ExecuteWithRetry { Invoke-WebRequest -Uri $MesosWindowsBinariesURL -OutFile $binariesPath }
-    Write-Output "Extracting binaries archive in: $MESOS_BIN_DIR"
-    Expand-Archive -LiteralPath $binariesPath -DestinationPath $MESOS_BIN_DIR
+    $binariesPath = Join-Path $AGENT_BLOB_DEST_DIR "mesos.zip"
+    Write-Log "Extracting $binariesPath to $MESOS_BIN_DIR"
+    Expand-7ZIPFile -File $binariesPath -DestinationPath $MESOS_BIN_DIR
     Add-ToSystemPath $MESOS_BIN_DIR
     Remove-File -Path $binariesPath -Fatal $false
 }
@@ -101,28 +97,15 @@ function New-MesosWindowsAgent {
     Start-Service $MESOS_SERVICE_NAME
 }
 
-function Install-2017VCRuntime {
-    Write-Output "Install Visual Studio 2017 runtime"
-    $installerPath = Join-Path $env:TEMP "vcredist_2017_x64.exe"
-    Start-ExecuteWithRetry { Invoke-WebRequest -UseBasicParsing -Uri $VCREDIST_2017_URL -OutFile $installerPath }
-    $p = Start-Process -Wait -PassThru -FilePath $installerPath -ArgumentList @("/install", "/passive")
-    if($p.ExitCode -ne 0) {
-        Throw ("Failed install Visual Studio 2017 runtime. Exit code: {0}" -f $p.ExitCode)
-    }
-    Write-Output "Finished to install Visual Studio 2017 runtime"
-    Remove-File -Path $installerPath -Fatal $false
-}
-
 try {
     New-MesosEnvironment
-    Install-2017VCRuntime
     Install-MesosBinaries
     New-MesosWindowsAgent
     Open-WindowsFirewallRule -Name "Allow inbound TCP Port $MESOS_AGENT_PORT for Mesos Slave" -Direction "Inbound" -LocalPort $MESOS_AGENT_PORT -Protocol "TCP"
     Open-WindowsFirewallRule -Name "Allow inbound TCP Port $ZOOKEEPER_PORT for Zookeeper" -Direction "Inbound" -LocalPort $ZOOKEEPER_PORT -Protocol "TCP" # It's needed on the private DCOS agents
 } catch {
-    Write-Output $_.ToString()
+    Write-Log $_.ToString()
     exit 1
 }
-Write-Output "Successfully finished setting up the Windows Mesos Agent"
+Write-Log "Successfully finished setting up the Windows Mesos Agent"
 exit 0

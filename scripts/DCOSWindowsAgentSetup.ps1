@@ -21,25 +21,45 @@ Param(
 )
 
 $ErrorActionPreference = "Stop"
-
-$SCRIPTS_REPO_URL = "https://github.com/dcos/dcos-windows"
-$SCRIPTS_DIR = Join-Path $env:TEMP "dcos-windows"
-$MESOS_BINARIES_URL = "$BootstrapUrl/mesos.zip"
-$DIAGNOSTICS_BINARIES_URL = "$BootstrapUrl/diagnostics.zip"
-$DCOS_NET_ZIP_PACKAGE_URL = "$BootstrapUrl/dcos-net.zip"
-$METRICS_BINARIES_URL = "$BootstrapUrl/metrics.zip"
-
-$WINDOWS_SERVER_RS3_BUILD_NUMBER = "16299"
-$WINDOWS_SERVER_RS4_BUILD_NUMBER = "17134"
-$WINDOWS_SERVER_RS3_DOCKER_IMAGE_TAG = "1709"
-$WINDOWS_SERVER_RS4_DOCKER_IMAGE_TAG = "1803"
-
 filter Timestamp {"[$(Get-Date -Format o)] $_"}
+$AGENT_BLOB_ROOT_DIR = Join-Path $env:TEMP "blob"
+$AGENT_BLOB_DEST_DIR = Join-Path $AGENT_BLOB_ROOT_DIR  "agentblob"
+$SCRIPTS_DIR = Join-Path $AGENT_BLOB_DEST_DIR "dcos-windows"
 
 function Write-Log($message)
 {
     $msg = $message | Timestamp
     Write-Output $msg
+}
+function Expand-7ZIPFile
+{
+    Param(
+        [string]$File,
+        [string]$DestinationPath
+    )
+    $7ZipDir = Join-Path $env:SystemDrive "7zip"
+    $7zipBinnary = Join-Path $7ZipDir  "7z.exe"
+    & $7zipBinnary x $File -mmt8 $("-o" + $DestinationPath)
+    if($LASTEXITCODE) {
+        Throw "Failed to expand $File"
+    }    
+}
+
+function Install-VCredist {
+    Param(
+        [Parameter(Mandatory=$true)]
+        [string]$Installer
+    )
+    Write-Log "Enter Install-VCredist"
+    $installerPath = Join-Path $AGENT_BLOB_DEST_DIR $Installer
+    Write-Log "Install VCredist from $installerPath"
+    $p = Start-Process -Wait -PassThru -FilePath $installerPath -ArgumentList @("/install", "/passive")
+    if($p.ExitCode -ne 0) {
+        Throw ("Failed install VCredist $Installer. Exit code: {0}" -f $p.ExitCode)
+    }
+    Write-Log "Finished to install VCredist: $Installer"
+    Remove-Item -Recurse -Force $installerPath
+    Write-Log "Exit Install-VCredist"
 }
 
 function Add-ToSystemPath {
@@ -47,7 +67,6 @@ function Add-ToSystemPath {
         [Parameter(Mandatory=$true)]
         [string[]]$Path
     )
-    Write-Log "Enter Add-ToSystemPath"
     $systemPath = [System.Environment]::GetEnvironmentVariable('Path', 'Machine').Split(';')
     $currentPath = $env:PATH.Split(';')
     foreach($p in $Path) {
@@ -63,7 +82,6 @@ function Add-ToSystemPath {
     if($LASTEXITCODE) {
         Throw "Failed to set the new system path"
     }
-    Write-Log "Exit Add-ToSystemPath"
 }
 
 function Start-ExecuteWithRetry {
@@ -100,50 +118,6 @@ function Start-ExecuteWithRetry {
     }
 }
 
-function Install-Git {
-    Write-Log "Enter Install-Git"
-    $gitInstallerURL = "https://dcos-mirror.azureedge.net/win-downloads/Git-2.14.1-64-bit.exe"
-    $gitInstallDir = Join-Path $env:ProgramFiles "Git"
-    $gitPaths = @("$gitInstallDir\cmd", "$gitInstallDir\bin")
-    if(Test-Path $gitInstallDir) {
-        Write-Log "Git is already installed"
-        Add-ToSystemPath $gitPaths
-        Write-Log "Exit Install-Git: already installed"
-        return
-    }
-    Write-Log "Downloading Git from $gitInstallerURL"
-    $programFile = Join-Path $env:TEMP "git.exe"
-    Start-ExecuteWithRetry { Invoke-WebRequest -UseBasicParsing -Uri $gitInstallerURL -OutFile $programFile }
-    $parameters = @{
-        'FilePath' = $programFile
-        'ArgumentList' = @("/SILENT")
-        'Wait' = $true
-        'PassThru' = $true
-    }
-    Write-Log "Installing Git"
-    $p = Start-Process @parameters
-    if($p.ExitCode -ne 0) {
-        Throw "Failed to install Git during the environment setup"
-    }
-    Add-ToSystemPath $gitPaths
-    Write-Log "Exit Install-Git"
-}
-
-function New-ScriptsDirectory {
-    Write-Log "Enter New-ScriptsDirectory"
-    if(Test-Path $SCRIPTS_DIR) {
-        Remove-Item -Recurse -Force -Path $SCRIPTS_DIR
-    }
-    Install-Git
-    Start-ExecuteWithRetry {
-        $p = Start-Process -FilePath 'git.exe' -Wait -PassThru -NoNewWindow -ArgumentList @('clone', $SCRIPTS_REPO_URL, $SCRIPTS_DIR)
-        if($p.ExitCode -ne 0) {
-            Throw "Failed to clone $SCRIPTS_REPO_URL repository"
-        }
-    }
-    Write-Log "Exit New-ScriptsDirectory"
-}
-
 function Get-MasterIPs {
     [string[]]$ips = ConvertFrom-Json $MasterIP
     # NOTE(ibalutoiu): ACS-Engine adds the Zookeper port to every master IP and we need only the address
@@ -154,7 +128,7 @@ function Get-MasterIPs {
 function Install-MesosAgent {
     Write-Log "Enter Install-MesosAgent"
     $masterIPs = Get-MasterIPs
-    & "$SCRIPTS_DIR\scripts\mesos-agent-setup.ps1" -MasterAddress $masterIPs -MesosWindowsBinariesURL $MESOS_BINARIES_URL `
+    & "$SCRIPTS_DIR\scripts\mesos-agent-setup.ps1" -MasterAddress $masterIPs `
                                                 -AgentPrivateIP $AgentPrivateIP -Public:$isPublic -CustomAttributes $customAttrs
     if($LASTEXITCODE) {
         Throw "Failed to setup the DCOS Mesos Windows slave agent"
@@ -198,7 +172,7 @@ function Install-DiagnosticsAgent {
         [bool]$IncludeMatricsService
     )
     Write-Log "Enter Install-DiagnosticsAgent"
-    & "$SCRIPTS_DIR\scripts\diagnostics-agent-setup.ps1" -DiagnosticsWindowsBinariesURL $DIAGNOSTICS_BINARIES_URL -IncludeMetricsToMonitoredSericeList $IncludeMatricsService
+    & "$SCRIPTS_DIR\scripts\diagnostics-agent-setup.ps1" -IncludeMetricsToMonitoredSericeList $IncludeMatricsService
     if($LASTEXITCODE) {
         Throw "Failed to setup the DCOS Diagnostics Windows agent"
     }
@@ -207,7 +181,7 @@ function Install-DiagnosticsAgent {
 
 function Install-DCOSNetAgent {
     Write-Log "Enter Install-DCOSNetAgent"
-    & "$SCRIPTS_DIR\scripts\dcos-net-agent-setup.ps1" -AgentPrivateIP $AgentPrivateIP -DCOSNetZipPackageUrl $DCOS_NET_ZIP_PACKAGE_URL
+    & "$SCRIPTS_DIR\scripts\dcos-net-agent-setup.ps1" -AgentPrivateIP $AgentPrivateIP
     if($LASTEXITCODE) {
         Throw "Failed to setup the dcos-net Windows agent"
     }
@@ -216,7 +190,7 @@ function Install-DCOSNetAgent {
 
 function Install-MetricsAgent {
     Write-Log "Enter Install-MetricsAgent"
-    & "$SCRIPTS_DIR\scripts\metrics-agent-setup.ps1" -MetricsWindowsBinariesURL $METRICS_BINARIES_URL
+    & "$SCRIPTS_DIR\scripts\metrics-agent-setup.ps1"
     if($LASTEXITCODE) {
         Throw "Failed to setup the DCOS Metrics Windows agent"
     }
@@ -242,15 +216,15 @@ function Configure-Docker{
     Set-Content -Path "${DOCKER_DATA}\config\daemon.json" -Value '{ "bridge" : "none" }' -Encoding Ascii
 
     # update Docker binaries
-    Start-ExecuteWithRetry { Invoke-WebRequest -UseBasicParsing -Uri "${baseUrl}/${version}/docker.exe" -OutFile "${DOCKER_HOME}\docker.exe" }
-    Start-ExecuteWithRetry { Invoke-WebRequest -UseBasicParsing -Uri "${baseUrl}/${version}/dockerd.exe" -OutFile "${DOCKER_HOME}\dockerd.exe" }
+    Copy-item "$AGENT_BLOB_DEST_DIR\docker.exe" "${DOCKER_HOME}\docker.exe" -Force
+    Copy-item "$AGENT_BLOB_DEST_DIR\dockerd.exe" "${DOCKER_HOME}\dockerd.exe" -Force
 
     $dockerServiceObj = Start-Service $DOCKER_SERVICE_NAME -PassThru
     $dockerServiceObj.WaitForStatus('Running','00:03:00')
     if ($dockerServiceObj.Status -ne 'Running') { 
         Throw "Docker service failed to start"
     } else {
-        Write-output "Docker service was started successfully"
+        Write-Log "Docker service was started successfully"
     }
     Write-Log "Exit Configure-Docker"
 }
@@ -273,17 +247,6 @@ function New-DockerNATNetwork {
     Write-Log "Exit New-DockerNATNetwork: created ${natNetworkName} network with flag: com.docker.network.windowsshim.disable_gatewaydns=true"
 }
 
-function Pull-MesosHealthCheckImage{
-    Write-Log "Enter Pull-MesosHealthCheckImage"
-    Start-ExecuteWithRetry {
-        docker pull mesos/windows-health-check
-        if($LASTEXITCODE -ne 0) {
-            Throw "Failed to pull down mesos windows-health-check image"
-        }
-    }
-    Write-Log "Exit Pull-MesosHealthCheckImage"
-}
-
 function Get-DCOSVersion {
     param([ref]$Reference)
 
@@ -296,12 +259,14 @@ function Get-DCOSVersion {
             try {
                 $response = Invoke-WebRequest -UseBasicParsing -Uri "http://$ip/dcos-metadata/dcos-version.json"
             } catch {
+                Write-Log "Invoke-WebRequest http://$ip/dcos-metadata/dcos-version.json failed with $($_.ToString())"
                 continue
             }
             $Reference.Value = (ConvertFrom-Json -InputObject $response.Content).version
             Write-Log "Exit Get-DCOSVersion"
             return
         }
+        Write-Log "Wait 30 seconds before try again"
         Start-Sleep -Seconds 30
     }
     Throw "ERROR: Cannot find the DC/OS version from any of the masters $($masterIPs -join ', ') within a timeout of $timeout seconds"
@@ -365,14 +330,58 @@ function New-DCOSServiceWrapper {
     if(!(Test-Path -Path $parent)) {
         New-Item -ItemType "Directory" -Path $parent
     }
-    Start-ExecuteWithRetry { Invoke-WebRequest -UseBasicParsing -Uri $SERVICE_WRAPPER_URL -OutFile $SERVICE_WRAPPER }
+    Write-Log "Copying $SERVICE_WRAPPER_FILE file"
+    Copy-item "$AGENT_BLOB_DEST_DIR\$SERVICE_WRAPPER_FILE" $SERVICE_WRAPPER -Force
     Write-Log "Exit New-DCOSServiceWrapper"
 }
 
+function Fetch-AgentBlobFiles {
+    Write-Log "Enter Fetch-AgentBlobFiles"
+    New-item $AGENT_BLOB_DEST_DIR -itemtype directory -ErrorAction SilentlyContinue
+
+    Write-Log "Download 7-Zip"
+    $7ZipFileName = "7z1801-x64.msi"
+    $7ZipMsiUrl = "$BootstrapUrl/$7ZipFileName"
+    $7ZipMsiFile = Join-Path $env:TEMP $7ZipFileName
+    Remove-item $7ZipMsiFile -ErrorAction SilentlyContinue
+    Write-Log "Downloading $7ZipMsiUrl to $7ZipMsiFile"
+    Measure-Command { curl.exe --keepalive-time 2 -fLsS --retry 10 -Y 100000 -y 60 -o $7ZipMsiFile $7ZipMsiUrl}
+
+    Write-Log "Installing 7-Zip"
+    $7_ZIP_DIR = Join-Path $env:SystemDrive "7zip"
+    & cmd.exe /c start /wait msiexec /i $7ZipMsiFile INSTALLDIR=$7_ZIP_DIR /qn
+    if ($LASTEXITCODE -ne 0) {
+        throw "failed to install 7zip"
+    }
+    Add-ToSystemPath $7_ZIP_DIR
+    Remove-Item $7ZipMsiFile
+    Write-Log "7-Zip installed"
+
+    Write-Log "Download AgentBlob"
+    $AgentBlobUrl = "$BootstrapUrl/windowsAgentBlob.zip"
+    $blobPath = Join-Path $env:TEMP "windowsAgentBlob.zip"
+    Remove-item $blobPath -ErrorAction SilentlyContinue
+    Write-Log "Downloading $AgentBlobUrl to $blobPath"
+    Measure-Command { curl.exe --keepalive-time 2 -fLsS --retry 10 -Y 100000 -y 60 -o $blobPath $AgentBlobUrl}
+
+    Write-Log "Extracting the agent blob @ $blobPath to $AGENT_BLOB_ROOT_DIR"
+    Measure-Command { Expand-7ZIPFile -File $blobPath -DestinationPath $AGENT_BLOB_ROOT_DIR }
+    Remove-item $blobPath -ErrorAction SilentlyContinue
+    Write-Log "Exit Fetch-AgentBlobFiles"
+}
+
+function Install-CommonComponents {
+    Write-Log "Enter Install-CommonComponents"
+    . "$SCRIPTS_DIR\scripts\variables.ps1"
+    Install-VCredist -Installer $VCREDIST_2013_INSTALLER
+    Install-VCredist -Installer $VCREDIST_2017_INSTALLER
+    Write-Log "Exit Install-CommonComponents"
+}
 
 try {
     Write-Log "Setting up DCOS Windows Agent"
-    New-ScriptsDirectory
+    Fetch-AgentBlobFiles
+    Install-CommonComponents
     Configure-Docker
     New-DockerNATNetwork
     New-DCOSEnvironmentFile
@@ -401,7 +410,6 @@ try {
     # To get collect a complete list of services for node health monitoring,
     # the Diagnostics needs always to be the last one to install
     Install-DiagnosticsAgent -IncludeMatricsService $IsMatricsServiceInstalled
-    Pull-MesosHealthCheckImage
 } catch {
     Write-Log "Error in setting up DCOS Windows Agent: $($_.ToString())"
     exit 1
