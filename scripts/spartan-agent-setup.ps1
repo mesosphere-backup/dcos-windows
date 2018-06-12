@@ -28,7 +28,7 @@ function New-Environment {
     New-Directory $SPARTAN_RELEASE_DIR
     New-Directory $SPARTAN_SERVICE_DIR
     New-Directory $SPARTAN_LOG_DIR
-    $spartanReleaseZip = Join-Path $AGENT_BLOB_DEST_DIR "spartan-release.zip"
+    $spartanReleaseZip = Join-Path $AGENT_BLOB_DEST_DIR "spartan.zip"
     Write-Log "Extracting $spartanReleaseZip to $SPARTAN_RELEASE_DIR"
     Expand-7ZIPFile -File $spartanReleaseZip -DestinationPath $SPARTAN_RELEASE_DIR
     Remove-File -Path $spartanReleaseZip -Fatal $false
