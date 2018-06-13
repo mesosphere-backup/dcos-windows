@@ -1,6 +1,9 @@
-*.h         eol=crlf
-*.cpp       eol=crlf
-*.rc        eol=crlf
-*.sln       eol=crlf
-*.vcproj    eol=crlf
-*.vcxproj   eol=crlf
+* text=auto
+*.h              eol=crlf
+*.cpp            eol=crlf
+*.rc             eol=crlf
+*.sln            eol=crlf
+*.vcproj         eol=crlf
+*.vcxproj        eol=crlf
+*.psm1      text eol=crlf
+*.psd1      text eol=crlf
