@@ -346,6 +346,9 @@ function Fetch-AgentBlobFiles {
     Remove-item $7ZipMsiFile -ErrorAction SilentlyContinue
     Write-Log "Downloading $7ZipMsiUrl to $7ZipMsiFile"
     Measure-Command { curl.exe --keepalive-time 2 -fLsS --retry 10 -Y 100000 -y 60 -o $7ZipMsiFile $7ZipMsiUrl}
+    if($LASTEXITCODE) {
+        Throw "Failed to download $7ZipMsiUrl"
+    }
 
     Write-Log "Installing 7-Zip"
     $7_ZIP_DIR = Join-Path $env:SystemDrive "7zip"
@@ -363,6 +366,9 @@ function Fetch-AgentBlobFiles {
     Remove-item $blobPath -ErrorAction SilentlyContinue
     Write-Log "Downloading $AgentBlobUrl to $blobPath"
     Measure-Command { curl.exe --keepalive-time 2 -fLsS --retry 10 -Y 100000 -y 60 -o $blobPath $AgentBlobUrl}
+    if($LASTEXITCODE) {
+        Throw "Failed to download $AgentBlobUrl"
+    }
 
     Write-Log "Extracting the agent blob @ $blobPath to $AGENT_BLOB_ROOT_DIR"
     Measure-Command { Expand-7ZIPFile -File $blobPath -DestinationPath $AGENT_BLOB_ROOT_DIR }

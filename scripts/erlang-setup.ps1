@@ -10,19 +10,6 @@ $variables = (Resolve-Path "$PSScriptRoot\variables.ps1").Path
 $TEMPLATES_DIR = Join-Path $PSScriptRoot "templates"
 
 
-
-function Install-VCredist {
-    Write-Log "Install VCredist 2013"
-    $installerPath = Join-Path $AGENT_BLOB_DEST_DIR $VCREDIST_2013_INSTALLER
-    Write-Log "Install VCredist 2013 from $installerPath"
-    $p = Start-Process -Wait -PassThru -FilePath $installerPath -ArgumentList @("/install", "/passive")
-    if ($p.ExitCode -ne 0) {
-        Throw ("Failed install VCredist 2013. Exit code: {0}" -f $p.ExitCode)
-    }
-    Write-Log "Finished to install VCredist 2013 x64"
-    Remove-File -Path $installerPath -Fatal $false
-}
-
 function Install-Erlang {
     New-Directory -RemoveExisting $ERLANG_DIR
     $erlangZip = Join-Path $AGENT_BLOB_DEST_DIR "erlang.zip"
@@ -40,7 +27,6 @@ function Install-Erlang {
 }
 
 try {
-    Install-VCredist
     Install-Erlang
 } catch {
     Write-Log $_.ToString()
