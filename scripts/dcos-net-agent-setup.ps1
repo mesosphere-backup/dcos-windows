@@ -156,7 +156,6 @@ function New-DCOSNetWindowsAgent {
                            -LogFile $logFile -WrapperPath $SERVICE_WRAPPER -EnvironmentFiles @($environmentFile) -BinaryPath "`"$erlBinary $dcosNetArguments`""
     Start-Service $DCOS_NET_SERVICE_NAME
     Set-DnsClientServerAddress -InterfaceAlias * -ServerAddresses $DCOS_NET_LOCAL_ADDRESSES
-    Set-DnsClientServerAddress -InterfaceIndex (Get-UpstreamInterfaceIndex) -ServerAddresses ($DCOS_NET_LOCAL_ADDRESSES + $upstreamDNS)
 }
 
 
