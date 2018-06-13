@@ -88,17 +88,24 @@ function Set-DCOSNetDevice {
     }
 }
 
-function Get-UpstreamDNSResolvers {
+function Get-UpstreamInterfaceIndex {
     <#
     .SYNOPSIS
-    Returns the DNS resolver(s) configured on the main interface
+    Returns the interface index of the main used interface
     #>
     $mainAddress = Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.IPAddress -eq $AgentPrivateIP }
     if(!$mainAddress) {
         Throw "Could not find any interface configured with the IP: $AgentPrivateIP"
     }
-    $mainInterfaceIndex = $mainAddress.InterfaceIndex
-    return (Get-DnsClientServerAddress -InterfaceIndex $mainInterfaceIndex).ServerAddresses
+    return ($mainAddress.InterfaceIndex)
+}
+
+function Get-UpstreamDNSResolvers {
+    <#
+    .SYNOPSIS
+    Returns the DNS resolver(s) configured on the main interface
+    #>
+    return (Get-DnsClientServerAddress -InterfaceIndex (Get-UpstreamInterfaceIndex)).ServerAddresses
 }
 
 function New-DCOSNetWindowsAgent {
@@ -106,7 +113,8 @@ function New-DCOSNetWindowsAgent {
     if(!(Test-Path $erlBinary)) {
         Throw "The erl binary $erlBinary doesn't exist. Cannot configure the dcos-net Windows agent"
     }
-    $upstreamDNSResolvers = Get-UpstreamDNSResolvers | ForEach-Object { "{{" + ($_.Split('.') -join ', ') + "}, 53}" }
+    $upstreamDNS = Get-UpstreamDNSResolvers
+    $upstreamDNSResolvers = $upstreamDNS | ForEach-Object { "{{" + ($_.Split('.') -join ', ') + "}, 53}" }
     $context = @{
         "exhibitor_url" = "http://master.mesos:${EXHIBITOR_PORT}/exhibitor/v1/cluster/status"
         "dns_zones_file" = ("${DCOS_NET_DIR}\data\zones.json" -replace '\\', '\\')
@@ -147,13 +155,8 @@ function New-DCOSNetWindowsAgent {
     New-DCOSWindowsService -Name $DCOS_NET_SERVICE_NAME -DisplayName $DCOS_NET_SERVICE_DISPLAY_NAME -Description $DCOS_NET_SERVICE_DESCRIPTION `
                            -LogFile $logFile -WrapperPath $SERVICE_WRAPPER -EnvironmentFiles @($environmentFile) -BinaryPath "`"$erlBinary $dcosNetArguments`""
     Start-Service $DCOS_NET_SERVICE_NAME
-
-    # Set new DNS server address only on dcos-net interface
-    $dcosNetDevice = Get-NetAdapter -Name $DCOS_NET_DEVICE_NAME -ErrorAction SilentlyContinue
-    if(!$dcosNetDevice) {
-        Throw "dcos-net network device was not found"
-    }
-    Set-DnsClientServerAddress -InterfaceAlias "$DCOS_NET_DEVICE_NAME" -ServerAddresses $DCOS_NET_LOCAL_ADDRESSES
+    Set-DnsClientServerAddress -InterfaceAlias * -ServerAddresses $DCOS_NET_LOCAL_ADDRESSES
+    Set-DnsClientServerAddress -InterfaceIndex (Get-UpstreamInterfaceIndex) -ServerAddresses ($DCOS_NET_LOCAL_ADDRESSES + $upstreamDNS)
 }
 
 
