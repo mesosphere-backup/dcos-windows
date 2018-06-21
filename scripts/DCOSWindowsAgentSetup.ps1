@@ -343,7 +343,7 @@ function Fetch-AgentBlobFiles {
     $7ZipFileName = "7z1801-x64.msi"
     $7ZipMsiUrl = "$BootstrapUrl/$7ZipFileName"
     $7ZipMsiFile = Join-Path $env:TEMP $7ZipFileName
-    Remove-item $7ZipMsiFile -ErrorAction SilentlyContinue
+    Remove-Item $7ZipMsiFile -ErrorAction SilentlyContinue
     Write-Log "Downloading $7ZipMsiUrl to $7ZipMsiFile"
     Measure-Command { curl.exe --keepalive-time 2 -fLsS --retry 10 -Y 100000 -y 60 -o $7ZipMsiFile $7ZipMsiUrl}
     if($LASTEXITCODE) {
@@ -363,7 +363,7 @@ function Fetch-AgentBlobFiles {
     Write-Log "Download AgentBlob"
     $AgentBlobUrl = "$BootstrapUrl/windowsAgentBlob.zip"
     $blobPath = Join-Path $env:TEMP "windowsAgentBlob.zip"
-    Remove-item $blobPath -ErrorAction SilentlyContinue
+    Remove-Item $blobPath -ErrorAction SilentlyContinue
     Write-Log "Downloading $AgentBlobUrl to $blobPath"
     Measure-Command { curl.exe --keepalive-time 2 -fLsS --retry 10 -Y 100000 -y 60 -o $blobPath $AgentBlobUrl}
     if($LASTEXITCODE) {
@@ -372,7 +372,7 @@ function Fetch-AgentBlobFiles {
 
     Write-Log "Extracting the agent blob @ $blobPath to $AGENT_BLOB_ROOT_DIR"
     Measure-Command { Expand-7ZIPFile -File $blobPath -DestinationPath $AGENT_BLOB_ROOT_DIR }
-    Remove-item $blobPath -ErrorAction SilentlyContinue
+    Remove-Item $blobPath -ErrorAction SilentlyContinue
     Write-Log "Exit Fetch-AgentBlobFiles"
 }
 
