@@ -216,8 +216,8 @@ function Configure-Docker{
     Set-Content -Path "${DOCKER_DATA}\config\daemon.json" -Value '{ "bridge" : "none" }' -Encoding Ascii
 
     # update Docker binaries
-    Copy-item "$AGENT_BLOB_DEST_DIR\docker.exe" "${DOCKER_HOME}\docker.exe" -Force
-    Copy-item "$AGENT_BLOB_DEST_DIR\dockerd.exe" "${DOCKER_HOME}\dockerd.exe" -Force
+    Start-ExecuteWithRetry { Copy-item "$AGENT_BLOB_DEST_DIR\docker.exe" "${DOCKER_HOME}\docker.exe" -Force }
+    Start-ExecuteWithRetry { Copy-item "$AGENT_BLOB_DEST_DIR\dockerd.exe" "${DOCKER_HOME}\dockerd.exe" -Force }
 
     $dockerServiceObj = Start-Service $DOCKER_SERVICE_NAME -PassThru
     $dockerServiceObj.WaitForStatus('Running','00:03:00')
