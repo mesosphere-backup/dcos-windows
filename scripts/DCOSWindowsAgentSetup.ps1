@@ -58,7 +58,7 @@ function Install-VCredist {
         Throw ("Failed install VCredist $Installer. Exit code: {0}" -f $p.ExitCode)
     }
     Write-Log "Finished to install VCredist: $Installer"
-    Remove-Item -Recurse -Force $installerPath
+    Remove-Item -Recurse -Force $installerPath -ErrorAction SilentlyContinue
     Write-Log "Exit Install-VCredist"
 }
 
@@ -357,7 +357,7 @@ function Fetch-AgentBlobFiles {
         throw "failed to install 7zip"
     }
     Add-ToSystemPath $7_ZIP_DIR
-    Remove-Item $7ZipMsiFile
+    Remove-Item $7ZipMsiFile -ErrorAction SilentlyContinue
     Write-Log "7-Zip installed"
 
     Write-Log "Download AgentBlob"
