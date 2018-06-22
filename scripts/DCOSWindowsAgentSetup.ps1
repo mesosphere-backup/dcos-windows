@@ -17,7 +17,9 @@ Param(
     [AllowNull()]
     [string]$MesosWorkDir,
     [AllowNull()]
-    [string]$customAttrs
+    [string]$customAttrs,
+    [AllowNull()]
+    [string]$DcosVersion = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -301,13 +303,14 @@ function New-DCOSEnvironmentFile {
     if(!(Test-Path -Path $DCOS_DIR)) {
         New-Item -ItemType "Directory" -Path $DCOS_DIR
     }
-    $masterIPs = Get-MasterIPs
-    Write-Log "Trying to find the DC/OS version by querying the API of the masters: $($masterIPs -join ', ')"
-    $dcosVersion = ""
-    Get-DCOSVersion -Reference ([ref] $dcosVersion)
+    if($DcosVersion -eq "") {
+        $masterIPs = Get-MasterIPs
+        Write-Log "Trying to find the DC/OS version by querying the API of the masters: $($masterIPs -join ', ')"
+        Get-DCOSVersion -Reference ([ref] $DcosVersion)
+    }
     Set-Content -Path $GLOBAL_ENV_FILE -Value @(
         "PROVIDER=azure",
-        "DCOS_VERSION=${dcosVersion}"
+        "DCOS_VERSION=${DcosVersion}"
     )
     Write-Log "Exit New-DCOSEnvironmentFile"
 }
@@ -385,7 +388,7 @@ function Install-CommonComponents {
 }
 
 try {
-    Write-Log "Setting up DCOS Windows Agent"
+    Write-Log "Setting up DCOS Windows Agent DcosVersion=[$DcosVersion]"
     Fetch-AgentBlobFiles
     Install-CommonComponents
     Configure-Docker
@@ -394,9 +397,7 @@ try {
     New-DCOSMastersListFile
     New-DCOSServiceWrapper
     Install-MesosAgent
-    $dcosVersion = ""
-    Get-DCOSVersion -Reference ([ref] $dcosVersion)
-    if($dcosVersion.StartsWith("1.8") -or $dcosVersion.StartsWith("1.9") -or $dcosVersion.StartsWith("1.10")) {
+    if($DcosVersion.StartsWith("1.8") -or $DcosVersion.StartsWith("1.9") -or $DcosVersion.StartsWith("1.10")) {
         Install-ErlangRuntime
         Install-EPMDAgent
         Install-SpartanAgent
