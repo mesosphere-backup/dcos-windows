@@ -376,6 +376,8 @@ function Fetch-AgentBlobFiles {
     Write-Log "Extracting the agent blob @ $blobPath to $AGENT_BLOB_ROOT_DIR"
     Measure-Command { Expand-7ZIPFile -File $blobPath -DestinationPath $AGENT_BLOB_ROOT_DIR }
     Remove-Item $blobPath -ErrorAction SilentlyContinue
+    # Add extracted root directory to the current PATH. This is useful for calling utility binaries (i.e. logging)
+    $env:PATH += ";${AGENT_BLOB_ROOT_DIR}"
     Write-Log "Exit Fetch-AgentBlobFiles"
 }
 

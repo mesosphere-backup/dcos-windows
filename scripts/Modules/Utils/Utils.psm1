@@ -262,6 +262,10 @@ function Remove-File {
         }
         Write-Log "WARNING: $($_.ToString())"
         Write-Log "WARNING: Failed to remove file: $Path"
+        # This is a non-fatal command. It is used just for logging purposes
+        Write-Log "WARNING: Trying to fetch data on who is blocking the file removal"
+        handles.exe $Path
+        Write-Log "================================================================="
     }
 }
 
