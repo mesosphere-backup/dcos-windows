@@ -29,7 +29,7 @@ $variables = (Resolve-Path "$PSScriptRoot\variables.ps1").Path
 . $variables
 
 
-$TEMPLATES_DIR = Join-Path $PSScriptRoot "templates"
+$TEMPLATES_DIR = Join-Path $PSScriptRoot "Templates"
 $SPARTAN_LATEST_RELEASE_URL = "$LOG_SERVER_BASE_URL/spartan-build/master/latest/release.zip"
 
 
