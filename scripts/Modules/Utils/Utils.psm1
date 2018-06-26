@@ -281,16 +281,15 @@ function Write-Log {
     Write-Output $msg
 }
 
-function Expand-7ZIPFile
-{
+function Expand-7ZIPFile {
     Param(
+        [Parameter(Mandatory=$true)]
         [string]$File,
+        [Parameter(Mandatory=$true)]
         [string]$DestinationPath
     )
-    $7ZipDir = Join-Path $env:SystemDrive "7zip"
-    $7zipBinnary = Join-Path $7ZipDir  "7z.exe"
-    & $7zipBinnary x $File -mmt8 $("-o" + $DestinationPath)
+    7z.exe x $File -mmt8 $("-o" + $DestinationPath)
     if($LASTEXITCODE) {
         Throw "Failed to expand $File"
-    }    
+    }
 }
