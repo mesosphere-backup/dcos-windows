@@ -15,7 +15,11 @@
 
 $templating = (Resolve-Path "$PSScriptRoot\..\Templating").Path
 Import-Module $templating
-filter Timestamp {"[$(Get-Date -Format o)] $_"}
+
+
+filter Timestamp {
+    "[$(Get-Date -Format o)] $_"
+}
 
 function Start-ExternalCommand {
     <#
@@ -269,9 +273,11 @@ function Remove-File {
     }
 }
 
-function Write-Log($message)
-{
-    $msg = $message | Timestamp
+function Write-Log {
+    Param(
+        [string]$Message
+    )
+    $msg = $Message | Timestamp
     Write-Output $msg
 }
 
