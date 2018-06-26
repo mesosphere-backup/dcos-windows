@@ -15,6 +15,8 @@
 
 Param(
     [Parameter(Mandatory=$true)]
+    [string]$AgentBlobDirectory,
+    [Parameter(Mandatory=$true)]
     [string[]]$MasterAddress,
     [string]$AgentPrivateIP,
     [switch]$Public=$false,
@@ -51,7 +53,7 @@ function New-MesosEnvironment {
 }
 
 function Install-MesosBinaries {
-    $binariesPath = Join-Path $AGENT_BLOB_DEST_DIR "mesos.zip"
+    $binariesPath = Join-Path $AgentBlobDirectory "mesos.zip"
     Write-Log "Extracting $binariesPath to $MESOS_BIN_DIR"
     Expand-7ZIPFile -File $binariesPath -DestinationPath $MESOS_BIN_DIR
     Add-ToSystemPath $MESOS_BIN_DIR

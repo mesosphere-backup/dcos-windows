@@ -13,6 +13,11 @@
 #    under the License.
 #
 
+Param(
+    [Parameter(Mandatory=$true)]
+    [string]$AgentBlobDirectory
+)
+
 $ErrorActionPreference = "Stop"
 
 $utils = (Resolve-Path "$PSScriptRoot\Modules\Utils").Path
@@ -39,7 +44,7 @@ function New-MetricsEnvironment {
 }
 
 function Install-MetricsFiles {
-    $filesPath = Join-Path $AGENT_BLOB_DEST_DIR "metrics.zip"
+    $filesPath = Join-Path $AgentBlobDirectory "metrics.zip"
     Write-Log "Extracting $filesPath to $METRICS_DIR"
     Expand-7ZIPFile -File $filesPath -DestinationPath $METRICS_DIR
     
