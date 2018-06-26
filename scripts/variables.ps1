@@ -15,6 +15,7 @@ $SERVICE_WRAPPER_FILE = "service-wrapper.exe"
 $SERVICE_WRAPPER = Join-Path $DCOS_DIR $SERVICE_WRAPPER_FILE
 $GLOBAL_ENV_FILE = Join-Path $DCOS_DIR "environment"
 $MASTERS_LIST_FILE = Join-Path $DCOS_DIR "master_list"
+$DCOS_NAT_NETWORK_NAME = "dcosnat"
 
 # Mesos configurations
 $MESOS_SERVICE_NAME = "dcos-mesos-slave"
