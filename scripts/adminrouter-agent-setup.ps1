@@ -29,7 +29,7 @@ Import-Module $utils
 $variables = (Resolve-Path "$PSScriptRoot\variables.ps1").Path
 . $variables
 
-$TEMPLATES_DIR = Join-Path $PSScriptRoot "templates"
+$TEMPLATES_DIR = Join-Path $PSScriptRoot "Templates"
 $WINDOWS_APACHEL_HTTP_SERVER_SHA256 = "A9F94DBA6AFFE3BD98FEC01EF77DC932C123E25E360D29D970CC2CDD9F5BA237"
 
 function New-AdminRouterEnvironment {
