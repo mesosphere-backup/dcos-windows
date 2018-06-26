@@ -15,6 +15,8 @@
 
 Param(
     [Parameter(Mandatory=$true)]
+    [string]$AgentBlobDirectory,
+    [Parameter(Mandatory=$true)]
     [string[]]$MasterAddress,
     [string]$AgentPrivateIP,
     [switch]$Public=$false
@@ -43,7 +45,7 @@ function New-Environment {
     New-Directory $SPARTAN_RELEASE_DIR
     New-Directory $SPARTAN_SERVICE_DIR
     New-Directory $SPARTAN_LOG_DIR
-    $spartanReleaseZip = Join-Path $AGENT_BLOB_DEST_DIR "spartan.zip"
+    $spartanReleaseZip = Join-Path $AgentBlobDirectory "spartan.zip"
     Write-Log "Extracting $spartanReleaseZip to $SPARTAN_RELEASE_DIR"
     Expand-7ZIPFile -File $spartanReleaseZip -DestinationPath $SPARTAN_RELEASE_DIR
     Remove-File -Path $spartanReleaseZip -Fatal $false
@@ -54,7 +56,7 @@ function Install-SpartanDevice {
     if($spartanDevice) {
         return
     }
-    $devCon = Join-Path $AGENT_BLOB_DEST_DIR "devcon.exe"
+    $devCon = Join-Path $AgentBlobDirectory "devcon.exe"
     Write-Log "Creating the Spartan network device"
     Start-ExternalCommand { & $devCon install "${env:windir}\Inf\Netloop.inf" "*MSLOOP" } -ErrorMessage "Failed to install the Spartan dummy interface"
     Remove-File -Path $devCon -Fatal $false

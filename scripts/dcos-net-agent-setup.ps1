@@ -15,6 +15,8 @@
 
 Param(
     [Parameter(Mandatory=$true)]
+    [string]$AgentBlobDirectory,
+    [Parameter(Mandatory=$true)]
     [string]$AgentPrivateIP
 )
 
@@ -34,7 +36,7 @@ function Install-VCredist {
         [Parameter(Mandatory=$true)]
         [string]$Installer
     )
-    $installerPath = Join-Path $AGENT_BLOB_DEST_DIR $Installer
+    $installerPath = Join-Path $AgentBlobDirectory $Installer
     Write-Log "Install VCredist from $installerPath"
     $p = Start-Process -Wait -PassThru -FilePath $installerPath -ArgumentList @("/install", "/passive")
     if($p.ExitCode -ne 0) {
@@ -47,7 +49,7 @@ function Install-VCredist {
 function New-Environment {
     New-Directory -RemoveExisting $DCOS_NET_DIR
     New-Directory $DCOS_NET_SERVICE_DIR
-    $zipPkg = Join-Path $AGENT_BLOB_DEST_DIR "dcos-net.zip"
+    $zipPkg = Join-Path $AgentBlobDirectory "dcos-net.zip"
     Write-Log "Expanding $zipPkg"
     Write-Log "Extracting dcos-net zip archive to $DCOS_NET_DIR"
     Expand-7ZIPFile -File $zipPkg -DestinationPath $DCOS_NET_DIR
@@ -71,7 +73,7 @@ function Install-DCOSNetDevice {
         return
     }
     Write-Log "Install DCOS-NET device with $devConBinary"
-    $devConBinary = Join-Path $AGENT_BLOB_DEST_DIR "devcon.exe"
+    $devConBinary = Join-Path $AgentBlobDirectory "devcon.exe"
 
     Write-Log "Creating the dcos-net network device"
     Start-ExternalCommand { & $devConBinary install "${env:windir}\Inf\Netloop.inf" "*MSLOOP" } -ErrorMessage "Failed to install the dcos-net dummy interface"

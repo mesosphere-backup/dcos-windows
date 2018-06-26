@@ -13,6 +13,11 @@
 #    under the License.
 #
 
+Param(
+    [Parameter(Mandatory=$true)]
+    [string]$AgentBlobDirectory
+)
+
 $ErrorActionPreference = "Stop"
 
 $utils = (Resolve-Path "$PSScriptRoot\Modules\Utils").Path
@@ -27,7 +32,7 @@ $TEMPLATES_DIR = Join-Path $PSScriptRoot "Templates"
 
 function Install-Erlang {
     New-Directory -RemoveExisting $ERLANG_DIR
-    $erlangZip = Join-Path $AGENT_BLOB_DEST_DIR "erlang.zip"
+    $erlangZip = Join-Path $AgentBlobDirectory "erlang.zip"
     Write-Log "Extracting the Windows Erlang zip @ $erlangZip to $ERLANG_DIR"
     Expand-7ZIPFile -File $erlangZip -DestinationPath $ERLANG_DIR
     Remove-File -Path $erlangZip -Fatal $false

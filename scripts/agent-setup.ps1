@@ -16,6 +16,8 @@
 [CmdletBinding(DefaultParameterSetName="Standard")]
 Param(
     [ValidateNotNullOrEmpty()]
+    [string]$AgentBlobDirectory,
+    [ValidateNotNullOrEmpty()]
     [string[]]$MasterIPs,
     [ValidateNotNullOrEmpty()]
     [string]$AgentPrivateIP,
@@ -44,7 +46,7 @@ function Install-VCredist {
         [string]$Installer
     )
     Write-Log "Enter Install-VCredist"
-    $installerPath = Join-Path $AGENT_BLOB_DEST_DIR $Installer
+    $installerPath = Join-Path $AgentBlobDirectory $Installer
     Write-Log "Install VCredist from $installerPath"
     $p = Start-Process -Wait -PassThru -FilePath $installerPath -ArgumentList @("/install", "/passive")
     if($p.ExitCode -ne 0) {
@@ -57,8 +59,9 @@ function Install-VCredist {
 
 function Install-MesosAgent {
     Write-Log "Enter Install-MesosAgent"
-    & "$AGENT_BLOB_DEST_DIR\scripts\mesos-agent-setup.ps1" -MasterAddress $MasterIPs -AgentPrivateIP $AgentPrivateIP `
-                                                           -Public:$isPublic -CustomAttributes $customAttrs
+    & "${AgentBlobDirectory}\scripts\mesos-agent-setup.ps1" -AgentBlobDirectory $AgentBlobDirectory `
+                                                            -MasterAddress $MasterIPs -AgentPrivateIP $AgentPrivateIP `
+                                                            -Public:$isPublic -CustomAttributes $customAttrs
     if($LASTEXITCODE) {
         Throw "Failed to setup the DCOS Mesos Windows slave agent"
     }
@@ -66,21 +69,21 @@ function Install-MesosAgent {
 }
 
 function Install-ErlangRuntime {
-    & "$AGENT_BLOB_DEST_DIR\scripts\erlang-setup.ps1"
+    & "${AgentBlobDirectory}\scripts\erlang-setup.ps1" -AgentBlobDirectory $AgentBlobDirectory
     if($LASTEXITCODE) {
         Throw "Failed to setup the Windows Erlang runtime"
     }
 }
 
 function Install-EPMDAgent {
-    & "$AGENT_BLOB_DEST_DIR\scripts\epmd-agent-setup.ps1"
+    & "${AgentBlobDirectory}\scripts\epmd-agent-setup.ps1"
     if($LASTEXITCODE) {
         Throw "Failed to setup the DCOS EPMD Windows agent"
     }
 }
 
 function Install-SpartanAgent {
-    & "$AGENT_BLOB_DEST_DIR\scripts\spartan-agent-setup.ps1" -MasterAddress $MasterIPs -AgentPrivateIP $AgentPrivateIP -Public:$isPublic
+    & "${AgentBlobDirectory}\scripts\spartan-agent-setup.ps1" -AgentBlobDirectory $AgentBlobDirectory -MasterAddress $MasterIPs -AgentPrivateIP $AgentPrivateIP -Public:$isPublic
     if($LASTEXITCODE) {
         Throw "Failed to setup the DCOS Spartan Windows agent"
     }
@@ -88,7 +91,7 @@ function Install-SpartanAgent {
 
 function Install-AdminRouterAgent {
     Write-Log "Enter Install-AdminRouterAgent"
-    & "$AGENT_BLOB_DEST_DIR\scripts\adminrouter-agent-setup.ps1" -AgentPrivateIP $AgentPrivateIP
+    & "${AgentBlobDirectory}\scripts\adminrouter-agent-setup.ps1" -AgentBlobDirectory $AgentBlobDirectory -AgentPrivateIP $AgentPrivateIP
     if($LASTEXITCODE) {
         Throw "Failed to setup the DCOS AdminRouter Windows agent"
     }
@@ -100,7 +103,7 @@ function Install-DiagnosticsAgent {
         [bool]$IncludeMatricsService
     )
     Write-Log "Enter Install-DiagnosticsAgent"
-    & "$AGENT_BLOB_DEST_DIR\scripts\diagnostics-agent-setup.ps1" -IncludeMetricsToMonitoredSericeList $IncludeMatricsService
+    & "${AgentBlobDirectory}\scripts\diagnostics-agent-setup.ps1" -AgentBlobDirectory $AgentBlobDirectory -IncludeMetricsToMonitoredSericeList $IncludeMatricsService
     if($LASTEXITCODE) {
         Throw "Failed to setup the DCOS Diagnostics Windows agent"
     }
@@ -109,7 +112,7 @@ function Install-DiagnosticsAgent {
 
 function Install-DCOSNetAgent {
     Write-Log "Enter Install-DCOSNetAgent"
-    & "$AGENT_BLOB_DEST_DIR\scripts\dcos-net-agent-setup.ps1" -AgentPrivateIP $AgentPrivateIP
+    & "${AgentBlobDirectory}\scripts\dcos-net-agent-setup.ps1" -AgentBlobDirectory $AgentBlobDirectory -AgentPrivateIP $AgentPrivateIP
     if($LASTEXITCODE) {
         Throw "Failed to setup the dcos-net Windows agent"
     }
@@ -118,7 +121,7 @@ function Install-DCOSNetAgent {
 
 function Install-MetricsAgent {
     Write-Log "Enter Install-MetricsAgent"
-    & "$AGENT_BLOB_DEST_DIR\scripts\metrics-agent-setup.ps1"
+    & "${AgentBlobDirectory}\scripts\metrics-agent-setup.ps1" -AgentBlobDirectory $AgentBlobDirectory
     if($LASTEXITCODE) {
         Throw "Failed to setup the DCOS Metrics Windows agent"
     }
@@ -142,8 +145,8 @@ function Start-DockerConfiguration {
     Set-Content -Path "${DOCKER_DATA}\config\daemon.json" -Value '{ "bridge" : "none" }' -Encoding Ascii
 
     # update Docker binaries
-    Start-ExecuteWithRetry { Copy-item "$AGENT_BLOB_DEST_DIR\docker.exe" "${DOCKER_HOME}\docker.exe" -Force }
-    Start-ExecuteWithRetry { Copy-item "$AGENT_BLOB_DEST_DIR\dockerd.exe" "${DOCKER_HOME}\dockerd.exe" -Force }
+    Start-ExecuteWithRetry { Copy-item "${AgentBlobDirectory}\docker.exe" "${DOCKER_HOME}\docker.exe" -Force }
+    Start-ExecuteWithRetry { Copy-item "${AgentBlobDirectory}\dockerd.exe" "${DOCKER_HOME}\dockerd.exe" -Force }
 
     # start Docker Windows Service
     $dockerServiceObj = Start-Service $DOCKER_SERVICE_NAME -PassThru
@@ -252,7 +255,7 @@ function New-DCOSServiceWrapper {
         New-Item -ItemType "Directory" -Path $parent
     }
     Write-Log "Copying $SERVICE_WRAPPER_FILE file"
-    Copy-item "$AGENT_BLOB_DEST_DIR\$SERVICE_WRAPPER_FILE" $SERVICE_WRAPPER -Force
+    Copy-item "${AgentBlobDirectory}\$SERVICE_WRAPPER_FILE" $SERVICE_WRAPPER -Force
     Write-Log "Exit New-DCOSServiceWrapper"
 }
 

@@ -14,7 +14,9 @@
 #
 
 Param(
-    [bool]$IncludeMetricsToMonitoredSericeList 
+    [Parameter(Mandatory=$true)]
+    [string]$AgentBlobDirectory,
+    [bool]$IncludeMetricsToMonitoredSericeList
 )
 
 $ErrorActionPreference = "Stop"
@@ -41,7 +43,7 @@ function New-DiagnosticsEnvironment {
 }
 
 function Install-DiagnosticsFiles {
-    $filesPath = Join-Path $AGENT_BLOB_DEST_DIR "diagnostics.zip"
+    $filesPath = Join-Path $AgentBlobDirectory "diagnostics.zip"
     Write-Log "Extracting $filesPath to $DIAGNOSTICS_DIR"
     Expand-7ZIPFile -File $filesPath -DestinationPath $DIAGNOSTICS_DIR
 

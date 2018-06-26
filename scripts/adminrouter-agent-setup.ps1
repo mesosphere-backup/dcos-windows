@@ -20,6 +20,8 @@
 #======================================================================================
 Param(
     [Parameter(Mandatory=$true)]
+    [string]$AgentBlobDirectory,
+    [Parameter(Mandatory=$true)]
     [string]$AgentPrivateIP
 )
 
@@ -47,7 +49,7 @@ function New-AdminRouterEnvironment {
 }
 
 function Expand-ApacheServerPackage {
-    $filesPath = Join-Path $AGENT_BLOB_DEST_DIR "httpd-2.4.33-win64-VC15.zip"
+    $filesPath = Join-Path $AgentBlobDirectory "httpd-2.4.33-win64-VC15.zip"
     Write-Log "Expanding Apache HTTP Server zip file $filesPath"
 
     # To be sure that a download is intact and has not been tampered with from the original download side
