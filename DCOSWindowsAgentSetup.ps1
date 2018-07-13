@@ -103,7 +103,7 @@ function Invoke-CurlRequest {
         [int]$RetryCount=10
     )
     Start-ExecuteWithRetry -ScriptBlock {
-        curl.exe -o `"$Destination`" `"$URL`"
+        curl.exe -s -o `"$Destination`" `"$URL`"
         if($LASTEXITCODE) {
             Throw "Fail to download $URL to destination $Destination"
         }
