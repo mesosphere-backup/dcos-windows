@@ -103,7 +103,7 @@ function Invoke-CurlRequest {
         [int]$RetryCount=10
     )
     Start-ExecuteWithRetry -ScriptBlock {
-        curl.exe -o `"$Destination`" `"$URL`"
+        curl.exe -s -o `"$Destination`" `"$URL`"
         if($LASTEXITCODE) {
             Throw "Fail to download $URL to destination $Destination"
         }
@@ -119,7 +119,7 @@ function Install-7Zip {
         Remove-Item -Recurse -Force $7ZipMsiFile
     }
     Write-Log "Downloading $7ZipMsiUrl to $7ZipMsiFile"
-    Measure-Command { Invoke-CurlRequest -URL $7ZipMsiUrl -Destination $7ZipMsiFile }
+    Invoke-CurlRequest -URL $7ZipMsiUrl -Destination $7ZipMsiFile
     Write-Log "7-Zip finished downloading"
     Write-Log "Installing 7-Zip"
     $parameters = @{
@@ -193,9 +193,9 @@ function Get-AgentBlobFiles {
         Remove-Item -Recurse -Force $blobPath
     }
     Write-Log "Downloading $AgentBlobUrl to $blobPath"
-    Measure-Command { Invoke-CurlRequest -URL $AgentBlobUrl -Destination $blobPath }
+    Invoke-CurlRequest -URL $AgentBlobUrl -Destination $blobPath
     Write-Log "Extracting the agent blob from $blobPath to $AGENT_BLOB_ROOT_DIR"
-    Measure-Command { Expand-7ZIPFile -File $blobPath -DestinationPath $AGENT_BLOB_ROOT_DIR }
+    Expand-7ZIPFile -File $blobPath -DestinationPath $AGENT_BLOB_ROOT_DIR
     Remove-Item $blobPath -ErrorAction SilentlyContinue
     # Add extracted root directory to the current PATH. This is useful for calling utility binaries (i.e. logging)
     $env:PATH += ";${AGENT_BLOB_DIR}"
