@@ -4,6 +4,7 @@ $ERLANG_URL = "$LOG_SERVER_BASE_URL/downloads/erl8.3.zip"
 $ZOOKEEPER_PORT = 2181
 $EXHIBITOR_PORT = 8181
 $DCOS_DIR = Join-Path $env:SystemDrive "DCOS"
+$DCOS_ETC_DIR = Join-Path $env:SystemDrive "DCOS-etc"
 $ERLANG_DIR = Join-Path $DCOS_DIR "erl8.3"
 $ERTS_DIR = Join-Path $ERLANG_DIR "erts-8.3"
 $DOCKER_HOME = Join-Path $env:ProgramFiles "Docker"
@@ -25,6 +26,8 @@ $MESOS_BIN_DIR = Join-Path $MESOS_DIR "bin"
 $MESOS_WORK_DIR = Join-Path $MESOS_DIR "work"
 $MESOS_LOG_DIR = Join-Path $MESOS_DIR "log"
 $MESOS_SERVICE_DIR = Join-Path $MESOS_DIR "service"
+$MESOS_ETC_DIR = Join-Path $DCOS_ETC_DIR "mesos"
+$MESOS_ETC_SERVICE_DIR = Join-Path $MESOS_ETC_DIR "service"
 # From documentation:
 # Amount of time to wait for an executor to register with the slave
 # before considering it hung and shutting it down (e.g., 60secs, 3mins, etc)

@@ -102,7 +102,7 @@ function New-MesosWindowsAgent {
     if($Public) {
         $mesosAgentArguments += " --default_role=`"slave_public`""
     }
-    $environmentFile = Join-Path $MESOS_SERVICE_DIR "environment-file"
+    $environmentFile = Join-Path $MESOS_ETC_SERVICE_DIR "environment-file"
     if (!(Test-Path $environmentFile))
     {
       Set-Content -Path $environmentFile -Value @(
