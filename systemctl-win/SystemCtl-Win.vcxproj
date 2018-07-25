@@ -110,7 +110,6 @@
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="Source.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\service_control.cpp" />
     <ClCompile Include="src\service_unit.cpp" />
