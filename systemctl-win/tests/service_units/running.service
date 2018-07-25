@@ -1,0 +1,8 @@
+[Unit]
+Description=RunningService
+
+[Service]
+Restart=always
+StartLimitInterval=0
+RestartSec=2
+ExecStart=pwsh.exe -command c:/tmp/scriptforever.ps1
