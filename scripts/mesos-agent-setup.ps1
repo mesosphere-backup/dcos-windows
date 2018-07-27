@@ -101,6 +101,13 @@ function New-MesosWindowsAgent {
                            " --executor_environment_variables=`"{\\\`"PATH\\\`": \\\`"${mesosPath}\\\`"}`"")
     if($Public) {
         $mesosAgentArguments += " --default_role=`"slave_public`""
+        $serviceName = $MESOS_PUBLIC_SERVICE_NAME
+        $displayName = $MESOS_PUBLIC_SERVICE_DISPLAY_NAME
+        $description = $MESOS_PUBLIC_SERVICE_DESCRIPTION
+    } else {
+        $serviceName = $MESOS_SERVICE_NAME
+        $displayName = $MESOS_SERVICE_DISPLAY_NAME
+        $description = $MESOS_SERVICE_DESCRIPTION
     }
     $environmentFile = Join-Path $MESOS_ETC_SERVICE_DIR "environment-file"
     if (!(Test-Path $environmentFile))
@@ -110,8 +117,9 @@ function New-MesosWindowsAgent {
           "MESOS_AUTHENTICATE_HTTP_READWRITE=false"
       )
     }
-    New-DCOSWindowsService -Name $MESOS_SERVICE_NAME -DisplayName $MESOS_SERVICE_DISPLAY_NAME -Description $MESOS_SERVICE_DESCRIPTION `
-                           -LogFile $logFile -WrapperPath $SERVICE_WRAPPER -BinaryPath "$mesosBinary $mesosAgentArguments" -EnvironmentFiles @($environmentFile)
+    New-DCOSWindowsService -Name $serviceName -DisplayName $displayName -Description $description `
+                           -LogFile $logFile -WrapperPath $SERVICE_WRAPPER -BinaryPath "$mesosBinary $mesosAgentArguments" `
+                           -EnvironmentFiles @($environmentFile)
     Start-Service $MESOS_SERVICE_NAME
 }
 
