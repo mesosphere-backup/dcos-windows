@@ -103,7 +103,9 @@ function Install-DiagnosticsAgent {
         [bool]$IncludeMatricsService
     )
     Write-Log "Enter Install-DiagnosticsAgent"
-    & "${AgentBlobDirectory}\scripts\diagnostics-agent-setup.ps1" -AgentBlobDirectory $AgentBlobDirectory -IncludeMetricsToMonitoredSericeList $IncludeMatricsService
+    & "${AgentBlobDirectory}\scripts\diagnostics-agent-setup.ps1" -AgentBlobDirectory $AgentBlobDirectory `
+                                                                  -IncludeMetricsToMonitoredSericeList $IncludeMatricsService `
+                                                                  -Public:$isPublic
     if($LASTEXITCODE) {
         Throw "Failed to setup the DCOS Diagnostics Windows agent"
     }
