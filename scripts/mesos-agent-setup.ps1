@@ -111,6 +111,9 @@ function New-MesosWindowsAgent {
     }
     $environmentFile = Join-Path $MESOS_ETC_SERVICE_DIR "environment-file"
     if (!(Test-Path $environmentFile)) {
+        if(!(Test-Path $MESOS_ETC_SERVICE_DIR)) {
+            New-Item -ItemType "Directory" -Path $MESOS_ETC_SERVICE_DIR -Force
+        }
         Set-Content -Path $environmentFile -Value @(
             "MESOS_AUTHENTICATE_HTTP_READONLY=false",
             "MESOS_AUTHENTICATE_HTTP_READWRITE=false"
