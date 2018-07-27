@@ -110,12 +110,11 @@ function New-MesosWindowsAgent {
         $description = $MESOS_SERVICE_DESCRIPTION
     }
     $environmentFile = Join-Path $MESOS_ETC_SERVICE_DIR "environment-file"
-    if (!(Test-Path $environmentFile))
-    {
-      Set-Content -Path $environmentFile -Value @(
-          "MESOS_AUTHENTICATE_HTTP_READONLY=false",
-          "MESOS_AUTHENTICATE_HTTP_READWRITE=false"
-      )
+    if (!(Test-Path $environmentFile)) {
+        Set-Content -Path $environmentFile -Value @(
+            "MESOS_AUTHENTICATE_HTTP_READONLY=false",
+            "MESOS_AUTHENTICATE_HTTP_READWRITE=false"
+        )
     }
     New-DCOSWindowsService -Name $serviceName -DisplayName $displayName -Description $description `
                            -LogFile $logFile -WrapperPath $SERVICE_WRAPPER -BinaryPath "$mesosBinary $mesosAgentArguments" `
