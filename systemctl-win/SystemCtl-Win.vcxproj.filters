@@ -24,5 +24,12 @@
     <ClCompile Include="src\service_unit.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\service_control.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
+    <None Include="packages\boost.1.67.0.0\boost.1.67.0.0.nupkg" />
   </ItemGroup>
 </Project>

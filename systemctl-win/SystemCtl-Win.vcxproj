@@ -116,12 +116,8 @@
     <ClCompile Include="src\service_unit.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="exec\systemd-exec.vcxproj" />
     <None Include="packages.config" />
-    <None Include="packages\boost.1.66.0.0\boost.1.66.0.0.nupkg" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="exec\systemd-exec.h" />
+    <None Include="packages\boost.1.67.0.0\boost.1.67.0.0.nupkg" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
