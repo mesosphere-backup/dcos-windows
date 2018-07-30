@@ -266,7 +266,7 @@ CWrapperService::GetServiceDependencies()
         wostringstream os;
         int last_error = GetLastError();
         os << L"WaitForDependents could not open service manager win err = " << last_error << std::endl;
-	*logfile << os.str();
+        *logfile << os.str();
         throw ServiceManagerException(last_error, os.str().c_str());
     }
 
@@ -275,7 +275,7 @@ CWrapperService::GetServiceDependencies()
         wostringstream os;
         int last_error = GetLastError();
         os << L"WaitForDependents OpeService failed " << GetLastError() << std::endl;
-	*logfile << os.str();
+        *logfile << os.str();
         CloseServiceHandle(hsc);
         throw ServiceManagerException(last_error, os.str().c_str());
     }
@@ -291,7 +291,7 @@ CWrapperService::GetServiceDependencies()
         wostringstream os;
         int last_error = GetLastError();
         os << L"WaitForDependents could not get config err = " << last_error << std::endl;
-	*logfile << os.str();
+        *logfile << os.str();
         CloseServiceHandle(hsc);
         throw ServiceManagerException(last_error, os.str().c_str());
     }
@@ -302,12 +302,12 @@ CWrapperService::GetServiceDependencies()
     wchar_t *pdep = service_config->lpDependencies;
     if (pdep) {
         while (*pdep ) {
-	    this->m_Dependencies.push_back(pdep);
-	    pdep += wcslen(pdep);
-	    pdep++; // Skip the null
-*logfile << L"dep = " << this->m_Dependencies.back() << std::endl;
+            this->m_Dependencies.push_back(pdep);
+            pdep += wcslen(pdep);
+            pdep++; // Skip the null
+            *logfile << L"dep = " << this->m_Dependencies.back() << std::endl;
         }
-	// Should leave a null at the end
+        // Should leave a null at the end
     }
 }
 
@@ -323,16 +323,16 @@ CWrapperService::StopServiceDependencies()
         wostringstream os;
         int last_error = GetLastError();
         os << L"StopServiceDependents could not open service manager win err = " << last_error << std::endl;
-	*logfile << os.str();
+        *logfile << os.str();
         throw ServiceManagerException(last_error, os.str().c_str());
     }
     for (auto service: this->m_Dependencies) {
 
-	SERVICE_STATUS status = { 0 };
+        SERVICE_STATUS status = { 0 };
 
         SC_HANDLE hsvc = OpenServiceW(hsc, m_ServiceName.c_str(), SERVICE_STOP |
-	                                                          SERVICE_QUERY_STATUS |
-								  SERVICE_ENUMERATE_DEPENDENTS);
+                                                                  SERVICE_QUERY_STATUS |
+                                                                  SERVICE_ENUMERATE_DEPENDENTS);
         if (!hsvc) {
             wostringstream os;
             int last_error = GetLastError();
@@ -803,8 +803,8 @@ for (auto after : self->m_ServicesAfter) {
                 processInformation = self->StartProcess(self->m_ExecStartCmdLine.c_str(), 0, false);
                 self->m_dwProcessId = processInformation.dwProcessId;
         
-        *logfile << "waitfor main process " << std::endl;
-               ::WaitForSingleObject(processInformation.hProcess, INFINITE);
+                *logfile << "waitfor main process " << std::endl;
+                ::WaitForSingleObject(processInformation.hProcess, INFINITE);
         
                 BOOL result = ::GetExitCodeProcess(processInformation.hProcess, &exitCode);
                 ::CloseHandle(processInformation.hProcess);
@@ -817,7 +817,7 @@ for (auto after : self->m_ServicesAfter) {
                     }
                     else {
                         *logfile << L"Command \"" << self->m_ExecStartCmdLine 
-		             << L"\" failed with exit code: " << exitCode << std::endl;
+                        << L"\" failed with exit code: " << exitCode << std::endl;
                         throw RestartException(exitCode, "start command failed");
                     }
                 }
@@ -844,11 +844,11 @@ for (auto after : self->m_ServicesAfter) {
             }
 
             // We should stay active until all of the depends are finished
-	    self->WaitForDependents(self->m_Dependencies);
+            self->WaitForDependents(self->m_Dependencies);
             *logfile << "process success " << self->m_ExecStartCmdLine << std::endl;
             throw RestartException(0, "success");
-	}
-	catch (RestartException &ex) {
+        }
+        catch (RestartException &ex) {
     
             self->SetServiceStatus(SERVICE_PAUSED);
             switch ( self->m_RestartAction ) {
@@ -888,7 +888,7 @@ for (auto after : self->m_ServicesAfter) {
             case RESTART_ACTION_ON_ABORT:
             case RESTART_ACTION_ON_WATCHDOG:
                 // 2do: check the exit code
-    *logfile << "Restart in " << self->m_RestartMillis << " milliseconds" << std::endl;
+                *logfile << "Restart in " << self->m_RestartMillis << " milliseconds" << std::endl;
                 ::SleepEx(self->m_RestartMillis, TRUE); // But we respect restartSec.
                 break;
             }    
@@ -897,7 +897,7 @@ for (auto after : self->m_ServicesAfter) {
         *logfile << L"done = " << done << std::endl;
     } while (!done);
 
-*logfile << L"exit service OnStart: " << std::endl;
+    *logfile << L"exit service OnStart: " << std::endl;
     self->SetServiceStatus(SERVICE_STOPPED);
     return S_OK;
 

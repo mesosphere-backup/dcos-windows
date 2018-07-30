@@ -883,7 +883,7 @@ static boolean add_wanted_unit(wstring file_path, void *context)
         (file_type.compare(L".target") == 0) ||
         (file_type.compare(L".timer") == 0) ||
         (file_type.compare(L".socket") == 0)) {
-	pparent->AddWanted(servicename);
+        pparent->AddWanted(servicename);
     }
     return true;
 }
@@ -898,7 +898,7 @@ static boolean add_requireed_unit(wstring file_path, void *context)
         (file_type.compare(L".target") == 0) ||
         (file_type.compare(L".timer") == 0) ||
         (file_type.compare(L".socket") == 0)) {
-	pparent->AddRequired(servicename);
+        pparent->AddRequired(servicename);
     }
     return true;
 }
@@ -920,19 +920,19 @@ static boolean read_unit(wstring file_path, void *context)
             wcerr << "Failed to load unit: Unit file " << file_path.c_str() << "is invalid\n";
             return false;
         }
-	// Look for wanted directory
+        // Look for wanted directory
         wstring wants_dir_path = file_path+L".wants";
         if (SystemDUnitPool::DirExists(wants_dir_path)) {
-	    // Add to wants
+            // Add to wants
             (void)SystemDUnitPool::Apply(wants_dir_path, add_wanted_unit, (void*)punit);
-	}
+        }
 
-	// Look for required directory
+        // Look for required directory
         wstring requires_dir_path = file_path+L".wants";
         if (SystemDUnitPool::DirExists(requires_dir_path)) {
-	    // Add to requires
+            // Add to requires
             (void)SystemDUnitPool::Apply(requires_dir_path, add_wanted_unit, (void*)punit);
-	}
+        }
     }
     return true;
 }
@@ -947,11 +947,11 @@ static boolean delete_unit(wstring file_path, void *context)
         (file_type.compare(L".target") == 0) ||
         (file_type.compare(L".timer") == 0) ||
         (file_type.compare(L".socket") == 0)) {
-	// Delete the service
+        // Delete the service
         class SystemDUnit *punit = SystemDUnitPool::FindUnit(servicename);
-	if (punit) {
-	    punit->Mask(true);
-	}
+        if (punit) {
+            punit->Mask(true);
+        }
     }
     return true;
 }
@@ -1205,10 +1205,10 @@ boolean SystemDUnit::Mask(boolean block)
     if (SystemDUnitPool::DirExists(requires_dir_path)) {
         // Enable all of the units and add to the requires list
         (void)SystemDUnitPool::Apply(requires_dir_path, mask_required_unit, (void*)this);
-	wcerr << L"remove directory " << requires_dir_path << std::endl;
-	if (!RemoveDirectoryW(requires_dir_path.c_str())) {
-	    wcerr << L"remove directory " << requires_dir_path << " failed " << std::endl;
-	}
+        wcerr << L"remove directory " << requires_dir_path << std::endl;
+        if (!RemoveDirectoryW(requires_dir_path.c_str())) {
+            wcerr << L"remove directory " << requires_dir_path << " failed " << std::endl;
+        }
     }
 
     // Is there a wants directory?
@@ -1217,10 +1217,10 @@ boolean SystemDUnit::Mask(boolean block)
         // Enable all of the units and add to the wants list
         (void)SystemDUnitPool::Apply(wants_dir_path, mask_wanted_unit, (void*)this);
 
-	wcerr << L"remove directory " << wants_dir_path << std::endl;
-	if (!RemoveDirectoryW(wants_dir_path.c_str())) {
-	    wcerr << L"remove directory " << wants_dir_path << " failed " << std::endl;
-	}
+        wcerr << L"remove directory " << wants_dir_path << std::endl;
+        if (!RemoveDirectoryW(wants_dir_path.c_str())) {
+            wcerr << L"remove directory " << wants_dir_path << " failed " << std::endl;
+        }
     }
 
     this->UnregisterService();
