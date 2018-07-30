@@ -16,7 +16,8 @@
 Param(
     [Parameter(Mandatory=$true)]
     [string]$AgentBlobDirectory,
-    [bool]$IncludeMetricsToMonitoredSericeList
+    [bool]$IncludeMetricsToMonitoredSericeList,
+    [switch]$Public=$false
 )
 
 $ErrorActionPreference = "Stop"
@@ -82,8 +83,13 @@ function Get-DCOSVersionFromFile {
 }
 
 function Get-MonitoredServices {
-    $services = @($DIAGNOSTICS_SERVICE_NAME, $MESOS_SERVICE_NAME, $ADMINROUTER_SERVICE_NAME)
-    if ($IncludeMetricsToMonitoredSericeList) {
+    $services = @($DIAGNOSTICS_SERVICE_NAME, $ADMINROUTER_SERVICE_NAME)
+    if($Public) {
+        $services += @($MESOS_PUBLIC_SERVICE_NAME)
+    } else {
+        $services += @($MESOS_SERVICE_NAME)
+    }
+    if($IncludeMetricsToMonitoredSericeList) {
         $services += @($METRICS_SERVICE_NAME)
     }
     $dcosVersion = Get-DCOSVersionFromFile

@@ -35,15 +35,31 @@ $variables = (Resolve-Path "$PSScriptRoot\variables.ps1").Path
 $TEMPLATES_DIR = Join-Path $PSScriptRoot "Templates"
 
 
-function New-MesosEnvironment {
-    $service = Get-Service $MESOS_SERVICE_NAME -ErrorAction SilentlyContinue
-    if($service) {
-        Stop-Service -Force -Name $MESOS_SERVICE_NAME
-        & sc.exe delete $MESOS_SERVICE_NAME
-        if($LASTEXITCODE) {
-            Throw "Failed to delete exiting $MESOS_SERVICE_NAME service"
+function Get-MesosServiceDetails {
+    if($Public) {
+        return @{
+            "name" = $MESOS_PUBLIC_SERVICE_NAME
+            "display_name" = $MESOS_PUBLIC_SERVICE_DISPLAY_NAME
+            "description" = $MESOS_PUBLIC_SERVICE_DESCRIPTION
         }
-        Write-Log "Deleted existing $MESOS_SERVICE_NAME service"
+    }
+    return @{
+        "name" = $MESOS_SERVICE_NAME
+        "display_name" = $MESOS_SERVICE_DISPLAY_NAME
+        "description" = $MESOS_SERVICE_DESCRIPTION
+    }
+}
+
+function New-MesosEnvironment {
+    $serviceDetails = Get-MesosServiceDetails
+    $service = Get-Service $serviceDetails["name"] -ErrorAction SilentlyContinue
+    if($service) {
+        Stop-Service -Force -Name $serviceDetails["name"]
+        & sc.exe delete $serviceDetails["name"]
+        if($LASTEXITCODE) {
+            Throw "Failed to delete exiting $($serviceDetails["name"]) service"
+        }
+        Write-Log "Deleted existing $($serviceDetails["name"]) service"
     }
     New-Directory -RemoveExisting $MESOS_DIR
     New-Directory $MESOS_BIN_DIR
@@ -103,16 +119,20 @@ function New-MesosWindowsAgent {
         $mesosAgentArguments += " --default_role=`"slave_public`""
     }
     $environmentFile = Join-Path $MESOS_ETC_SERVICE_DIR "environment-file"
-    if (!(Test-Path $environmentFile))
-    {
-      Set-Content -Path $environmentFile -Value @(
-          "MESOS_AUTHENTICATE_HTTP_READONLY=false",
-          "MESOS_AUTHENTICATE_HTTP_READWRITE=false"
-      )
+    if (!(Test-Path $environmentFile)) {
+        if(!(Test-Path $MESOS_ETC_SERVICE_DIR)) {
+            New-Item -ItemType "Directory" -Path $MESOS_ETC_SERVICE_DIR -Force
+        }
+        Set-Content -Path $environmentFile -Value @(
+            "MESOS_AUTHENTICATE_HTTP_READONLY=false",
+            "MESOS_AUTHENTICATE_HTTP_READWRITE=false"
+        )
     }
-    New-DCOSWindowsService -Name $MESOS_SERVICE_NAME -DisplayName $MESOS_SERVICE_DISPLAY_NAME -Description $MESOS_SERVICE_DESCRIPTION `
-                           -LogFile $logFile -WrapperPath $SERVICE_WRAPPER -BinaryPath "$mesosBinary $mesosAgentArguments" -EnvironmentFiles @($environmentFile)
-    Start-Service $MESOS_SERVICE_NAME
+    $serviceDetails = Get-MesosServiceDetails
+    New-DCOSWindowsService -Name $serviceDetails["name"] -DisplayName $serviceDetails["display_name"] -Description $serviceDetails["description"] `
+                           -LogFile $logFile -WrapperPath $SERVICE_WRAPPER -BinaryPath "$mesosBinary $mesosAgentArguments" `
+                           -EnvironmentFiles @($environmentFile)
+    Start-Service $serviceDetails["name"]
 }
 
 try {
