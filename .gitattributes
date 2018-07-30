@@ -1,7 +1,7 @@
 * text=auto
 *.h              eol=crlf
 *.cpp            eol=crlf
-*.rc             eol=crlf
+*.rc             text working-tree-encoding=UTF-16LE eol=crlf
 *.sln            eol=crlf
 *.vcproj         eol=crlf
 *.vcxproj        eol=crlf
