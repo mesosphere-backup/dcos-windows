@@ -336,8 +336,8 @@ int SystemCtrl_Cmd_Show( boost::program_options::variables_map &vm )
    wstring usage = L"usage: Systemctl show [ <unitname> ]\n";
 
    if (vm["system_units"].empty()) {
-		g_pool->ShowGlobal();
-		return 0;
+        g_pool->ShowGlobal();
+        return 0;
    }
    vector<wstring> units = vm["system_units"].as<vector<wstring>>();
     for (wstring unitname: units) {
