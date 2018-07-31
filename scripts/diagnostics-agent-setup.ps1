@@ -70,20 +70,8 @@ function Install-DiagnosticsFiles {
     Remove-File -Path $filesPath -Fatal $false
 }
 
-function Get-DCOSVersionFromFile {
-    if(!(Test-Path $GLOBAL_ENV_FILE)) {
-        Throw "ERORR: Global environment file $GLOBAL_ENV_FILE doesn't exist"
-    }
-    # Get the $dcosVersion by parsing the global DC/OS environment file
-    $dcosVersion = Get-Content $GLOBAL_ENV_FILE | Where-Object { $_.StartsWith('DCOS_VERSION=') } | ForEach-Object { $_.Split('=')[1] }
-    if(!$dcosVersion) {
-        Throw "ERROR: Cannot get the DC/OS from $GLOBAL_ENV_FILE"
-    }
-    return $dcosVersion
-}
-
 function Get-MonitoredServices {
-    $services = @($DIAGNOSTICS_SERVICE_NAME, $ADMINROUTER_SERVICE_NAME)
+    $services = @($DIAGNOSTICS_SERVICE_NAME, $ADMINROUTER_SERVICE_NAME, $DCOS_NET_SERVICE_NAME)
     if($Public) {
         $services += @($MESOS_PUBLIC_SERVICE_NAME)
     } else {
@@ -91,13 +79,6 @@ function Get-MonitoredServices {
     }
     if($IncludeMetricsToMonitoredSericeList) {
         $services += @($METRICS_SERVICE_NAME)
-    }
-    $dcosVersion = Get-DCOSVersionFromFile
-    if($dcosVersion.StartsWith("1.8") -or $dcosVersion.StartsWith("1.9") -or $dcosVersion.StartsWith("1.10")) {
-        $services += @($EPMD_SERVICE_NAME, $SPARTAN_SERVICE_NAME)
-    } else {
-        # DC/OS release >= 1.11
-        $services += @($DCOS_NET_SERVICE_NAME)
     }
     return $services
 }

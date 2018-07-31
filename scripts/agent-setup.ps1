@@ -68,27 +68,6 @@ function Install-MesosAgent {
     Write-Log "Exit Install-MesosAgent"
 }
 
-function Install-ErlangRuntime {
-    & "${AgentBlobDirectory}\scripts\erlang-setup.ps1" -AgentBlobDirectory $AgentBlobDirectory
-    if($LASTEXITCODE) {
-        Throw "Failed to setup the Windows Erlang runtime"
-    }
-}
-
-function Install-EPMDAgent {
-    & "${AgentBlobDirectory}\scripts\epmd-agent-setup.ps1"
-    if($LASTEXITCODE) {
-        Throw "Failed to setup the DCOS EPMD Windows agent"
-    }
-}
-
-function Install-SpartanAgent {
-    & "${AgentBlobDirectory}\scripts\spartan-agent-setup.ps1" -AgentBlobDirectory $AgentBlobDirectory -MasterAddress $MasterIPs -AgentPrivateIP $AgentPrivateIP -Public:$isPublic
-    if($LASTEXITCODE) {
-        Throw "Failed to setup the DCOS Spartan Windows agent"
-    }
-}
-
 function Install-AdminRouterAgent {
     Write-Log "Enter Install-AdminRouterAgent"
     & "${AgentBlobDirectory}\scripts\adminrouter-agent-setup.ps1" -AgentBlobDirectory $AgentBlobDirectory -AgentPrivateIP $AgentPrivateIP
@@ -277,14 +256,7 @@ try {
     New-DCOSMastersListFile
     New-DCOSServiceWrapper
     Install-MesosAgent
-    if($DcosVersion.StartsWith("1.8") -or $DcosVersion.StartsWith("1.9") -or $DcosVersion.StartsWith("1.10")) {
-        Install-ErlangRuntime
-        Install-EPMDAgent
-        Install-SpartanAgent
-    } else {
-        # DC/OS release >= 1.11
-        Install-DCOSNetAgent
-    }
+    Install-DCOSNetAgent
     Install-AdminRouterAgent
     $mesosFlags = ""
     Get-MesosFlags -Reference ([ref] $mesosFlags)
