@@ -32,6 +32,3 @@ x64
 *.exe
 *.out
 *.app
-
-# NuGet
-packages/*
