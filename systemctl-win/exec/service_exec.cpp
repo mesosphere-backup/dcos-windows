@@ -95,7 +95,7 @@ CWrapperService::CWrapperService(struct CWrapperService::ServiceParams &params)
                                                 params.fCanStop, 
                                                 params.fCanShutdown,
                                                 params.fCanPauseContinue)
-{
+{  PROCESS_INFORMATION blank_proc_info = {0};
 
     if (!params.execStartPre.empty()) {
         for (auto ws: params.execStartPre) {
@@ -104,6 +104,7 @@ CWrapperService::CWrapperService(struct CWrapperService::ServiceParams &params)
             cmdline.append(ws);
             cmdline.append(params.szShellCmdPost);
             m_ExecStartPreCmdLine.push_back(cmdline);
+            m_ExecStartPreProcInfo.push_back(blank_proc_info);
         }
     }
 
@@ -112,6 +113,7 @@ CWrapperService::CWrapperService(struct CWrapperService::ServiceParams &params)
         m_ExecStartCmdLine = params.szShellCmdPre;
         m_ExecStartCmdLine.append(params.execStart);
         m_ExecStartCmdLine.append(params.szShellCmdPost);
+        m_ExecStartProcInfo = blank_proc_info;
     }
 
     if (!params.execStartPost.empty()) {
@@ -121,6 +123,7 @@ CWrapperService::CWrapperService(struct CWrapperService::ServiceParams &params)
             cmdline.append(ws);
             cmdline.append(params.szShellCmdPost);
             m_ExecStartPostCmdLine.push_back(cmdline);
+            m_ExecStartPostProcInfo.push_back(blank_proc_info);
         }
     }
 
@@ -129,6 +132,7 @@ CWrapperService::CWrapperService(struct CWrapperService::ServiceParams &params)
         m_ExecStopCmdLine = params.szShellCmdPre;
         m_ExecStopCmdLine.append(params.execStop);
         m_ExecStopCmdLine.append(params.szShellCmdPost);
+        m_ExecStopProcInfo = blank_proc_info;
     }
 
     if (!params.execStopPost.empty()) {
@@ -138,6 +142,7 @@ CWrapperService::CWrapperService(struct CWrapperService::ServiceParams &params)
             cmdline.append(ws);
             cmdline.append(params.szShellCmdPost);
             m_ExecStopPostCmdLine.push_back(cmdline);
+            m_ExecStopPostProcInfo.push_back(blank_proc_info);
         }
     }
 
@@ -226,12 +231,8 @@ for( auto envf : m_EnvironmentFilesPS ) {
     m_StdOut = params.stdOut;
 
     m_WaitForProcessThread = NULL;
-    m_dwProcessId = 0;
-    m_hProcess   = NULL;
-    m_dwProcessId = 0;
     m_hServiceThread = NULL;
     m_dwServiceThreadId = 0;
-    m_hProcess   = NULL;
     m_IsStopping = FALSE;
 
     this->GetServiceDependencies(); // This will fill the m_Dependencies list
@@ -242,10 +243,10 @@ CWrapperService::~CWrapperService(void)
 {
 *logfile << L"~CWrapperService destructor " << std::endl;
 
-    if (m_hProcess)
+    if (m_ExecStartProcInfo.hProcess)
     {
-        ::CloseHandle(m_hProcess);
-        m_hProcess = NULL;
+        ::CloseHandle(m_ExecStartProcInfo.hProcess);
+        m_ExecStartProcInfo.hProcess = NULL;
     }
 
     if (m_WaitForProcessThread)
@@ -313,6 +314,7 @@ CWrapperService::GetServiceDependencies()
 
 
 
+#if 0
 void
 CWrapperService::StopServiceDependencies()
 
@@ -357,6 +359,7 @@ CWrapperService::StopServiceDependencies()
     // Wait For the services to stop
     this->WaitForDependents(this->m_Dependencies);
 }
+#endif
 
 
 std::wstring CWrapperService::ResolveEnvVars(std::wstring arg)
@@ -538,13 +541,14 @@ void CWrapperService::LoadPShellEnvVarsFromFile(const wstring& path)
 }
 
 
-PROCESS_INFORMATION &CWrapperService::StartProcess(LPCWSTR cmdLine, DWORD processFlags, bool waitForProcess, bool failOnError)
+void CWrapperService::StartProcess(LPCWSTR cmdLine, DWORD processFlags, PROCESS_INFORMATION &procInfo, bool waitForProcess, bool failOnError)
 
 {
-    static PROCESS_INFORMATION processInformation = {0};
     STARTUPINFO startupInfo;
-    memset(&processInformation, 0, sizeof(processInformation));
+
     memset(&startupInfo, 0, sizeof(startupInfo));
+
+    memset(&procInfo, 0, sizeof(PROCESS_INFORMATION));
     startupInfo.cb = sizeof(startupInfo);
     if (m_StdOut->GetHandle() != INVALID_HANDLE_VALUE) {
         startupInfo.dwFlags |= STARTF_USESTDHANDLES;
@@ -600,7 +604,7 @@ for ( wchar_t *tmpenv = (wchar_t*)m_envBuf.c_str();
 *logfile << "create process " << cmdLine << std::endl;
 
     BOOL result = ::CreateProcessW(NULL, tempCmdLine, NULL, NULL, TRUE, dwCreationFlags,
-        lpEnv, pWorkingDirectory, &startupInfo, &processInformation);
+        lpEnv, pWorkingDirectory, &startupInfo, &procInfo);
 
     delete[] tempCmdLine;
 
@@ -617,11 +621,11 @@ for ( wchar_t *tmpenv = (wchar_t*)m_envBuf.c_str();
     if(waitForProcess)
     {
 *logfile << "waitfor process " << cmdLine << std::endl;
-        ::WaitForSingleObject(processInformation.hProcess, INFINITE);
+        ::WaitForSingleObject(procInfo.hProcess, INFINITE);
 
         DWORD exitCode = 0;
-        BOOL result = ::GetExitCodeProcess(processInformation.hProcess, &exitCode);
-        ::CloseHandle(processInformation.hProcess);
+        BOOL result = ::GetExitCodeProcess(procInfo.hProcess, &exitCode);
+        ::CloseHandle(procInfo.hProcess);
 
         if (!result || exitCode)
         {
@@ -639,7 +643,6 @@ for ( wchar_t *tmpenv = (wchar_t*)m_envBuf.c_str();
 *logfile << "process success " << cmdLine << std::endl;
     }
 
-    return processInformation;
 }
 
 void CWrapperService::OnStart(DWORD dwArgc, LPWSTR *lpszArgv)
@@ -741,7 +744,6 @@ for (auto after : self->m_ServicesAfter) {
                 throw RestartException(1068, "dependents failed");
             }
 
-            PROCESS_INFORMATION processInformation;
             exitCode = 0;
 
             // OK. We are going to launch. First resolve the environment
@@ -782,7 +784,7 @@ for (auto after : self->m_ServicesAfter) {
                     *logfile << L"Running ExecStartPre command: " << ws.c_str();
                       // to do, add special char processing
                     try {
-                        processInformation = self->StartProcess(ws.c_str(), 0, true); 
+                        self->StartProcess(ws.c_str(), 0, self->m_ExecStartPreProcInfo[i], true); 
                     }
                     catch(RestartException &ex) {
                          if (!(self->m_ExecStartPreFlags[i] & EXECFLAG_IGNORE_FAIL)) {
@@ -800,14 +802,13 @@ for (auto after : self->m_ServicesAfter) {
             *logfile << L"Starting service: " << self->m_ServiceName << std::endl;
         
             if (!self->m_ExecStartCmdLine.empty()) {
-                processInformation = self->StartProcess(self->m_ExecStartCmdLine.c_str(), 0, false);
-                self->m_dwProcessId = processInformation.dwProcessId;
+                self->StartProcess(self->m_ExecStartCmdLine.c_str(), CREATE_NEW_PROCESS_GROUP, self->m_ExecStartProcInfo, false);
         
         *logfile << "waitfor main process " << std::endl;
-               ::WaitForSingleObject(processInformation.hProcess, INFINITE);
+               ::WaitForSingleObject(self->m_ExecStartProcInfo.hProcess, INFINITE);
         
-                BOOL result = ::GetExitCodeProcess(processInformation.hProcess, &exitCode);
-                ::CloseHandle(processInformation.hProcess);
+                BOOL result = ::GetExitCodeProcess(self->m_ExecStartProcInfo.hProcess, &exitCode);
+                ::CloseHandle(self->m_ExecStartProcInfo.hProcess);
         
                 if (!result || exitCode)
                 {
@@ -832,7 +833,7 @@ for (auto after : self->m_ServicesAfter) {
                     os << L"Running ExecStartPost command: " << ws.c_str();
                     *logfile << os.str() << std::endl;
                     try {
-                        self->StartProcess(ws.c_str(), 0, true);
+                        self->StartProcess(ws.c_str(), 0, self->m_ExecStartPostProcInfo[i], true);
                     }
                     catch(RestartException &ex) {
                         if (!(self->m_ExecStartPreFlags[i] & EXECFLAG_IGNORE_FAIL)) {
@@ -908,9 +909,9 @@ DWORD WINAPI CWrapperService::WaitForProcessThread(LPVOID lpParam)
 {
     CWrapperService* self = (CWrapperService*)lpParam;
 
-    ::WaitForSingleObject(self->m_hProcess, INFINITE);
-    ::CloseHandle(self->m_hProcess);
-    self->m_hProcess = NULL;
+    ::WaitForSingleObject(self->m_ExecStartProcInfo.hProcess, INFINITE);
+    ::CloseHandle(self->m_ExecStartProcInfo.hProcess);
+    self->m_ExecStartProcInfo.hProcess = NULL;
 
     // TODO: think about respawning the child process
     if(!self->m_IsStopping)
@@ -996,16 +997,26 @@ void CWrapperService::OnStop()
         os << L"Running ExecStop command: " << m_ExecStopCmdLine.c_str();
 *logfile << os.str() << std::endl;
         WriteEventLogEntry(m_name, os.str().c_str(), EVENTLOG_INFORMATION_TYPE);
-        StartProcess(m_ExecStopCmdLine.c_str(), 0, true);
+        StartProcess(m_ExecStopCmdLine.c_str(), 0, m_ExecStopProcInfo, true);
     }
 
 *logfile << L"kill stopping service " << m_ServiceName.c_str() << std::endl;
     // KillProcessTree(m_dwProcessId);
 
     // Stop dependent services
-    this->StopServiceDependencies();
+    // this->StopServiceDependencies(); We don't do this .....
 
+*logfile << L"send  ctrl-c and wait for stop" << std::endl;
+    GenerateConsoleCtrlEvent(CTRL_C_EVENT, m_ExecStartProcInfo.dwProcessId);
     // Wait for them to stop
+    // First, ask nicely. 
+    ::WaitForSingleObject(m_ExecStartProcInfo.hProcess, 10);
+
+*logfile << L"ctrl-c no effecit terminate process " << m_ExecStartProcInfo.dwProcessId << "and wait for stop" << std::endl;
+    // Kill main process
+    ::TerminateProcess( m_ExecStartProcInfo.hProcess, ERROR_PROCESS_ABORTED);
+    ::WaitForSingleObject(m_ExecStartProcInfo.hProcess, INFINITE);
+
 
     ::TerminateThread(m_hServiceThread, ERROR_PROCESS_ABORTED);
 *logfile << L"service thread wait for terminate " << m_ServiceName.c_str() << std::endl;
@@ -1019,15 +1030,14 @@ void CWrapperService::OnStop()
     {
         wostringstream os;
 
+        int i = 0;
         for( auto ws: m_ExecStopPostCmdLine) {
             os << L"Running ExecStopPost command: " << ws.c_str();
             *logfile << os.str() << std::endl;
-            StartProcess(ws.c_str(), 0, true);
+            StartProcess(ws.c_str(), 0, m_ExecStopPostProcInfo[i], true);
+	    i++;
         }
     }
-
-    ::CloseHandle(m_hProcess);
-    m_hProcess = NULL;
 
     ::CloseHandle(m_WaitForProcessThread);
     m_WaitForProcessThread = NULL;
