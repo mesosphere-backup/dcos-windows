@@ -116,6 +116,7 @@
     <ClCompile Include="src\service_unit.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="systemd-exec.vcxproj" />
     <None Include="packages.config" />
     <None Include="packages\boost.1.67.0.0\boost.1.67.0.0.nupkg" />
   </ItemGroup>
