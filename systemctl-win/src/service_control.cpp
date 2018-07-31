@@ -433,7 +433,7 @@ boolean SystemDUnit::IsFailed()
     if (svc_stat.dwCurrentState == SERVICE_STOPPED) {
         if (svc_stat.dwWin32ExitCode != 0) {
             return true;
-        }
+	}
     }
 
     CloseServiceHandle(hsvc); 
