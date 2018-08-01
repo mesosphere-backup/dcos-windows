@@ -293,7 +293,7 @@ boolean SystemDUnit::StopService(boolean blocking)
     }
 
     SERVICE_STATUS status = { 0 };
-    if (ControlService(hsvc, SERVICE_CONTROL_STOP, &status)) {
+    if (!ControlService(hsvc, SERVICE_CONTROL_STOP, &status)) {
         wcerr << L"StopService(" << this->name << ") failed " << GetLastError() << std::endl;
         CloseServiceHandle(hsvc);
         return false;
