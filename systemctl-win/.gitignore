@@ -2,6 +2,7 @@
 *.d
 .vs
 x64
+*.VC.db
 
 # Compiled Object files
 *.slo
@@ -32,3 +33,6 @@ x64
 *.exe
 *.out
 *.app
+
+# Nuget
+packages/*
