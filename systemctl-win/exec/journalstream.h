@@ -125,7 +125,7 @@ public:
              }
              if (m_file_output && m_filehandle != INVALID_HANDLE_VALUE) {
                   DWORD result = WriteFile(m_filehandle, m_buffer, (DWORD)(m_current-m_buffer)*sizeof(m_buffer[0]), NULL, NULL);
-                  FlushFileBuffers(m_filehandle);
+		  FlushFileBuffers(m_filehandle);
              }
              m_current = m_buffer;
         }
