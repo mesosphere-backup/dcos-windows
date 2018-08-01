@@ -274,12 +274,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="journalstream.h" />
-    <ClInclude Include="resource.h" />
     <ClInclude Include="ServiceBase.h" />
     <ClInclude Include="service_exec.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <ResourceCompile Include="Resource.rc" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config">
