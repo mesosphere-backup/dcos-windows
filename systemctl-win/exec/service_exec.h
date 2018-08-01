@@ -200,14 +200,14 @@ private:
     void GetServiceDependencies(); // I know that the dependent info is in the unit file (wants and requires). 
                                  // But if the policy changes for some reason, getting the dependents is 
                  		    // more robust than assuming that I know what is there
-    void StopServiceDependencies();
+   // void StopServiceDependencies();
 
     static DWORD WINAPI WaitForProcessThread(LPVOID lpParam);
     void WINAPI KillProcessTree(DWORD dwProcId);
     static enum OUTPUT_TYPE StrToOutputType( std::wstring ws, std::wstring *path );
     unsigned ProcessSpecialCharacters( std::wstring &ws);
 
-    PROCESS_INFORMATION &StartProcess(LPCWSTR cmdLine, DWORD processFlags, bool waitForProcess, bool failOnError=false);
+    void StartProcess(LPCWSTR cmdLine, DWORD processFlags, PROCESS_INFORMATION &procInfo, bool waitForProcess, bool failOnError=false);
     boolean EvaluateConditions();
     std::wstring ResolveEnvVars(std::wstring str); // Expands any environment variables that are in the 
                                                    // string. We need to do this for things like directories
@@ -240,18 +240,23 @@ private:
 
     std::vector<std::wstring> m_ExecStartPreCmdLine;
     std::vector<unsigned>     m_ExecStartPreFlags;
+    std::vector<PROCESS_INFORMATION> m_ExecStartPreProcInfo;
 
     std::wstring m_ExecStartCmdLine;
     unsigned m_ExecStartFlags;
+    PROCESS_INFORMATION m_ExecStartProcInfo;
 
     std::vector<std::wstring> m_ExecStartPostCmdLine;
     std::vector<unsigned>     m_ExecStartPostFlags;
+    std::vector<PROCESS_INFORMATION> m_ExecStartPostProcInfo;
 
     std::wstring m_ExecStopCmdLine;
     unsigned m_ExecStopFlags;
+    PROCESS_INFORMATION m_ExecStopProcInfo;
 
     std::vector<std::wstring> m_ExecStopPostCmdLine;
     std::vector<unsigned>     m_ExecStopPostFlags;
+    std::vector<PROCESS_INFORMATION> m_ExecStopPostProcInfo;
 
     std::vector<std::wstring> m_FilesBefore;     // Service won't execute if these exist
     std::vector<std::wstring> m_ServicesBefore;  // Service won't execute if these are running
@@ -292,8 +297,6 @@ private:
 
     std::vector<std::wstring> m_Dependencies;
 
-    DWORD m_dwProcessId;
-    HANDLE m_hProcess;
     HANDLE m_WaitForProcessThread;
 
     HANDLE m_hServiceThread;
