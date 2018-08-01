@@ -941,18 +941,15 @@ void WINAPI CWrapperService::KillProcessTree(DWORD dwProcId)
             {
                 KillProcessTree(pe.th32ProcessID);
 
+#if 0
                 HANDLE hProc = ::OpenProcess(PROCESS_ALL_ACCESS, FALSE, pe.th32ProcessID);
                 if (hProc)
                 {
-                   
-                    if (!GenerateConsoleCtrlEvent( CTRL_BREAK_EVENT, pe.th32ProcessID)) {
-                        // Complain
-                    }
-                    else if (::WaitForSingleObject(hProc, 10000) == WAIT_TIMEOUT) {
-                        ::TerminateProcess(hProc, 0);
-                    }
+                    *logfile << L"terminate subprocess " << dwProcId << "for service " << m_ServiceName  << std::endl;
+                    ::TerminateProcess(hProc, ERROR_PROCESS_ABORTED);
                     ::CloseHandle(hProc);
                 }
+#endif
             }
             bContinue = ::Process32Next(hSnap, &pe);
         }
@@ -960,24 +957,9 @@ void WINAPI CWrapperService::KillProcessTree(DWORD dwProcId)
         HANDLE hProc = ::OpenProcess(PROCESS_ALL_ACCESS, FALSE, dwProcId);
         if (hProc)
         {
-         //   if (AttachConsole(dwProcId)) {
-                SetConsoleCtrlHandler(NULL, true); // Disable Ctrl processing from here
-                if (!GenerateConsoleCtrlEvent(CTRL_BREAK_EVENT, 0)) {
-                    // Complain
-                    DWORD errcode = GetLastError();
-                    *logfile << L"could not send break event to " << m_ServiceName << "error code " << errcode << std::endl;
-                }
-                if (::WaitForSingleObject(hProc, 10000) == WAIT_TIMEOUT) {
-                    *logfile << L"did not respond to break event: " << m_ServiceName  << std::endl;
-                }
-          //      ::FreeConsole();
-           // }
-         //   else {
-                // Complain
-          //       DWORD errcode = GetLastError();
-           //      *logfile << L"could not attach console to " << m_ServiceName << "error code " << errcode << std::endl;
-          //  }
-            ::TerminateProcess(hProc, 1);
+            SetConsoleCtrlHandler(NULL, true); // Disable Ctrl processing from here
+            *logfile << L"terminate subprocess " << dwProcId << "for service " << m_ServiceName  << std::endl;
+            ::TerminateProcess(hProc, ERROR_PROCESS_ABORTED);
             ::CloseHandle(hProc);
         }
     }
@@ -1007,14 +989,19 @@ void CWrapperService::OnStop()
     // this->StopServiceDependencies(); We don't do this .....
 
 *logfile << L"send  ctrl-c and wait for stop" << std::endl;
+
+    // First, ask nicely. 
+    // The CTRL_C_EVENT should go to all of the subprocesses since that all share a console.
+    // We do this because some processes need warning before they terminate to perform cleanup. 
     GenerateConsoleCtrlEvent(CTRL_C_EVENT, m_ExecStartProcInfo.dwProcessId);
     // Wait for them to stop
-    // First, ask nicely. 
-    ::WaitForSingleObject(m_ExecStartProcInfo.hProcess, 10);
+    ::WaitForSingleObject(m_ExecStartProcInfo.hProcess, 20);
 
-*logfile << L"ctrl-c no effecit terminate process " << m_ExecStartProcInfo.dwProcessId << "and wait for stop" << std::endl;
+*logfile << L"ctrl-c has no effect. terminate process " << m_ExecStartProcInfo.dwProcessId << "and wait for stop" << std::endl;
     // Kill main process
-    ::TerminateProcess( m_ExecStartProcInfo.hProcess, ERROR_PROCESS_ABORTED);
+    // ::TerminateProcess( m_ExecStartProcInfo.hProcess, ERROR_PROCESS_ABORTED);
+    KillProcessTree( m_ExecStartProcInfo.dwProcessId);
+
     ::WaitForSingleObject(m_ExecStartProcInfo.hProcess, INFINITE);
 
 
