@@ -274,17 +274,18 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="journalstream.h" />
-    <ClInclude Include="resource.h" />
     <ClInclude Include="ServiceBase.h" />
     <ClInclude Include="service_exec.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <ResourceCompile Include="Resource.rc" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config">
       <SubType>Designer</SubType>
     </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="Resource.rc">
+      <ResourceOutputFileName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(IntDir)%(Filename).rc</ResourceOutputFileName>
+    </ResourceCompile>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
