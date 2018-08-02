@@ -120,7 +120,6 @@
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="Source.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\service_control.cpp" />
     <ClCompile Include="src\service_unit.cpp" />
@@ -130,6 +129,10 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="exec\systemd-exec.h" />
+    <ClInclude Include="src\resource.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="src\Resource.rc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
