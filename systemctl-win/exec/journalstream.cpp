@@ -21,6 +21,7 @@
 #include "windows.h"
 #include "journalstream.h"
 
+using namespace journalstreams; 
 
 static inline enum OUTPUT_TYPE String_To_OutputType(const std::wstring val)
 
@@ -71,7 +72,6 @@ static inline enum OUTPUT_TYPE String_To_OutputType(const std::wstring val)
 wojournalstream::wojournalstream(std::wstring output_type, std::wstring filepath ):
            std::basic_ostream<wchar_t>(&buf),
            buf()
-
 {
     m_output_type = String_To_OutputType(output_type);
     m_filehandle  = INVALID_HANDLE_VALUE;

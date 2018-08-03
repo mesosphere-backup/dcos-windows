@@ -119,8 +119,8 @@ static int string_duration_to_millis(wstring dur)
 
 { int millis = 0;
 
-*logfile << L"restart duration " << dur << std::endl;
-*logfile << L"first not of " << dur.find_first_not_of(L"0123456789 ") << std::endl;
+    *logfile << L"restart duration " << dur << std::endl;
+    *logfile << Debug() << L"first not of " << dur.find_first_not_of(L"0123456789 ") << std::endl;
 
     if (dur.find_first_not_of(L"0123456789 ") == std::string::npos) {
         // Then it is just a decimal number of seconds
@@ -232,11 +232,14 @@ CLIArgs ParseArgs(int argc, wchar_t *argv[])
         ("Service.PermissionStartOnly", wvalue<wstring>(), "not implemented")
         ("Service.SupplementaryGroups", wvalue<wstring>(), "not implemented")
         ("Service.User",       wvalue<wstring>(), "not implemented")
+        ("Service.LogLevelMax",    wvalue<wstring>(), "filters log output from chatty services")
+        ("Service.SysLogLevel",    wvalue<wstring>(), "default log message priority")
         ("Service.LimitNOFILE", wvalue<wstring>(), "maximum number of file handles allowed for this service Not implmenented");
 
     options_description desc{ "Options" };
     desc.add_options()
         ("debug", "run from the command line")
+        ("verbose", "print all info and debug spew")
         ("service-unit", wvalue<wstring>(), "Service uses the service unit file in %SystemDrive%/etc/SystemD/active" )
         ("log-file,l", wvalue<wstring>(), "Log file containing  the redirected STD OUT and ERR of the child process")
         ("service-name", wvalue<wstring>(), "Service name");
@@ -252,7 +255,7 @@ CLIArgs ParseArgs(int argc, wchar_t *argv[])
         CServiceBase::bDebug = true;
     }
 
-*logfile << L"check for service unit" << std::endl;
+    *logfile << Debug() << L"check for service unit" << std::endl;
     if (vm.count("service-unit")) {
         args.unitPath = vm["service-unit"].as<wstring>();
         string unit_path( args.unitPath.begin(), args.unitPath.end());
@@ -262,7 +265,7 @@ CLIArgs ParseArgs(int argc, wchar_t *argv[])
             
             service_unit_file.open(unit_path.c_str(), ios::in);
             if (!service_unit_file.is_open()) {
-                *logfile << L"counldnt open" << std::endl;
+                *logfile << Error() << L"couldnt open " << unit_path.c_str() << std::endl;
             }
 
             //service_unit_contents = std::string((std::istreambuf_iterator<char>()), std::istreambuf_iterator<char>());
@@ -273,10 +276,10 @@ CLIArgs ParseArgs(int argc, wchar_t *argv[])
             service_unit_file.seekg(0, std::ios::beg);
         }
         catch (...) {
-            *logfile << L"Problems reading" << std::endl;
+            *logfile << Error() << L"Problems reading service unit " << unit_path.c_str() << std::endl;
         }
 
-*logfile << L"opened service unit " << service_unit_contents.c_str() << std::endl;
+        *logfile << Debug() << L"opened service unit " << service_unit_contents.c_str() << std::endl;
         auto config_parsed = parse_config_file<char>(service_unit_file, config, true);
         store(config_parsed, service_unit_options);
         notify(service_unit_options);
@@ -287,29 +290,9 @@ CLIArgs ParseArgs(int argc, wchar_t *argv[])
             }
         }
         size_t start_index = args.unitPath.rfind('/');
-*logfile << L"start index = " << start_index << std::endl;
         args.serviceUnit = args.unitPath.substr(start_index+1, args.unitPath.length() - start_index);
-*logfile << L"has service unit " << args.serviceUnit.c_str() << std::endl;
-
-    *logfile << L"unit path " << args.unitPath << std::endl ;
-#if 0
-try {
-for (auto elem : service_unit_options) {
-    try {
-        *logfile << "elem_name ";
-        *logfile << elem.first.c_str() << std::endl;
-      //  *logfile << std::wstring(elem.first.begin(), elem.first.end()) << std::endl;
-    } catch(...) {
-        *logfile << "bad elem_name ";
-    }
-}
-}
-catch (...) {
-    *logfile << "exception but keep going" << std::endl;
-}
-#endif
-
-*logfile << "zut alors!" << std::endl;
+        *logfile << Debug() << L"has service unit " << args.serviceUnit.c_str() << std::endl;
+        *logfile << Debug() << L"unit path " << args.unitPath << std::endl ;
     }
     else {
         // 2do: Else derive the service name from the execStart executable
@@ -333,9 +316,11 @@ catch (...) {
         args.stdoutFilePath.append(L".stdout.log");
     }
 
-*logfile << L"open stdoutFile outputtype = " << args.stdoutOutputType << std::endl;
-*logfile << L"open stdoutFile Path = " << args.stdoutFilePath << std::endl;
+    *logfile << Debug() << L"open stdoutFile outputtype = " << args.stdoutOutputType << std::endl;
+    *logfile << Debug() << L"open stdoutFile Path = " << args.stdoutFilePath << std::endl;
     unit_stdout.open(args.stdoutOutputType, args.stdoutFilePath);
+    unit_stdout.setlogginglevel(journalstreams::LOGGING_LEVEL_WARNING);
+    unit_stdout.set_default_msglevel(journalstreams::LOGGING_LEVEL_INFO);
 
     args.stderrOutputType = L"journal";
     if ( service_unit_options.count("Service.StandardError")) {
@@ -355,26 +340,24 @@ catch (...) {
         args.stderrFilePath.append(L".stderr.log");
     }
 
-*logfile << "open stderrFile Path = " << args.stderrFilePath.c_str() << std::endl;
     unit_stderr.open(args.stderrOutputType, args.stderrFilePath);
+    unit_stderr.setlogginglevel(journalstreams::LOGGING_LEVEL_WARNING);
+    unit_stderr.set_default_msglevel(journalstreams::LOGGING_LEVEL_INFO);
 
-*logfile << "p1" << std::endl;
     if (vm.count("log-file")) {
         args.logFilePath = vm["log-file"].as<wstring>();
         args.logFilePath.erase(remove( args.logFilePath.begin(), args.logFilePath.end(), '\"' ), args.logFilePath.end());
         args.logFilePath.erase(remove( args.logFilePath.begin(), args.logFilePath.end(), '\'' ), args.logFilePath.end());
-*logfile << "p1.1 open log " << args.logFilePath << std::endl;
+        *logfile << Debug() << "open log " << args.logFilePath << std::endl;
         unit_log.open(L"file:", args.logFilePath);
         logfile = &unit_log;
     }
 
-*logfile << "p2" << std::endl;
     if (vm.count("service-name")) {
         args.serviceName = vm["service-name"].as<wstring>();
         args.serviceName.erase(remove( args.serviceName.begin(), args.serviceName.end(), '\"' ), args.serviceName.end());
         args.serviceName.erase(remove( args.serviceName.begin(), args.serviceName.end(), '\'' ), args.serviceName.end());
     }
-*logfile << "p4" << std::endl;
 
     if (service_unit_options.count("Service.Type")) {
 
@@ -397,7 +380,7 @@ catch (...) {
         else if (service_unit_options["Service.Type"].as<std::wstring>().compare(L"idle") == 0) {
             args.serviceType = CWrapperService::SERVICE_TYPE_IDLE;
         }
-*logfile << "p4.1 " << args.serviceType << std::endl;
+        *logfile << Debug() << "Service Type" << args.serviceType << std::endl;
     }
     else {
 
@@ -456,7 +439,7 @@ catch (...) {
         args.restartMillis = 100; // From systemd.service default 100ms
     }
 
-*logfile << "p4.1 service type " << args.serviceType << std::endl;
+    *logfile << Debug() << "service type " << args.serviceType << std::endl;
     if (service_unit_options.count("Unit.Requisite")) {
 
         // Sort into service and non service members. They require different code to check
@@ -682,9 +665,11 @@ int wmain(int argc, wchar_t *argv[])
         EnvMap env;
 
         unit_log.open(L"file:", L"c:\\var\\log\\openstackservice.log");
+	unit_log.setlogginglevel(journalstreams::LOGGING_LEVEL_WARNING);
+	unit_log.set_default_msglevel(journalstreams::LOGGING_LEVEL_INFO);
         auto args = ParseArgs(argc, argv);
 
-*logfile << L"log file name " << args.logFilePath.c_str() << std::endl;
+        *logfile << Debug() << L"log file name " << args.logFilePath.c_str() << std::endl;
 
         params.szServiceName  = args.serviceName.c_str();
    //     params.szShellCmdPre  = args.shellCmd_pre.c_str();
@@ -743,7 +728,6 @@ int wmain(int argc, wchar_t *argv[])
         {
             char msg[100];
             sprintf_s(msg, "Service failed to run w/err 0x%08lx", GetLastError());
-*logfile << msg << '\n';
             throw exception(msg);
         }
         if (CWrapperService::bDebug) {
@@ -757,7 +741,7 @@ int wmain(int argc, wchar_t *argv[])
     }
     catch (exception &ex)
     {
-*logfile << ex.what() << '\n';
+        *logfile << Error() << ex.what() << '\n';
         return -1;
     }
 

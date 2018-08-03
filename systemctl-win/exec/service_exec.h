@@ -30,6 +30,8 @@ under the License.
 #include "journalstream.h"
 #include "ServiceBase.h"
 
+using namespace journalstreams;
+
 typedef std::map<std::wstring, std::wstring> EnvMap;
 
 class CWrapperService : public CServiceBase
