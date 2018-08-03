@@ -26,6 +26,8 @@
 
 #pragma region Static Members
 
+using namespace journalstreams;
+
 boolean CServiceBase::bDebug = false;
 
 HANDLE CServiceBase::hSvcStopEvent = NULL;
@@ -225,11 +227,11 @@ CServiceBase::CServiceBase(LPCWSTR pszServiceName,
 
     if (logfile) {
         this->logfile = logfile;
-        *this->logfile << L"got log file" << std::endl;
+        *this->logfile << Debug() << L"got log file" << std::endl;
     }
     else {
         this->logfile = new wojournalstream(L"file:", L"c:\\tmp\\openstackservice.default.log");
-        *this->logfile << L"opened log file" << std::endl;
+        *this->logfile << Debug() << L"opened log file" << std::endl;
     }
 }
 

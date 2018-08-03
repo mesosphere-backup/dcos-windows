@@ -26,6 +26,8 @@
 #include "journalstream.h"
 
 #define MAX_SVC_NAME 256
+using journalstreams::wojournalstream;
+
 
 class CServiceBase
 {
