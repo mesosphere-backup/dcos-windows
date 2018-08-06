@@ -87,17 +87,26 @@ function New-DiagnosticsAgent {
     $diagnosticsBinary = Join-Path $DIAGNOSTICS_DIR "dcos-diagnostics.exe"
     $logFile = Join-Path $DIAGNOSTICS_LOG_DIR "diagnostics-agent.log"
     New-Item -ItemType File -Path $logFile
-    $dcos_endpoint_config_dir = Join-Path $DIAGNOSTICS_DIR "dcos-diagnostics-endpoint-config.json"
-    $diagnosticsAgentArguments = (  "daemon " + `
-                                    "--role agent " + `
-                                    "--debug " + `
-                                    "--no-unix-socket " + `
-                                    "--port `"${DIAGNOSTICS_AGENT_PORT}`" " + `
-                                    "--endpoint-config `"${dcos_endpoint_config_dir}`"")
+    $config = @{
+        "debug" = $true
+        "no-unix-socket" = $true
+        "agent-port" = $ADMINROUTER_AGENT_PORT # This is the front-end port and should be the admin router port
+        "port" = $DIAGNOSTICS_AGENT_PORT
+        "endpoint-config" = Join-Path $DIAGNOSTICS_CONFIG_DIR "dcos-diagnostics-endpoint-config.json"
+    }
+    if($Public) {
+        $config["role"] = "agent_public"
+    } else {
+        $config["role"] = "agent"
+    }
+    $json = ConvertTo-Json -InputObject $config
+    $configFile = Join-Path $DIAGNOSTICS_CONFIG_DIR "dcos-diagnostics-config.json"
+    $asciiEncoding = [System.Text.Encoding]::ASCII
+    [System.IO.File]::WriteAllLines($configFile, $json, $asciiEncoding)
     Get-MonitoredServices | Out-File -Encoding ascii -FilePath "${DIAGNOSTICS_DIR}\servicelist.txt"
     $environmentFile = Join-Path $DCOS_DIR "environment"
     New-DCOSWindowsService -Name $DIAGNOSTICS_SERVICE_NAME -DisplayName $DIAGNOSTICS_SERVICE_DISPLAY_NAME -Description $DIAGNOSTICS_SERVICE_DESCRIPTION `
-                           -LogFile $logFile -WrapperPath $SERVICE_WRAPPER -BinaryPath "$diagnosticsBinary $diagnosticsAgentArguments" -EnvironmentFiles @($environmentFile)
+                           -LogFile $logFile -WrapperPath $SERVICE_WRAPPER -BinaryPath "$diagnosticsBinary daemon --config ${configFile}" -EnvironmentFiles @($environmentFile)
     Start-Service $DIAGNOSTICS_SERVICE_NAME
 }
 
