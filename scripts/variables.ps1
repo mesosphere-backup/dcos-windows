@@ -15,11 +15,11 @@ $DCOS_NAT_NETWORK_NAME = "dcosnat"
 
 # Mesos configurations
 $MESOS_SERVICE_NAME = "dcos-mesos-slave"
-$MESOS_SERVICE_DISPLAY_NAME = "DCOS Mesos Windows Slave"
-$MESOS_SERVICE_DESCRIPTION = "Windows Service for the DCOS Mesos Slave"
+$MESOS_SERVICE_DISPLAY_NAME = "Mesos Agent"
+$MESOS_SERVICE_DESCRIPTION = "${MESOS_SERVICE_DISPLAY_NAME}: distributed systems kernel agent"
 $MESOS_PUBLIC_SERVICE_NAME = "dcos-mesos-slave-public"
-$MESOS_PUBLIC_SERVICE_DISPLAY_NAME = "DCOS Mesos Windows Public Slave"
-$MESOS_PUBLIC_SERVICE_DESCRIPTION = "Windows Service for the DCOS Mesos Public Slave"
+$MESOS_PUBLIC_SERVICE_DISPLAY_NAME = "Mesos Agent Public"
+$MESOS_PUBLIC_SERVICE_DESCRIPTION = "${MESOS_PUBLIC_SERVICE_DISPLAY_NAME}: distributed systems kernel public agent"
 $MESOS_AGENT_PORT = 5051
 $MESOS_DIR = Join-Path $DCOS_DIR "mesos"
 $MESOS_BIN_DIR = Join-Path $MESOS_DIR "bin"
@@ -35,8 +35,8 @@ $MESOS_REGISTER_TIMEOUT = "15mins"
 
 # Diagnostics configurations
 $DIAGNOSTICS_SERVICE_NAME = "dcos-diagnostics"
-$DIAGNOSTICS_SERVICE_DISPLAY_NAME = "DCOS Diagnostics Windows agent"
-$DIAGNOSTICS_SERVICE_DESCRIPTION = "Windows Service for the DCOS Diagnostics agent"
+$DIAGNOSTICS_SERVICE_DISPLAY_NAME = "DC/OS Diagnostics Agent"
+$DIAGNOSTICS_SERVICE_DESCRIPTION = "${DIAGNOSTICS_SERVICE_DISPLAY_NAME}: exposes component health"
 $DIAGNOSTICS_AGENT_PORT = 9003
 $DIAGNOSTICS_DIR = Join-Path $DCOS_DIR "diagnostics"
 $DIAGNOSTICS_CONFIG_DIR = Join-Path $DIAGNOSTICS_DIR "config"
@@ -45,8 +45,8 @@ $DIAGNOSTICS_LOG_DIR = Join-Path $DIAGNOSTICS_DIR "log"
 # dcos-net configurations
 $DCOS_NET_LOCAL_ADDRESSES = @("198.51.100.1", "198.51.100.2", "198.51.100.3")
 $DCOS_NET_SERVICE_NAME = "dcos-net"
-$DCOS_NET_SERVICE_DISPLAY_NAME = "DC/OS Net Windows Agent"
-$DCOS_NET_SERVICE_DESCRIPTION = "Windows Service for the DC/OS Net Windows Agent"
+$DCOS_NET_SERVICE_DISPLAY_NAME = "DC/OS Net"
+$DCOS_NET_SERVICE_DESCRIPTION = "${DCOS_NET_SERVICE_DISPLAY_NAME}: A distributed systems & network overlay orchestration engine"
 $DCOS_NET_DEVICE_NAME = "dcos-net"
 $DCOS_NET_DIR = Join-Path $DCOS_DIR "dcos-net"
 $DCOS_NET_BIN_DIR = Join-Path $DCOS_NET_DIR "bin"
@@ -55,8 +55,8 @@ $DCOS_NET_SERVICE_DIR = Join-Path $DCOS_NET_DIR "service"
 
 # Metrics configurations
 $METRICS_SERVICE_NAME = "dcos-metrics"
-$METRICS_SERVICE_DISPLAY_NAME = "DCOS Metrics Windows agent"
-$METRICS_SERVICE_DESCRIPTION = "Windows Service for the DCOS Metrics agent"
+$METRICS_SERVICE_DISPLAY_NAME = "DC/OS Metrics Agent"
+$METRICS_SERVICE_DESCRIPTION = "${METRICS_SERVICE_DISPLAY_NAME}: exposes node, container, and application metrics"
 $METRICS_AGENT_PORT = 9000
 $METRICS_DIR = Join-Path $DCOS_DIR "metrics"
 $METRICS_CONFIG_DIR = Join-Path $METRICS_DIR "config"
@@ -66,8 +66,8 @@ $METRICS_SERVICE_DIR = Join-Path $METRICS_DIR "service"
 
 # AdminRouter configurations
 $ADMINROUTER_SERVICE_NAME = "dcos-adminrouter"
-$ADMINROUTER_SERVICE_DISPLAY_NAME = "DCOS AdminRouter Windows agent"
-$ADMINROUTER_SERVICE_DESCRIPTION = "Windows Service for the DCOS AdminRouter agent"
+$ADMINROUTER_SERVICE_DISPLAY_NAME = "Admin Router Agent"
+$ADMINROUTER_SERVICE_DESCRIPTION = "${ADMINROUTER_SERVICE_DISPLAY_NAME}: exposes a unified control plane proxy for components and services using Apache2"
 $ADMINROUTER_AGENT_PORT = 61001
 $ADMINROUTER_DIR = Join-Path $DCOS_DIR "adminrouter"
 $ADMINROUTER_LOG_DIR = Join-Path $ADMINROUTER_DIR "log"
