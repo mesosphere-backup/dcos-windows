@@ -1,6 +1,6 @@
 [Unit]
 Description=Test-Service-I
-Wants=a.service f.service
+Wants=test-a.service test-f.service
 
 [Service]
 ExecStart=/bin/true

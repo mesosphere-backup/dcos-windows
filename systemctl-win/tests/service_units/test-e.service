@@ -1,0 +1,8 @@
+[Unit]
+Description=Test E:Cyclic
+After=test-b.service
+Before=test-a.service
+Wants=test-a.service
+
+[Service]
+ExecStart=/bin/true
