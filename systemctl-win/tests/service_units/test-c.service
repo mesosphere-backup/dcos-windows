@@ -1,0 +1,6 @@
+[Unit]
+Description=Test C
+Requires=test-a.service
+
+[Service]
+ExecStart=/bin/true

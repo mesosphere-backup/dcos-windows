@@ -1,0 +1,7 @@
+[Unit]
+Description=Test A
+Requires=test-b.service
+Before=test-b.service
+
+[Service]
+ExecStart=/bin/true

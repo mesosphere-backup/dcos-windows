@@ -47,12 +47,12 @@ $activedir ="c:/etc/systemd/active"
 $logdir="c:/var/log"
 
 rm "$activedir/*"
-& sc.exe stop a.service
-& sc.exe delete a.service
-& sc.exe stop b.service
-& sc.exe delete b.service
-& sc.exe stop f.service
-& sc.exe delete f.service
+& sc.exe stop test-a.service
+& sc.exe delete test-a.service
+& sc.exe stop test-b.service
+& sc.exe delete test-b.service
+& sc.exe stop test-f.service
+& sc.exe delete test-f.service
 & sc.exe stop i.service
 & sc.exe delete i.service
 & sc.exe stop running.service
@@ -68,31 +68,31 @@ if (!$bindir) {
 try {
     copy-item -recurse -path "$test_service_dir/*" -destination $servicedir
     $Error.clear()
-    $results = invoke-expression " $bindir/systemctl.exe enable a.service" 
+    $results = invoke-expression " $bindir/systemctl.exe enable test-a.service" 
     if ($LASTEXITCODE -ne 0) {
         throw "enable Service A failed"
     }
     else {
-         $check = (get-service | where { $_.name -eq "a.service" })
+         $check = (get-service | where { $_.name -eq "test-a.service" })
          if ($check.count -eq 0) {
             throw "enable Service A failed to enable service"
          }
          if ($check.count -ne 1) {
-             throw "enable Service A enabled extra service instances"
+             throw "enable Service A enabled extrtest-a.service instances"
          }
-         $check = (get-service | where { $_.name -eq "b.service" })
+         $check = (get-service | where { $_.name -eq "test-b.service" })
          if ($check.count -eq 0) {
             throw "enable Service A failed to enable dependent service b"
          }
          if ($check.count -ne 1) {
-             throw "enable Service A enabled extra service b instances"
+             throw "enable Service A enabled extrtest-a.service b instances"
          }
-         $check = (get-service | where { $_.name -eq "f.service" })
+         $check = (get-service | where { $_.name -eq "test-f.service" })
          if ($check.count -eq 0) {
             throw "enable Service A failed to enable service b dependent service f"
          }
          if ($check.count -ne 1) {
-             throw "enable Service A enabled extra service f instances"
+             throw "enable Service A enabled extrtest-a.service f instances"
          }
          TestSuccess "Test EnableServiceA Success"
     } 
@@ -104,14 +104,14 @@ catch {
 
 try {   
     rm "$logdir/test-a*"
-    invoke-expression "$bindir/systemctl.exe start a.service"
+    invoke-expression "$bindir/systemctl.exe start test-a.service"
     if ($LASTEXITCODE -ne 0) {
         throw "enable Service A failed"
     }
     else {
          TestSuccess "Test StarterviceA Success"
     } 
-    $check = (get-service | where { $_.name -eq "a.service" })
+    $check = (get-service | where { $_.name -eq "test-a.service" })
 }
 catch {
    TestFailed "Test StartServiceA failed: $Error"
@@ -131,21 +131,21 @@ try {
             throw "enable Service with multiple dependents i failed to enable service"
          }
          if ($check.count -ne 1) {
-             throw "enable Service with multiple dependents i enabled extra service instances"
+             throw "enable Service with multiple dependents i enabled extrtest-a.service instances"
          }
-         $check = (get-service | where { $_.name -eq "b.service" })
+         $check = (get-service | where { $_.name -eq "test-b.service" })
          if ($check.count -eq 0) {
             throw "enable Service with multiple dependents i failed to enable dependent service b"
          }
          if ($check.count -ne 1) {
-             throw "enable Service with multple dependents A enabled extra service b instances"
+             throw "enable Service with multple dependents A enabled extrtest-a.service b instances"
          }
-         $check = (get-service | where { $_.name -eq "f.service" })
+         $check = (get-service | where { $_.name -eq "test-f.service" })
          if ($check.count -eq 0) {
             throw "enable Service with multiple dependents I failed to enable service b dependent service f"
          }
          if ($check.count -ne 1) {
-             throw "enable Service with multiple dependents I enabled extra service f instances"
+             throw "enable Service with multiple dependents I enabled extrtest-a.service f instances"
          }
          TestSuccess "Test EnableServiceWithMultipleDependents Success"
     } 
@@ -170,7 +170,7 @@ try {
             throw "enable running service failed to enable service"
          }
          if ($check.count -ne 1) {
-            throw "enable running service enabled extra service instances"
+            throw "enable running service enabled extrtest-a.service instances"
          }
 
 	 $rslt = ( & $bindir/systemctl.exe is-enabled running.service 2>$NULL )
@@ -232,4 +232,6 @@ try {
 }
 catch {
    TestFailed "Test EnableStartStopRunningService failed: $Error"
+}
+finally {
 }
