@@ -113,8 +113,9 @@ function Start-DockerConfiguration {
     Write-Log "Enter Start-DockerConfiguration"
 
     # stop Docker Windows service
+    $timeout = New-TimeSpan -Minutes $SERVICES_WAIT_TIMEOUT
     $dockerServiceObj = Stop-Service $DOCKER_SERVICE_NAME -PassThru
-    $dockerServiceObj.WaitForStatus('Stopped','00:03:00')
+    $dockerServiceObj.WaitForStatus('Stopped', $timeout)
     if ($dockerServiceObj.Status -ne 'Stopped') { 
        Throw "Docker service failed to stop"
     } else {
@@ -131,7 +132,7 @@ function Start-DockerConfiguration {
 
     # start Docker Windows Service
     $dockerServiceObj = Start-Service $DOCKER_SERVICE_NAME -PassThru
-    $dockerServiceObj.WaitForStatus('Running','00:03:00')
+    $dockerServiceObj.WaitForStatus('Running', $timeout)
     if ($dockerServiceObj.Status -ne 'Running') { 
         Throw "Docker service failed to start"
     } else {

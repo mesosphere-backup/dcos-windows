@@ -12,6 +12,9 @@ $SERVICE_WRAPPER = Join-Path $DCOS_DIR $SERVICE_WRAPPER_FILE
 $GLOBAL_ENV_FILE = Join-Path $DCOS_DIR "environment"
 $MASTERS_LIST_FILE = Join-Path $DCOS_DIR "master_list"
 $DCOS_NAT_NETWORK_NAME = "dcosnat"
+# Minutes to wait until Windows services reach the desired status
+# of running / stopped
+$SERVICES_WAIT_TIMEOUT = 3
 
 # Mesos configurations
 $MESOS_SERVICE_NAME = "dcos-mesos-slave"
