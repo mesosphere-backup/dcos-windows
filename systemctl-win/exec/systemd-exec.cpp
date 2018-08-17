@@ -255,7 +255,7 @@ CLIArgs ParseArgs(int argc, wchar_t *argv[])
         CServiceBase::bDebug = true;
     }
 
-    *logfile << Debug() << L"check for service unit" << std::endl;
+    *logfile << Verbose() << L"check for service unit" << std::endl;
     if (vm.count("service-unit")) {
         args.unitPath = vm["service-unit"].as<wstring>();
         string unit_path( args.unitPath.begin(), args.unitPath.end());
@@ -291,8 +291,8 @@ CLIArgs ParseArgs(int argc, wchar_t *argv[])
         }
         size_t start_index = args.unitPath.rfind('/');
         args.serviceUnit = args.unitPath.substr(start_index+1, args.unitPath.length() - start_index);
-        *logfile << Debug() << L"has service unit " << args.serviceUnit.c_str() << std::endl;
-        *logfile << Debug() << L"unit path " << args.unitPath << std::endl ;
+        *logfile << Info() << L"has service unit " << args.serviceUnit.c_str() << std::endl;
+        *logfile << Info() << L"unit path " << args.unitPath << std::endl ;
     }
     else {
         // 2do: Else derive the service name from the execStart executable
@@ -316,10 +316,10 @@ CLIArgs ParseArgs(int argc, wchar_t *argv[])
         args.stdoutFilePath.append(L".stdout.log");
     }
 
-    *logfile << Debug() << L"open stdoutFile outputtype = " << args.stdoutOutputType << std::endl;
-    *logfile << Debug() << L"open stdoutFile Path = " << args.stdoutFilePath << std::endl;
+    *logfile << Verbose() << L"open stdoutFile outputtype = " << args.stdoutOutputType << std::endl;
+    *logfile << Verbose() << L"open stdoutFile Path = " << args.stdoutFilePath << std::endl;
     unit_stdout.open(args.stdoutOutputType, args.stdoutFilePath);
-    unit_stdout.setlogginglevel(journalstreams::LOGGING_LEVEL_WARNING);
+    unit_stdout.setlogginglevel(journalstreams::LOGGING_LEVEL_INFO);
     unit_stdout.set_default_msglevel(journalstreams::LOGGING_LEVEL_INFO);
 
     args.stderrOutputType = L"journal";
@@ -341,7 +341,7 @@ CLIArgs ParseArgs(int argc, wchar_t *argv[])
     }
 
     unit_stderr.open(args.stderrOutputType, args.stderrFilePath);
-    unit_stderr.setlogginglevel(journalstreams::LOGGING_LEVEL_WARNING);
+    unit_stderr.setlogginglevel(journalstreams::LOGGING_LEVEL_INFO);
     unit_stderr.set_default_msglevel(journalstreams::LOGGING_LEVEL_INFO);
 
     if (vm.count("log-file")) {
