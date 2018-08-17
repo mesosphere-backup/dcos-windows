@@ -42,7 +42,6 @@ struct CLIArgs
     vector<wstring> environmentFiles;
     vector<wstring> environmentFilesPShell;
     vector<wstring> environmentVars;
-
     vector<wstring> execStartPre;
     wstring         execStart;
     vector<wstring> execStartPost;
@@ -89,6 +88,7 @@ struct CLIArgs
     enum CWrapperService::RestartAction restartAction;
     int  restartMillis;
     wstring workingDirectory;
+    int verbosity;  
 };
 
 CLIArgs ParseArgs(int argc, wchar_t *argv[]);
@@ -239,7 +239,7 @@ CLIArgs ParseArgs(int argc, wchar_t *argv[])
     options_description desc{ "Options" };
     desc.add_options()
         ("debug", "run from the command line")
-        ("verbose", "print all info and debug spew")
+        ("verbosity", wvalue<wstring>(), "print info and debug spew")
         ("service-unit", wvalue<wstring>(), "Service uses the service unit file in %SystemDrive%/etc/SystemD/active" )
         ("log-file,l", wvalue<wstring>(), "Log file containing  the redirected STD OUT and ERR of the child process")
         ("service-name", wvalue<wstring>(), "Service name");
@@ -279,7 +279,7 @@ CLIArgs ParseArgs(int argc, wchar_t *argv[])
             *logfile << Error() << L"Problems reading service unit " << unit_path.c_str() << std::endl;
         }
 
-        *logfile << Debug() << L"opened service unit " << service_unit_contents.c_str() << std::endl;
+        *logfile << Info() << L"opened service unit " << service_unit_contents.c_str() << std::endl;
         auto config_parsed = parse_config_file<char>(service_unit_file, config, true);
         store(config_parsed, service_unit_options);
         notify(service_unit_options);
@@ -348,7 +348,7 @@ CLIArgs ParseArgs(int argc, wchar_t *argv[])
         args.logFilePath = vm["log-file"].as<wstring>();
         args.logFilePath.erase(remove( args.logFilePath.begin(), args.logFilePath.end(), '\"' ), args.logFilePath.end());
         args.logFilePath.erase(remove( args.logFilePath.begin(), args.logFilePath.end(), '\'' ), args.logFilePath.end());
-        *logfile << Debug() << "open log " << args.logFilePath << std::endl;
+        *logfile << Info() << "open log " << args.logFilePath << std::endl;
         unit_log.open(L"file:", args.logFilePath);
         logfile = &unit_log;
     }
@@ -380,7 +380,7 @@ CLIArgs ParseArgs(int argc, wchar_t *argv[])
         else if (service_unit_options["Service.Type"].as<std::wstring>().compare(L"idle") == 0) {
             args.serviceType = CWrapperService::SERVICE_TYPE_IDLE;
         }
-        *logfile << Debug() << "Service Type" << args.serviceType << std::endl;
+        *logfile << Info() << "Service Type" << args.serviceType << std::endl;
     }
     else {
 
@@ -439,7 +439,7 @@ CLIArgs ParseArgs(int argc, wchar_t *argv[])
         args.restartMillis = 100; // From systemd.service default 100ms
     }
 
-    *logfile << Debug() << "service type " << args.serviceType << std::endl;
+    *logfile << Info() << "service type " << args.serviceType << std::endl;
     if (service_unit_options.count("Unit.Requisite")) {
 
         // Sort into service and non service members. They require different code to check
@@ -473,12 +473,9 @@ CLIArgs ParseArgs(int argc, wchar_t *argv[])
         // Sort into service and non service members. They require different code to check
         std::vector<std::wstring> wsv = service_unit_options["Unit.After"].as<std::vector<std::wstring>>();
 
-*logfile << "p4.4 after count = " << wsv.size() << std::endl;
-
         for (auto ws: wsv) {
             if (ws.rfind(L".service") != std::string::npos ) {
                 args.after_services.push_back(ws);
-*logfile << L"p4.5 after service  = " << ws << std::endl;
             }
             else if (ws.rfind(L".target") != std::string::npos ) {
                 args.after_files.push_back(ws);
@@ -586,35 +583,31 @@ CLIArgs ParseArgs(int argc, wchar_t *argv[])
         args.environmentVars = service_unit_options["Service.Environment"].as<vector<wstring>>();
     }
 
-*logfile << L"service_unit_options.count(\"Service.EnvironmentFile\") " << service_unit_options.count("Service.EnvironmentFile") << std::endl;
+    *logfile << Debug() << L"service_unit_options.count(\"Service.EnvironmentFile\") " << service_unit_options.count("Service.EnvironmentFile") << std::endl;
     if (service_unit_options.count("Service.EnvironmentFile")) {
         args.environmentFiles = service_unit_options["Service.EnvironmentFile"].as<vector<wstring>>();
-*logfile << L"Env file" <<std::endl;
+        *logfile << Debug() << L"Env file" <<std::endl;
     }
 
     if (service_unit_options.count("Service.EnvironmentFile-PS")) {
         args.environmentFilesPShell = service_unit_options["Service.EnvironmentFilesPS"].as<vector<wstring>>();
-*logfile << L"Env file psh" <<std::endl;
     }
 
-*logfile << "p5" << std::endl;
     if (service_unit_options.count("Service.ExecStartPre")) {
         vector<wstring> ws_vector = service_unit_options["Service.ExecStartPre"].as<vector<wstring>>();
 
         for (auto ws : ws_vector) {
            EscapeForPowershell(ws);
-*logfile << "p5.1 exec start pre cmdline = " << ws << std::endl;
+           *logfile << Debug() << "p5.1 exec start pre cmdline = " << ws << std::endl;
         }
         args.execStartPre = ws_vector;
     }
-
-*logfile << "p6" << std::endl;
 
     if (service_unit_options.count("Service.ExecStart")) {
 
         args.execStart = service_unit_options["Service.ExecStart"].as<wstring>();
         EscapeForPowershell(args.execStart);
-*logfile << "p6.1 execstart = " << args.execStart << std::endl;
+        *logfile << Debug() << "p6.1 execstart = " << args.execStart << std::endl;
     }
 
     if (service_unit_options.count("Service.ExecStartPost")) {
@@ -622,7 +615,7 @@ CLIArgs ParseArgs(int argc, wchar_t *argv[])
 
         for (auto ws : ws_vector) {
             EscapeForPowershell(ws);
-*logfile << "p6.2 execstartpost = " << ws << std::endl;
+            *logfile << Debug() << "p6.2 execstartpost = " << ws << std::endl;
         }
         args.execStartPost = ws_vector;
     }
@@ -630,7 +623,7 @@ CLIArgs ParseArgs(int argc, wchar_t *argv[])
     if (service_unit_options.count("Service.ExecStop")) {
         args.execStop = service_unit_options["Service.ExecStop"].as<wstring>();
         EscapeForPowershell(args.execStop);
-*logfile << "p6.1 execstop = " << args.execStop << std::endl;
+        *logfile << Debug() << "p6.1 execstop = " << args.execStop << std::endl;
     }
 
 
@@ -638,20 +631,19 @@ CLIArgs ParseArgs(int argc, wchar_t *argv[])
         vector<wstring> ws_vector = service_unit_options["Service.ExecStopPost"].as<vector<wstring>>();
         for (auto ws : ws_vector) {
             EscapeForPowershell(ws);
-*logfile << "p6.2 execstoppost = " << ws << std::endl;
+            *logfile << Debug() << "p6.2 execstoppost = " << ws << std::endl;
         }
         args.execStopPost = ws_vector;
     }
 
-*logfile << "p7" << std::endl;
-*logfile << L"service name " << args.serviceName << std::endl;
-for (auto arg: additionalArgs ) {
-*logfile << L"additionalArgs " << arg << std::endl;
-}
+    *logfile << Debug() << L"service name " << args.serviceName << std::endl;
+    for (auto arg: additionalArgs ) {
+        *logfile << Debug() << L"additionalArgs " << arg << std::endl;
+    }
 
-*logfile << "p8" << std::endl;
-    if(args.serviceName.empty())
+    if(args.serviceName.empty()) {
         throw exception("Service name not provided");
+    }
     
     return args;
 }
@@ -669,7 +661,7 @@ int wmain(int argc, wchar_t *argv[])
 	unit_log.set_default_msglevel(journalstreams::LOGGING_LEVEL_INFO);
         auto args = ParseArgs(argc, argv);
 
-        *logfile << Debug() << L"log file name " << args.logFilePath.c_str() << std::endl;
+        *logfile << Info() << L"log file name " << args.logFilePath.c_str() << std::endl;
 
         params.szServiceName  = args.serviceName.c_str();
    //     params.szShellCmdPre  = args.shellCmd_pre.c_str();

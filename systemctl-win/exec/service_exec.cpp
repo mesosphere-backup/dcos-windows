@@ -64,8 +64,8 @@ CWrapperService::ProcessSpecialCharacters(std::wstring &ws)
             ws.erase(0, 1);
         spec_char = ws[0];
         if (spec_char == '!') {
-            *logfile << L"Illegal combination of special execuatble chars +, ! and !! in commandline " << ws << std::endl;
-            }
+            *logfile << Warning() << L"Illegal combination of special execuatble chars +, ! and !! in commandline " << ws << std::endl;
+        }
         break;
 
     case L'!':
@@ -170,20 +170,20 @@ CWrapperService::CWrapperService(struct CWrapperService::ServiceParams &params)
         m_Requisite_Services = params.services_requisite;
     }
 
-*logfile << L"check for envfiles " << std::endl;
+    *logfile << Debug() << L"check for envfiles " << std::endl;
     if (!params.environmentFiles.empty()) {
         m_EnvironmentFiles = params.environmentFiles;
-for( auto envf : m_EnvironmentFiles ) {
-*logfile << L"envfile " << envf << std::endl;
-}
+        for( auto envf : m_EnvironmentFiles ) {
+            *logfile << Info() << L"envfile " << envf << std::endl;
+        }
     }
 
-*logfile << L"check for envfilesps " << std::endl;
+    *logfile << Debug() << L"check for envfilesps " << std::endl;
     if (!params.environmentFilesPS.empty()) {
         m_EnvironmentFilesPS = params.environmentFilesPS;
-for( auto envf : m_EnvironmentFilesPS ) {
-*logfile << L"envifile " << envf << std::endl;
-}
+        for( auto envf : m_EnvironmentFilesPS ) {
+            *logfile << Info() << L"envfiile " << envf << std::endl;
+        }
     }
 
     if (!params.environmentVars.empty()) {
@@ -241,7 +241,7 @@ for( auto envf : m_EnvironmentFilesPS ) {
 CWrapperService::~CWrapperService(void)
 
 {
-*logfile << L"~CWrapperService destructor " << std::endl;
+    *logfile << Debug() << L"~CWrapperService destructor " << std::endl;
 
     if (m_ExecStartProcInfo.hProcess)
     {
@@ -267,7 +267,7 @@ CWrapperService::GetServiceDependencies()
         wostringstream os;
         int last_error = GetLastError();
         os << L"WaitForDependents could not open service manager win err = " << last_error << std::endl;
-	*logfile << os.str();
+	*logfile << Error() << os.str();
         throw ServiceManagerException(last_error, os.str().c_str());
     }
 
@@ -276,14 +276,14 @@ CWrapperService::GetServiceDependencies()
         wostringstream os;
         int last_error = GetLastError();
         os << L"WaitForDependents OpeService failed " << GetLastError() << std::endl;
-	*logfile << os.str();
+	*logfile << Error() << os.str();
         CloseServiceHandle(hsc);
         throw ServiceManagerException(last_error, os.str().c_str());
     }
 
     (void)::QueryServiceConfigW( hsvc, NULL, 0, &bytes_needed);
 
- *logfile << "bytes needed = " << bytes_needed << std::endl;
+    *logfile << Debug() << "bytes needed = " << bytes_needed << std::endl;
 
     vector<char> config_buff(bytes_needed);
     QUERY_SERVICE_CONFIGW *service_config = (QUERY_SERVICE_CONFIGW*)config_buff.data();
@@ -292,12 +292,12 @@ CWrapperService::GetServiceDependencies()
         wostringstream os;
         int last_error = GetLastError();
         os << L"WaitForDependents could not get config err = " << last_error << std::endl;
-	*logfile << os.str();
+	*logfile << Error() << os.str();
         CloseServiceHandle(hsc);
         throw ServiceManagerException(last_error, os.str().c_str());
     }
 
-    *logfile << L"GetServiceDependencies = " << service_config->lpDependencies << std::endl;
+    *logfile << Debug() << L"GetServiceDependencies = " << service_config->lpDependencies << std::endl;
     
     // If this is a single string we need to parse it
     wchar_t *pdep = service_config->lpDependencies;
@@ -306,60 +306,11 @@ CWrapperService::GetServiceDependencies()
 	    this->m_Dependencies.push_back(pdep);
 	    pdep += wcslen(pdep);
 	    pdep++; // Skip the null
-*logfile << L"dep = " << this->m_Dependencies.back() << std::endl;
+            *logfile << Info() << L"dep = " << this->m_Dependencies.back() << std::endl;
         }
 	// Should leave a null at the end
     }
 }
-
-
-
-#if 0
-void
-CWrapperService::StopServiceDependencies()
-
-{
-    
-    SC_HANDLE hsc = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
-    if (!hsc) {
-        wostringstream os;
-        int last_error = GetLastError();
-        os << L"StopServiceDependents could not open service manager win err = " << last_error << std::endl;
-	*logfile << os.str();
-        throw ServiceManagerException(last_error, os.str().c_str());
-    }
-    for (auto service: this->m_Dependencies) {
-
-	SERVICE_STATUS status = { 0 };
-
-        SC_HANDLE hsvc = OpenServiceW(hsc, m_ServiceName.c_str(), SERVICE_STOP |
-	                                                          SERVICE_QUERY_STATUS |
-								  SERVICE_ENUMERATE_DEPENDENTS);
-        if (!hsvc) {
-            wostringstream os;
-            int last_error = GetLastError();
-            os << L"StopServiceDependents OpenService of " << service << " failed: " << GetLastError() << std::endl;
-            *logfile << os.str();
-            CloseServiceHandle(hsc);
-            throw ServiceManagerException(last_error, os.str().c_str());
-        }
-
-        if (!ControlService(hsvc, SERVICE_CONTROL_STOP, &status)) {
-            int last_error = GetLastError();
-            wostringstream os;
-            os << L"StopServiceDependents ControlService of " << service << " failed: " << GetLastError() << std::endl;
-            *logfile << os.str();
-            //CloseServiceHandle(hsc);
-            //throw ServiceManagerException(last_error, os.str().c_str());
-        }
-        CloseServiceHandle(hsvc);
-    }
-    CloseServiceHandle(hsc);
-
-    // Wait For the services to stop
-    this->WaitForDependents(this->m_Dependencies);
-}
-#endif
 
 
 std::wstring CWrapperService::ResolveEnvVars(std::wstring arg)
@@ -480,7 +431,7 @@ void CWrapperService::LoadEnvVarsFromFile(const wstring& path)
                 auto name = boost::algorithm::trim_copy(matches[1].str());
                 auto value = boost::algorithm::trim_copy(matches[2].str());
                 m_Env[name] = value;
-*logfile << L"environment file key = " << name << " val " << value << std::endl;
+               *logfile << Debug() << L"environment file key = " << name << " val " << value << std::endl;
             }
         }
     }
@@ -518,13 +469,13 @@ void CWrapperService::LoadPShellEnvVarsFromFile(const wstring& path)
                     // We uppercase all env var names because they are case insensitive in powershell
                     std::transform(env_var.begin(), env_var.end(), env_var.begin(), ::toupper);
 
-                    *logfile << L"expand m_env[" << env_var << L"] = "  << m_Env[env_var] << std::endl;
+                    *logfile << Debug() << L"expand m_env[" << env_var << L"] = "  << m_Env[env_var] << std::endl;
 
                     value.replace(env_var_idx, env_var.length()+5, m_Env[env_var]);
                     pos = env_var_idx; // We dont have an env there any more, but the env_var could 
                                        // contain more env_var so we rescan
 
-                    *logfile << L"env_var = " << env_var << L" expanded value = " << value << std::endl;
+                    *logfile << Debug() << L"env_var = " << env_var << L" expanded value = " << value << std::endl;
                 }
                 else {
                     break;
@@ -532,7 +483,7 @@ void CWrapperService::LoadPShellEnvVarsFromFile(const wstring& path)
             }
 
             m_Env[name] = value;
-*logfile << L"PS environment file key = " << name << " val " << value << std::endl;
+            *logfile << L"PS environment file key = " << name << " val " << value << std::endl;
 
             
         }
@@ -553,14 +504,14 @@ void CWrapperService::StartProcess(LPCWSTR cmdLine, DWORD processFlags, PROCESS_
     if (m_StdOut->GetHandle() != INVALID_HANDLE_VALUE) {
         startupInfo.dwFlags |= STARTF_USESTDHANDLES;
         startupInfo.hStdOutput = m_StdOut->GetHandle();
-*logfile << L"has stdout " << std::endl;
+        *logfile << Debug() << L"has stdout " << std::endl;
 
     }
 
     if (m_StdErr->GetHandle() != INVALID_HANDLE_VALUE) {
         startupInfo.dwFlags |= STARTF_USESTDHANDLES;
         startupInfo.hStdError  = m_StdErr->GetHandle();
-*logfile << L"has stderr " << std::endl;
+        *logfile << Debug() << L"has stderr " << std::endl;
     }
 
     if (startupInfo.dwFlags &= STARTF_USESTDHANDLES) {
@@ -573,14 +524,14 @@ void CWrapperService::StartProcess(LPCWSTR cmdLine, DWORD processFlags, PROCESS_
 
     LPVOID lpEnv = NULL;
     if (!m_envBuf.empty()) {
-for ( wchar_t *tmpenv = (wchar_t*)m_envBuf.c_str();
-      *tmpenv && tmpenv < (wchar_t*)m_envBuf.c_str()+m_envBuf.size();
-    ) {
-    wstring this_env = tmpenv;
-*logfile << "at exec, env : " << this_env << std::endl;
-    tmpenv+= wcslen(tmpenv);
-    tmpenv++;
-}
+        for ( wchar_t *tmpenv = (wchar_t*)m_envBuf.c_str();
+            *tmpenv && tmpenv < (wchar_t*)m_envBuf.c_str()+m_envBuf.size();
+            ) {
+            wstring this_env = tmpenv;
+            *logfile << Debug() << "at exec, env : " << this_env << std::endl;
+            tmpenv+= wcslen(tmpenv);
+            tmpenv++;
+        }
         lpEnv = (LPVOID)m_envBuf.c_str();
     }
     
@@ -601,7 +552,7 @@ for ( wchar_t *tmpenv = (wchar_t*)m_envBuf.c_str();
     wcscpy_s(tempCmdLine, tempCmdLineCount, cmdLine);
 
 
-*logfile << "create process " << cmdLine << std::endl;
+    *logfile << Verbose() << "create process " << cmdLine << std::endl;
 
     BOOL result = ::CreateProcessW(NULL, tempCmdLine, NULL, NULL, TRUE, dwCreationFlags,
         lpEnv, pWorkingDirectory, &startupInfo, &procInfo);
@@ -620,7 +571,7 @@ for ( wchar_t *tmpenv = (wchar_t*)m_envBuf.c_str();
 
     if(waitForProcess)
     {
-*logfile << "waitfor process " << cmdLine << std::endl;
+        *logfile << Verbose() << "waitfor process " << cmdLine << std::endl;
         ::WaitForSingleObject(procInfo.hProcess, INFINITE);
 
         DWORD exitCode = 0;
@@ -640,7 +591,7 @@ for ( wchar_t *tmpenv = (wchar_t*)m_envBuf.c_str();
             string str = wstring_convert<codecvt_utf8<WCHAR>>().to_bytes(os.str());
             throw RestartException(exitCode, str.c_str());
         }
-*logfile << "process success " << cmdLine << std::endl;
+        *logfile << Verbose() << "process success " << cmdLine << std::endl;
     }
 
 }
@@ -654,10 +605,10 @@ void CWrapperService::OnStart(DWORD dwArgc, LPWSTR *lpszArgv)
 
     m_IsStopping = FALSE;
 
-    *logfile << L"Starting service: " << m_ServiceName << std::endl;
+    *logfile << Info() << L"Starting service: " << m_ServiceName << std::endl;
 
     if (m_hServiceThread != NULL ) {
-*logfile << L"service thread is already running" << std::endl;
+        *logfile << Warning() << L"service thread for service " << m_name << " is already running" << std::endl;
          // 
     }
     else {
@@ -675,7 +626,7 @@ void CWrapperService::OnStart(DWORD dwArgc, LPWSTR *lpszArgv)
              throw ::GetLastError();
         }
     }
-*logfile << L"exit service OnStart: " << std::endl;
+    *logfile << Info() << L"exit service OnStart: " << std::endl;
 
 }
 
@@ -692,7 +643,7 @@ DWORD WINAPI CWrapperService::ServiceThread(LPVOID param)
     do {
         try {
 
-*logfile << L"start " << self->m_ServiceName << std::endl;
+            *logfile << Info() << L"start " << self->m_ServiceName << "service thread" << std::endl;
             if (!self->EvaluateConditions()) {
                 self->SetServiceStatus(SERVICE_STOPPED);
                 throw RestartException(1, "condition failed");
@@ -700,47 +651,47 @@ DWORD WINAPI CWrapperService::ServiceThread(LPVOID param)
 
             // If files before exist, bail.
             for (auto before : self->m_FilesBefore) {
-                *logfile << L"before file " << before << std::endl;
+                *logfile << Debug() << L"before file " << before << std::endl;
 
                 wstring path = self->m_unitPath;
 
                 path.append(before);
                 wifstream wifs(path);
                 if (wifs.is_open()) {
-                    *logfile << L"before file " << before << " is present, so don't run" << std::endl;
+                    *logfile << Debug() << L"before file " << before << " is present, so don't run" << std::endl;
                     wifs.close();
                     throw RestartException(1, "Before file is present, service not started");
                 }
             }
 
-for (auto before : self->m_ServicesBefore) {
-     *logfile << L"before service" << before << std::endl;
-}
+            for (auto before : self->m_ServicesBefore) {
+                 *logfile << Debug() << L"before service" << before << std::endl;
+            }
 
             for (auto after : self->m_FilesAfter) {
-                *logfile << L"after file " << after << std::endl;
+                *logfile << Debug() << L"after file " << after << std::endl;
 
                 // If files after do not exist, bail.
                 wstring path = self->m_unitPath;
                 path.append(after);
                 wifstream wifs(path);
                 if (!wifs.is_open()) {
-                    *logfile << L"after file " << after << " is not present, so don't run" << std::endl;
+                    *logfile << Info() << L"after file " << after << " is not present, so don't run" << std::endl;
                     throw RestartException(1, "After file is not present, service not started");
                 }
                 wifs.close();
             }
 
 
-for (auto after : self->m_ServicesAfter) {
-           *logfile << L"after service" << after << std::endl;
-}
+            for (auto after : self->m_ServicesAfter) {
+                *logfile << Debug() << L"after service" << after << std::endl;
+            }
 
-*logfile << L"WaitForDependents = " << std::endl;
+            *logfile << Debug() << L"WaitForDependents = " << std::endl;
 
             self->SetServiceStatus(SERVICE_START_PENDING);
             if (!self->WaitForDependents(self->m_ServicesAfter)) {
-                *logfile << L"Failure in WaitForDepenents" << std::endl;
+                *logfile << Warning() << L"Failure in WaitForDepenents" << std::endl;
                 throw RestartException(1068, "dependents failed");
             }
 
@@ -751,13 +702,13 @@ for (auto after : self->m_ServicesAfter) {
             self->GetCurrentEnv();
             for (auto envFile : self->m_EnvironmentFiles)
             {
-*logfile << L"Set up environment file " << envFile << std::endl;
+                *logfile << Debug() << L"Set up environment file " << envFile << std::endl;
                 self->LoadEnvVarsFromFile(envFile);
             }
 
             for (auto envFile : self->m_EnvironmentFilesPS)
             {
-*logfile << L"Set up pwsh environment file " << envFile << std::endl;
+                *logfile << Debug() << L"Set up pwsh environment file " << envFile << std::endl;
                 self->LoadPShellEnvVarsFromFile(envFile);
             }
 
@@ -769,7 +720,7 @@ for (auto after : self->m_ServicesAfter) {
                 self->m_envBuf.append(L"=");
                 self->m_envBuf.append(this_pair.second);
                 self->m_envBuf.push_back(L'\0');
-*logfile << L"env: " << this_pair.first << "=" << this_pair.second << std::endl;
+                *logfile << Verbose() << L"env: " << this_pair.first << "=" << this_pair.second << std::endl;
 
                 ::SetEnvironmentVariableW(this_pair.first.c_str(), this_pair.second.c_str());
             }
@@ -781,31 +732,31 @@ for (auto after : self->m_ServicesAfter) {
                 wostringstream os;
                 for( int i = 0;  i < self->m_ExecStartPreCmdLine.size(); i++ ) {
                     auto ws = self->m_ExecStartPreCmdLine[i];
-                    *logfile << L"Running ExecStartPre command: " << ws.c_str();
+                    *logfile << Info() << L"Running ExecStartPre command: " << ws.c_str();
                       // to do, add special char processing
                     try {
                         self->StartProcess(ws.c_str(), 0, self->m_ExecStartPreProcInfo[i], true); 
                     }
                     catch(RestartException &ex) {
                          if (!(self->m_ExecStartPreFlags[i] & EXECFLAG_IGNORE_FAIL)) {
-                            *logfile << L"Error in ExecStartPre command: " << ws.c_str() << "exiting" << std::endl;
+                            *logfile << Error() << L"Error in ExecStartPre command: " << ws.c_str() << "exiting" << std::endl;
                             throw ex;
                          }
                     }
                 }
             }
 
-*logfile << L"starting cmd " << self->m_ExecStartCmdLine.c_str() << std::endl;
+            *logfile << Debug() << L"starting cmd " << self->m_ExecStartCmdLine.c_str() << std::endl;
             self->SetServiceStatus(SERVICE_RUNNING);
             self->m_IsStopping = FALSE;
         
-            *logfile << L"Starting service: " << self->m_ServiceName << std::endl;
+            *logfile << Verbose() << L"Starting service: " << self->m_ServiceName << std::endl;
         
             if (!self->m_ExecStartCmdLine.empty()) {
                 self->StartProcess(self->m_ExecStartCmdLine.c_str(), CREATE_NEW_PROCESS_GROUP, self->m_ExecStartProcInfo, false);
         
-        *logfile << "waitfor main process " << std::endl;
-               ::WaitForSingleObject(self->m_ExecStartProcInfo.hProcess, INFINITE);
+                *logfile << Verbose() << "waitfor main process " << std::endl;
+                ::WaitForSingleObject(self->m_ExecStartProcInfo.hProcess, INFINITE);
         
                 BOOL result = ::GetExitCodeProcess(self->m_ExecStartProcInfo.hProcess, &exitCode);
                 ::CloseHandle(self->m_ExecStartProcInfo.hProcess);
@@ -814,10 +765,10 @@ for (auto after : self->m_ServicesAfter) {
                 {
                     wostringstream os;
                     if (!result) {
-                        *logfile << L"GetExitCodeProcess failed" << std::endl;
+                        *logfile << Error() << L"GetExitCodeProcess failed" << std::endl;
                     }
                     else {
-                        *logfile << L"Command \"" << self->m_ExecStartCmdLine 
+                        *logfile << Error() << L"Command \"" << self->m_ExecStartCmdLine 
 		             << L"\" failed with exit code: " << exitCode << std::endl;
                         throw RestartException(exitCode, "start command failed");
                     }
@@ -831,13 +782,13 @@ for (auto after : self->m_ServicesAfter) {
                 for( int i = 0;  i < self->m_ExecStartPostCmdLine.size(); i++ ) {
                     auto ws = self->m_ExecStartPostCmdLine[i];
                     os << L"Running ExecStartPost command: " << ws.c_str();
-                    *logfile << os.str() << std::endl;
+                    *logfile << Verbose() << os.str() << std::endl;
                     try {
                         self->StartProcess(ws.c_str(), 0, self->m_ExecStartPostProcInfo[i], true);
                     }
                     catch(RestartException &ex) {
                         if (!(self->m_ExecStartPreFlags[i] & EXECFLAG_IGNORE_FAIL)) {
-                            *logfile << L"Error in ExecStartPre command: " << ws.c_str() << "exiting" << std::endl;
+                            *logfile << Error() << L"Error in ExecStartPre command: " << ws.c_str() << "exiting" << std::endl;
                             throw ex;
                         }
                     }
@@ -846,7 +797,7 @@ for (auto after : self->m_ServicesAfter) {
 
             // We should stay active until all of the depends are finished
 	    self->WaitForDependents(self->m_Dependencies);
-            *logfile << "process success " << self->m_ExecStartCmdLine << std::endl;
+            *logfile << Verbose() << "process success " << self->m_ExecStartCmdLine << std::endl;
             throw RestartException(0, "success");
 	}
 	catch (RestartException &ex) {
@@ -860,9 +811,9 @@ for (auto after : self->m_ServicesAfter) {
         
             case RESTART_ACTION_ALWAYS:
                 done = false; 
-                *logfile << L"Restart always in " << self->m_RestartMillis << L" milliseconds" << std::endl;
+                *logfile << Verbose() <<  L"Restart always in " << self->m_RestartMillis << L" milliseconds" << std::endl;
                 ::SleepEx(self->m_RestartMillis, FALSE);
-                *logfile << L"Restart always" << std::endl;
+                *logfile << Verbose() << L"Restart always" << std::endl;
                 break;
     
             case RESTART_ACTION_ON_SUCCESS:
@@ -870,7 +821,7 @@ for (auto after : self->m_ServicesAfter) {
                    done = true;
                 }
                 else {
-                    *logfile << L"Restart on success in " << self->m_RestartMillis << L" milliseconds" << std::endl;
+                    *logfile << Verbose() << L"Restart on success in " << self->m_RestartMillis << L" milliseconds" << std::endl;
                     ::SleepEx(self->m_RestartMillis, TRUE); // But we respect restartSec.
                 }
                 break;
@@ -880,7 +831,7 @@ for (auto after : self->m_ServicesAfter) {
                    done = true;
                 }
                 else {
-                    *logfile << L"Restart on success in " << self->m_RestartMillis << L" milliseconds" << std::endl;
+                    *logfile << Verbose() << L"Restart on success in " << self->m_RestartMillis << L" milliseconds" << std::endl;
                     ::SleepEx(self->m_RestartMillis, TRUE); // But we respect restartSec.
                 }
                 break;
@@ -889,16 +840,16 @@ for (auto after : self->m_ServicesAfter) {
             case RESTART_ACTION_ON_ABORT:
             case RESTART_ACTION_ON_WATCHDOG:
                 // 2do: check the exit code
-    *logfile << "Restart in " << self->m_RestartMillis << " milliseconds" << std::endl;
+                *logfile << Verbose() << "Restart in " << self->m_RestartMillis << " milliseconds" << std::endl;
                 ::SleepEx(self->m_RestartMillis, TRUE); // But we respect restartSec.
                 break;
             }    
         }
 
-        *logfile << L"done = " << done << std::endl;
+        *logfile << Debug() << L"done = " << done << std::endl;
     } while (!done);
 
-*logfile << L"exit service OnStart: " << std::endl;
+    *logfile << Debug() << L"exit service OnStart: " << std::endl;
     self->SetServiceStatus(SERVICE_STOPPED);
     return S_OK;
 
@@ -929,7 +880,7 @@ void WINAPI CWrapperService::KillProcessTree(DWORD dwProcId)
     memset(&pe, 0, sizeof(PROCESSENTRY32));
     pe.dwSize = sizeof(PROCESSENTRY32);
 
-*logfile << L"service kill process tree " << std::endl;
+    *logfile << Verbose() << L"service kill process tree " << std::endl;
     HANDLE hSnap = :: CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
 
     if (::Process32First(hSnap, &pe))
@@ -940,16 +891,6 @@ void WINAPI CWrapperService::KillProcessTree(DWORD dwProcId)
             if (pe.th32ParentProcessID == dwProcId)
             {
                 KillProcessTree(pe.th32ProcessID);
-
-#if 0
-                HANDLE hProc = ::OpenProcess(PROCESS_ALL_ACCESS, FALSE, pe.th32ProcessID);
-                if (hProc)
-                {
-                    *logfile << L"terminate subprocess " << dwProcId << "for service " << m_ServiceName  << std::endl;
-                    ::TerminateProcess(hProc, ERROR_PROCESS_ABORTED);
-                    ::CloseHandle(hProc);
-                }
-#endif
             }
             bContinue = ::Process32Next(hSnap, &pe);
         }
@@ -958,7 +899,7 @@ void WINAPI CWrapperService::KillProcessTree(DWORD dwProcId)
         if (hProc)
         {
             SetConsoleCtrlHandler(NULL, true); // Disable Ctrl processing from here
-            *logfile << L"terminate subprocess " << dwProcId << "for service " << m_ServiceName  << std::endl;
+            *logfile << Debug() << L"terminate subprocess " << dwProcId << "for service " << m_ServiceName  << std::endl;
             ::TerminateProcess(hProc, ERROR_PROCESS_ABORTED);
             ::CloseHandle(hProc);
         }
@@ -972,43 +913,41 @@ void CWrapperService::OnStop()
     WriteEventLogEntry(m_name, L"Stopping service", EVENTLOG_INFORMATION_TYPE);
 
     m_IsStopping = TRUE;
-*logfile << L"stopping service " << m_ServiceName.c_str() << std::endl;
+    *logfile << Verbose() << L"stopping service " << m_ServiceName.c_str() << std::endl;
     if (!m_ExecStopCmdLine.empty())
     {
         wostringstream os;
         os << L"Running ExecStop command: " << m_ExecStopCmdLine.c_str();
-*logfile << os.str() << std::endl;
+        *logfile << Verbose() << os.str() << std::endl;
         WriteEventLogEntry(m_name, os.str().c_str(), EVENTLOG_INFORMATION_TYPE);
         StartProcess(m_ExecStopCmdLine.c_str(), 0, m_ExecStopProcInfo, true);
     }
 
-*logfile << L"kill stopping service " << m_ServiceName.c_str() << std::endl;
+    *logfile << Debug() << L"kill stopping service " << m_ServiceName.c_str() << std::endl;
     // KillProcessTree(m_dwProcessId);
 
     // Stop dependent services
     // this->StopServiceDependencies(); We don't do this .....
 
-*logfile << L"send  ctrl-c and wait for stop" << std::endl;
+    *logfile << Debug() << L"send  ctrl-c and wait for stop" << std::endl;
 
     // First, ask nicely. 
     // The CTRL_C_EVENT should go to all of the subprocesses since that all share a console.
     // We do this because some processes need warning before they terminate to perform cleanup. 
     GenerateConsoleCtrlEvent(CTRL_C_EVENT, m_ExecStartProcInfo.dwProcessId);
-    // Wait for them to stop
+    // Wait for them to stop (fixed 20 sec timeout)
     ::WaitForSingleObject(m_ExecStartProcInfo.hProcess, 20000);
 
-*logfile << L"ctrl-c has no effect. terminate process " << m_ExecStartProcInfo.dwProcessId << "and wait for stop" << std::endl;
+    *logfile << Debug() << L"ctrl-c has no effect. terminate process " << m_ExecStartProcInfo.dwProcessId << "and wait for stop" << std::endl;
     // Kill main process
     // ::TerminateProcess( m_ExecStartProcInfo.hProcess, ERROR_PROCESS_ABORTED);
     KillProcessTree( m_ExecStartProcInfo.dwProcessId);
 
     ::WaitForSingleObject(m_ExecStartProcInfo.hProcess, INFINITE);
-
-
     ::TerminateThread(m_hServiceThread, ERROR_PROCESS_ABORTED);
-*logfile << L"service thread wait for terminate " << m_ServiceName.c_str() << std::endl;
+    *logfile << Verbose() << L"service thread wait for terminate " << m_ServiceName.c_str() << std::endl;
     ::WaitForSingleObject(m_hServiceThread, INFINITE);
-*logfile << L"service thread terminated " << m_ServiceName.c_str() << std::endl;
+    *logfile << Verbose() << L"service thread terminated " << m_ServiceName.c_str() << std::endl;
     ::CloseHandle(m_hServiceThread);
 
     m_hServiceThread = INVALID_HANDLE_VALUE;
@@ -1020,7 +959,7 @@ void CWrapperService::OnStop()
         int i = 0;
         for( auto ws: m_ExecStopPostCmdLine) {
             os << L"Running ExecStopPost command: " << ws.c_str();
-            *logfile << os.str() << std::endl;
+            *logfile << Verbose() << os.str() << std::endl;
             StartProcess(ws.c_str(), 0, m_ExecStopPostProcInfo[i], true);
 	    i++;
         }
@@ -1108,7 +1047,7 @@ CWrapperService::EvaluateConditions()
     if (!m_ConditionPathExists.empty()) {
        for( auto ws: m_ConditionPathExists) {
            if (!EvalConditionPathExists(ws)) {
-           *logfile << L"Condition failed" << std::endl;
+               *logfile << Verbose() << L"Condition failed, Path " << ws << "exists " << std::endl;
                return false;
            }
        }
@@ -1191,7 +1130,7 @@ CWrapperService::EvaluateConditions()
        }
     }
 
-    *logfile << L"Condition passed" << std::endl;
+    *logfile << Verbose() << L"Condition passed" << std::endl;
     return true;
 }
 
@@ -1199,7 +1138,7 @@ CWrapperService::EvaluateConditions()
 boolean 
 CWrapperService::EvalConditionArchitecture(std::wstring arg)
 {
-    *logfile << L"condition ConditionArchitecture is not implemented" << std::endl;
+    *logfile << Warning() << L"condition ConditionArchitecture is not implemented" << std::endl;
     return true;
 }
 
@@ -1207,7 +1146,7 @@ CWrapperService::EvalConditionArchitecture(std::wstring arg)
 boolean 
 CWrapperService::EvalConditionVirtualization(std::wstring arg)
 {
-    *logfile << L"condition ConditionVirtualization is not implemented" << std::endl;
+    *logfile << Warning() << L"condition ConditionVirtualization is not implemented" << std::endl;
     return true;
 }
 
@@ -1215,7 +1154,7 @@ CWrapperService::EvalConditionVirtualization(std::wstring arg)
 boolean 
 CWrapperService::EvalConditionHost(std::wstring arg)
 {
-    *logfile << L"condition ConditionHost is not implemented" << std::endl;
+    *logfile << Warning() << L"condition ConditionHost is not implemented" << std::endl;
     return true;
 }
 
@@ -1223,7 +1162,7 @@ CWrapperService::EvalConditionHost(std::wstring arg)
 boolean 
 CWrapperService::EvalConditionKernelCommandLine(std::wstring arg)
 {
-    *logfile << L"condition ConditionKernelCommandLine is not implemented" << std::endl;
+    *logfile << Warning() << L"condition ConditionKernelCommandLine is not implemented" << std::endl;
     return true;
 }
 
@@ -1231,7 +1170,7 @@ CWrapperService::EvalConditionKernelCommandLine(std::wstring arg)
 boolean 
 CWrapperService::EvalConditionKernelVersion(std::wstring arg)
 {
-    *logfile << L"condition ConditionKernelVersion is not implemented" << std::endl;
+    *logfile << Warning() << L"condition ConditionKernelVersion is not implemented" << std::endl;
     return true;
 }
 
@@ -1239,7 +1178,7 @@ CWrapperService::EvalConditionKernelVersion(std::wstring arg)
 boolean 
 CWrapperService::EvalConditionSecurity(std::wstring arg)
 {
-    *logfile << L"condition ConditionSecurity is not implemented" << std::endl;
+    *logfile << Warning() << L"condition ConditionSecurity is not implemented" << std::endl;
     return true;
 }
 
@@ -1247,7 +1186,7 @@ CWrapperService::EvalConditionSecurity(std::wstring arg)
 boolean 
 CWrapperService::EvalConditionCapability(std::wstring arg)
 {
-    *logfile << L"condition ConditionCapability is not implemented" << std::endl;
+    *logfile << Warning() << L"condition ConditionCapability is not implemented" << std::endl;
     return true;
 }
 
@@ -1255,7 +1194,7 @@ CWrapperService::EvalConditionCapability(std::wstring arg)
 boolean 
 CWrapperService::EvalConditionACPower(std::wstring arg)
 {
-    *logfile << L"condition ConditionACPower is not implemented" << std::endl;
+    *logfile << Warning() << L"condition ConditionACPower is not implemented" << std::endl;
     return true;
 }
 
@@ -1263,7 +1202,7 @@ CWrapperService::EvalConditionACPower(std::wstring arg)
 boolean 
 CWrapperService::EvalConditionNeedsUpdate(std::wstring arg)
 {
-    *logfile << L"condition ConditionNeedsUpdate is not implemented" << std::endl;
+    *logfile << Warning() << L"condition ConditionNeedsUpdate is not implemented" << std::endl;
     return true;
 }
 
@@ -1271,7 +1210,7 @@ CWrapperService::EvalConditionNeedsUpdate(std::wstring arg)
 boolean 
 CWrapperService::EvalConditionFirstBoot(std::wstring arg)
 {
-    *logfile << L"condition ConditionFirstBoot is not implemented" << std::endl;
+    *logfile << Warning() << L"condition ConditionFirstBoot is not implemented" << std::endl;
     return true;
 }
 
@@ -1282,7 +1221,7 @@ CWrapperService::EvalConditionPathExists(std::wstring arg)
     wchar_t *path = (wchar_t*)arg.c_str();
     int rslt = 0;
 
-    *logfile << L"condition ConditionPathExists " << arg << std::endl;
+    *logfile << Verbose() << L"condition ConditionPathExists " << arg << std::endl;
 
     if (path[0] == L'!') {
         rslt =  ::GetFileAttributes(++path);
@@ -1298,7 +1237,7 @@ CWrapperService::EvalConditionPathExists(std::wstring arg)
 boolean 
 CWrapperService::EvalConditionPathExistsGlob(std::wstring arg)
 {
-    *logfile << L"condition ConditionPathExistsGlob is not implemented" << std::endl;
+    *logfile << Warning() << L"condition ConditionPathExistsGlob is not implemented" << std::endl;
     return true;
 }
 
@@ -1306,7 +1245,7 @@ CWrapperService::EvalConditionPathExistsGlob(std::wstring arg)
 boolean 
 CWrapperService::EvalConditionPathIsDirectory(std::wstring arg)
 {
-    *logfile << L"condition ConditionPathIsDirectory is not implemented" << std::endl;
+    *logfile << Warning() << L"condition ConditionPathIsDirectory is not implemented" << std::endl;
     return true;
 }
 
@@ -1314,7 +1253,7 @@ CWrapperService::EvalConditionPathIsDirectory(std::wstring arg)
 boolean 
 CWrapperService::EvalConditionPathIsSymbolicLink(std::wstring arg)
 {
-    *logfile << L"condition ConditionPathIsSymbolicLink is not implemented" << std::endl;
+    *logfile << Warning() << L"condition ConditionPathIsSymbolicLink is not implemented" << std::endl;
     return true;
 }
 
@@ -1322,7 +1261,7 @@ CWrapperService::EvalConditionPathIsSymbolicLink(std::wstring arg)
 boolean 
 CWrapperService::EvalConditionPathIsMountPoint(std::wstring arg)
 {
-    *logfile << L"condition ConditionPathIsMountPoint is not implemented" << std::endl;
+    *logfile << Warning() << L"condition ConditionPathIsMountPoint is not implemented" << std::endl;
     return true;
 }
 
@@ -1330,7 +1269,7 @@ CWrapperService::EvalConditionPathIsMountPoint(std::wstring arg)
 boolean 
 CWrapperService::EvalConditionPathIsReadWrite(std::wstring arg)
 {
-    *logfile << L"condition ConditionPathIsReadWrite is not implemented" << std::endl;
+    *logfile << Warning() << L"condition ConditionPathIsReadWrite is not implemented" << std::endl;
     return true;
 }
 
@@ -1338,7 +1277,7 @@ CWrapperService::EvalConditionPathIsReadWrite(std::wstring arg)
 boolean 
 CWrapperService::EvalConditionDirectoryNotEmpty(std::wstring arg)
 {
-    *logfile << L"condition ConditionDirectoryNotEmpty is not implemented" << std::endl;
+    *logfile << Warning() << L"condition ConditionDirectoryNotEmpty is not implemented" << std::endl;
     return true;
 }
 
@@ -1346,7 +1285,7 @@ CWrapperService::EvalConditionDirectoryNotEmpty(std::wstring arg)
 boolean 
 CWrapperService::EvalConditionFileNotEmpty(std::wstring arg)
 {
-    *logfile << L"condition ConditionFileNotEmpty is not implemented" << std::endl;
+    *logfile << Warning() << L"condition ConditionFileNotEmpty is not implemented" << std::endl;
     return true;
 }
 
@@ -1354,7 +1293,7 @@ CWrapperService::EvalConditionFileNotEmpty(std::wstring arg)
 boolean 
 CWrapperService::EvalConditionFileIsExecutable(std::wstring arg)
 {
-    *logfile << L"condition ConditionFileIsExecutable is not implemented" << std::endl;
+    *logfile << Warning() << L"condition ConditionFileIsExecutable is not implemented" << std::endl;
     return true;
 }
 
@@ -1362,7 +1301,7 @@ CWrapperService::EvalConditionFileIsExecutable(std::wstring arg)
 boolean 
 CWrapperService::EvalConditionUser(std::wstring arg)
 {
-    *logfile << L"condition ConditionUser is not implemented" << std::endl;
+    *logfile << Warning() << L"condition ConditionUser is not implemented" << std::endl;
     return true;
 }
 
@@ -1370,7 +1309,7 @@ CWrapperService::EvalConditionUser(std::wstring arg)
 boolean 
 CWrapperService::EvalConditionGroup(std::wstring arg)
 {
-    *logfile << L"condition ConditionGroup is not implemented" << std::endl;
+    *logfile << Warning() << L"condition ConditionGroup is not implemented" << std::endl;
     return true;
 }
 
@@ -1378,7 +1317,7 @@ CWrapperService::EvalConditionGroup(std::wstring arg)
 boolean 
 CWrapperService::EvalConditionControlGroupController(std::wstring arg)
 {
-    *logfile << L"condition ConditionControlGroupController  is not implemented" << std::endl;
+    *logfile << Warning() << L"condition ConditionControlGroupController  is not implemented" << std::endl;
     return true;
 }
 
@@ -1393,7 +1332,7 @@ CWrapperService::WaitForDependents(std::vector<std::wstring> &serviceList)
     SC_HANDLE hsc = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
     if (!hsc) {
         int last_error = GetLastError();
-        *logfile << L"WaitForDependents could not open service manager win err = " << last_error << std::endl;
+        *logfile << Error() << L"WaitForDependents could not open service manager win err = " << last_error << std::endl;
         return false;
     }
 
@@ -1404,25 +1343,25 @@ CWrapperService::WaitForDependents(std::vector<std::wstring> &serviceList)
             SERVICE_STATUS service_status = {0};
             SC_HANDLE hsvc = OpenServiceW(hsc, service.c_str(), GENERIC_READ);
             if (!hsvc) {
-                *logfile << L"WaitForDependents OpeService failed " << GetLastError() << std::endl;
+                *logfile << Error() << L"WaitForDependents OpeService failed " << GetLastError() << std::endl;
                 CloseServiceHandle(hsc);
                 return true;  // If it doesn't exist we cant wait for it
             }
 
-*logfile << L"Check status for service " << service << std::endl;
+            *logfile << Debug() << L"Check status for service " << service << std::endl;
 
             if (!::QueryServiceStatus( hsvc, &service_status) ) {
                 int last_error = GetLastError();
                  // 2do: handle MORE_DATA
-                *logfile << L"WaitForDependents could not enum dependent services win err = " << last_error << std::endl;
+                *logfile << Error() << L"WaitForDependents could not enum dependent services win err = " << last_error << std::endl;
                 CloseServiceHandle(hsc);
                 return false;
             }
 
-*logfile << L"status for service " << service << service_status.dwCurrentState << std::endl;
+            *logfile << Verbose() << L"status for service " << service << service_status.dwCurrentState << std::endl;
             if (service_status.dwCurrentState != SERVICE_STOP_PENDING &&
                 service_status.dwCurrentState != SERVICE_STOPPED ) {
-*logfile << L"done" << std::endl;
+                *logfile << Debug() << L"done" << std::endl;
                 done = false;
                 break; // If someone is running we must wait. No need to keep looking
             }
@@ -1436,6 +1375,6 @@ CWrapperService::WaitForDependents(std::vector<std::wstring> &serviceList)
 
     CloseServiceHandle(hsc);
 
-   *logfile << L"Wait for dependents exits " << std::endl;
+   *logfile << Verbose() << L"Wait for dependents exits " << std::endl;
     return true;
 }
