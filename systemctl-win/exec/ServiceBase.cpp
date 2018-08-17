@@ -262,7 +262,7 @@ CServiceBase::~CServiceBase(void)
 //
 void CServiceBase::Start(DWORD dwArgc, PWSTR *pszArgv)
 {
-    *logfile << L"Start" << std::endl;
+    *logfile << Info() << L"Start Service " << m_name << std::endl;
     try
     {
         // Tell SCM that the service is starting.
@@ -278,7 +278,7 @@ void CServiceBase::Start(DWORD dwArgc, PWSTR *pszArgv)
     {
         // Log the error.
         WriteErrorLogEntry(L"Service Start", dwError);
-    *logfile << L"Start failed*2 " << std::endl;
+        *logfile << Error() << L"Service Start " << m_name << " failed errocode = " << dwError << std::endl;
 
         // Set the service status to be stopped.
         SetServiceStatus(SERVICE_STOPPED, dwError);
@@ -287,15 +287,14 @@ void CServiceBase::Start(DWORD dwArgc, PWSTR *pszArgv)
     {
         // Log the error.
         WriteEventLogEntry(m_name, L"Service failed to start.", EVENTLOG_ERROR_TYPE);
-
-    *logfile << L"Start failed " << e.what() << std::endl;
+        *logfile << Error() << L"Service Start " << m_name << " failed: " << e.what() << std::endl;
 
         // Set the service status to be stopped.
         SetServiceStatus(SERVICE_STOPPED);
     }
     catch (...) {
         WriteEventLogEntry(m_name, L"Service failed to start.", EVENTLOG_ERROR_TYPE);
-    *logfile << L"Start failed reason unknown" << std::endl;
+        *logfile << Error() << L"Service Start " << m_name << " failed reason unknown" << std::endl;
 
         // Set the service status to be stopped.
         SetServiceStatus(SERVICE_STOPPED);
@@ -334,6 +333,7 @@ void CServiceBase::Stop()
     DWORD dwOriginalState = m_status.dwCurrentState;
     try
     {
+        *logfile << Info() << L"Start Service " << m_name << std::endl;
         // Tell SCM that the service is stopping.
         SetServiceStatus(SERVICE_STOP_PENDING);
 
@@ -348,14 +348,16 @@ void CServiceBase::Stop()
     {
         // Log the error.
         WriteErrorLogEntry(L"Service Stop", dwError);
+        *logfile << Error() << L"Service Stop " << m_name << " failed errocode = " << dwError << std::endl;
 
         // Set the orginal service status.
         SetServiceStatus(dwOriginalState);
     }
-    catch (...)
+    catch (const std::exception &e)
     {
         // Log the error.
         WriteEventLogEntry(m_name, L"Service failed to stop.", EVENTLOG_ERROR_TYPE);
+        *logfile << Error() << L"Service Stop " << m_name << " failed: " << e.what() << std::endl;
 
         // Set the orginal service status.
         SetServiceStatus(dwOriginalState);
@@ -388,6 +390,7 @@ void CServiceBase::Pause()
 {
     try
     {
+        *logfile << Info() << L"Pause Service " << m_name << std::endl;
         // Tell SCM that the service is pausing.
         SetServiceStatus(SERVICE_PAUSE_PENDING);
 
@@ -401,6 +404,16 @@ void CServiceBase::Pause()
     {
         // Log the error.
         WriteErrorLogEntry(L"Service Pause", dwError);
+        *logfile << Error() << L"Service Pause " << m_name << " failed errocode = " << dwError << std::endl;
+
+        // Tell SCM that the service is still running.
+        SetServiceStatus(SERVICE_RUNNING);
+    }
+    catch (const std::exception &e)
+    {
+        // Log the error.
+        WriteEventLogEntry(m_name, L"Service failed to pause.", EVENTLOG_ERROR_TYPE);
+        *logfile << Error() << L"Service Pause " << m_name << " failed: " << e.what() << std::endl;
 
         // Tell SCM that the service is still running.
         SetServiceStatus(SERVICE_RUNNING);
@@ -409,9 +422,9 @@ void CServiceBase::Pause()
     {
         // Log the error.
         WriteEventLogEntry(m_name, L"Service failed to pause.", EVENTLOG_ERROR_TYPE);
+        *logfile << Error() << L"Service Pause " << m_name << " failed: reason unknown " << std::endl;
 
         // Tell SCM that the service is still running.
-        SetServiceStatus(SERVICE_RUNNING);
     }
 }
 
@@ -439,6 +452,7 @@ void CServiceBase::Continue()
 {
     try
     {
+        *logfile << Info() << L"Continue Service " << m_name << std::endl;
         // Tell SCM that the service is resuming.
         SetServiceStatus(SERVICE_CONTINUE_PENDING);
 
@@ -452,6 +466,16 @@ void CServiceBase::Continue()
     {
         // Log the error.
         WriteErrorLogEntry(L"Service Continue", dwError);
+        *logfile << Error() << L"Service Continue " << m_name << " failed errocode = " << dwError << std::endl;
+
+        // Tell SCM that the service is still paused.
+        SetServiceStatus(SERVICE_PAUSED);
+    }
+    catch (const std::exception &e)
+    {
+        // Log the error.
+        WriteEventLogEntry(m_name, L"Service failed to resume.", EVENTLOG_ERROR_TYPE);
+        *logfile << Error() << L"Service Continue " << m_name << " failed: " << e.what() << std::endl;
 
         // Tell SCM that the service is still paused.
         SetServiceStatus(SERVICE_PAUSED);
@@ -460,6 +484,7 @@ void CServiceBase::Continue()
     {
         // Log the error.
         WriteEventLogEntry(m_name, L"Service failed to resume.", EVENTLOG_ERROR_TYPE);
+        *logfile << Error() << L"Service Continue " << m_name << " failed: reason unknown " << std::endl;
 
         // Tell SCM that the service is still paused.
         SetServiceStatus(SERVICE_PAUSED);
@@ -489,6 +514,8 @@ void CServiceBase::Shutdown()
 {
     try
     {
+        *logfile << Info() << L"Shutdown Service " << m_name << std::endl;
+
         // Perform service-specific shutdown operations.
         OnShutdown();
 
@@ -499,11 +526,19 @@ void CServiceBase::Shutdown()
     {
         // Log the error.
         WriteErrorLogEntry(L"Service Shutdown", dwError);
+        *logfile << Error() << L"Service Shutdown " << m_name << " failed errocode = " << dwError << std::endl;
+    }
+    catch (const std::exception &e)
+    {
+        // Log the error.
+        WriteEventLogEntry(m_name, L"Service failed to shut down.", EVENTLOG_ERROR_TYPE);
+        *logfile << Error() << L"Service Shutdown " << m_name << " failed: " << e.what() << std::endl;
     }
     catch (...)
     {
         // Log the error.
         WriteEventLogEntry(m_name, L"Service failed to shut down.", EVENTLOG_ERROR_TYPE);
+        *logfile << Error() << L"Service Shutdown " << m_name << " failed: reason unknown" << std::endl;
     }
 }
 
