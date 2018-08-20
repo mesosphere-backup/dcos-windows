@@ -424,6 +424,8 @@ private:
     wstring ParseServiceSection( wifstream &fs);
     wstring ParseInstallSection( wifstream &fs);
 
+    void RegisterServiceProperties();
+
     wstring name;
     wstring description;
     wstring unit_file_path;

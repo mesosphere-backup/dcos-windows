@@ -95,7 +95,14 @@ enum SystemCtl_Cmd {
 
 int SystemCtrl_Cmd_List_Units( boost::program_options::variables_map &vm )
 {
-    return -1;
+    std::map<std::wstring, class SystemDUnit*> pool = g_pool->GetPool();
+
+    for(std::map<std::wstring, class SystemDUnit *>::iterator it = pool.begin(); it != pool.end(); ++it) {
+        SystemDUnit *punit = it->second;
+        wcout << punit->Name() << std::endl;
+    }
+
+    return 0;
 }
 
 
@@ -393,8 +400,16 @@ int SystemCtrl_Cmd_List_Dependencies( boost::program_options::variables_map &vm 
 
 
 int SystemCtrl_Cmd_List_Unit_Files( boost::program_options::variables_map &vm )
+
 {
-    return -1;
+    std::map<std::wstring, class SystemDUnit*> pool = g_pool->GetPool();
+
+    for(std::map<std::wstring, class SystemDUnit *>::iterator it = pool.begin(); it != pool.end(); ++it) {
+        SystemDUnit *punit = it->second;
+        wcout << punit->FilePath() << std::endl;
+    }
+
+    return 0;
 }
 
 
@@ -404,7 +419,7 @@ int SystemCtrl_Cmd_Enable( boost::program_options::variables_map &vm )
 
     if (vm["system_units"].empty()) {
         // Complain and exit
-        wcerr << "No unit specified\n";
+         wcerr << "No unit specified\n";
          wcerr << usage.c_str();
          exit(1);
     }
