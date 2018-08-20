@@ -178,7 +178,6 @@ SystemDUnit::AddUserServiceLogonPrivilege()
     LSA_UNICODE_STRING *pprivs = NULL;
     unsigned long priv_count = 0;
 
-
     status = LsaEnumerateAccountRights( policy_h,
                                   psid,
                                   &pprivs,
@@ -442,6 +441,13 @@ boolean SystemDUnit::IsFailed()
 }
 
 
+void
+SystemDUnit::RegisterServiceProperties()
+
+{
+    // Register properties for service 
+
+}
 
 boolean 
 SystemDUnit::RegisterService()
@@ -462,7 +468,7 @@ SystemDUnit::RegisterService()
     std::wstring wservice_name         = this->name;
     std::wstring wservice_display_name = this->name;
 
-wcerr << "RegisterService: " << this->name << std::endl;
+    wcerr << "RegisterService: " << this->name << std::endl;
 
     std::wstringstream wcmdline ;
 
