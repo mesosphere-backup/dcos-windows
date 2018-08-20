@@ -403,6 +403,223 @@ Not Implemented, no know blocking issues
 #### DefaultInstance=
 Not Implemented
 
-### System Exec Settings
+### Systemd Exec Settings
+
+### Paths
+#### WorkingDirectory=
+Not implemented but no known blocking issues.
+
+#### RootDirectory=
+Not implemented but no known blocking issues.
+
+#### RootImage=
+Not Implemented
+
+#### MountAPIVFS=
+Not Implemented
+
+#### BindPaths=, BindReadOnlyPaths=
+Not Implemented
+
+### Credentials
+#### User=, Group=
+Not implemented but no known blocking issues. Somewhat variant semantics due to system differences
+
+#### DynamicUser=
+Not implemented but no known blocking issues. Somewhat variant semantics due to system differences
+
+#### SupplementaryGroups=
+Not implemented but no known blocking issues. Somewhat variant semantics due to system differences
+
+#### PAMName=
+Not Implemented
+
+### Capabilities
+#### CapabilityBoundingSet=
+Not Implemented
+
+#### AmbientCapabilities=
+Not Implemented
+
+#### NoNewPrivileges=
+Not Implemented
+
+#### SecureBits=
+Not Implemented
+
+### Mandatory Access Control
+#### SELinuxContext=
+Not Implemented
+
+#### AppArmorProfile=
+Not Implemented
+
+### Process Properties
+#### LimitCPU=, LimitFSIZE=, LimitDATA=, LimitSTACK=, LimitCORE=, LimitRSS=, LimitNOFILE=, LimitAS=, LimitNPROC=, LimitMEMLOCK=, LimitLOCKS=, LimitSIGPENDING=, LimitMSGQUEUE=, LimitNICE=, LimitRTPRIO=, LimitRTTIME=
+Not Implemented
+
+#### UMask=
+Not Implemented
+
+#### KeyringMode=
+Not Implemented
+
+#### OOMScoreAdjust=
+Not Implemented
+
+#### TimerSlackNSec=
+Not Implemented
+
+#### Personality=
+Not Implemented
+
+#### IgnoreSIGPIPE=
+Not Implemented
+
+### Scheduling
+Not Implemented
+
+#### Nice=
+Not Implemented
+
+#### CPUSchedulingPolicy=
+Not Implemented
+
+#### CPUSchedulingPriority=
+Not Implemented
+
+#### CPUSchedulingResetOnFork=
+Not Implemented
+
+#### CPUAffinity=
+Not Implemented
+
+#### IOSchedulingClass=
+Not Implemented
+
+#### IOSchedulingPriority=
+Not Implemented
+
+### Sandboxing
+#### ProtectSystem=
+Not Implemented
+
+#### ProtectHome=
+Not Implemented
+
+### RuntimeDirectory=, StateDirectory=, CacheDirectory=, LogsDirectory=, ConfigurationDirectory=
+Not implemented but no known blocking issues. 
+
+### RuntimeDirectoryMode=, StateDirectoryMode=, CacheDirectoryMode=, LogsDirectoryMode=, ConfigurationDirectoryMode=
+Not implemented but no known blocking issues. 
+
+#### RuntimeDirectoryPreserve=
+Not implemented but no known blocking issues. 
+
+### ReadWritePaths=, ReadOnlyPaths=, InaccessiblePaths=
+Not implemented but no known blocking issues. 
+
+#### TemporaryFileSystem=
+Not implemented but no known blocking issues. 
+
+#### PrivateTmp=
+Not Implemented
+
+#### PrivateDevices=
+Not Implemented
+
+#### PrivateNetwork=
+Not Implemented
+
+#### PrivateUsers=
+Not Implemented
+
+#### ProtectKernelTunables=
+Not Implemented
+
+#### ProtectKernelModules=
+Not Implemented
+
+#### ProtectControlGroups=
+Not Implemented
+
+#### RestrictAddressFamilies=
+Not Implemented
+
+#### RestrictNamespaces=
+Not Implemented
+
+#### LockPersonality=
+Not Implemented
+
+#### MemoryDenyWriteExecute=
+Not Implemented
+
+#### RestrictRealtime=
+Not Implemented
+
+#### RemoveIPC=
+Not Implemented
+
+#### PrivateMounts=
+Not Implemented
+
+#### MountFlags=
+Not Implemented
+
+### System Call Filtering
+#### SystemCallFilter=
+Not Implemented
+
+#### SystemCallErrorNumber=
+Not Implemented
+
+#### SystemCallArchitectures=
+Not Implmenented
+
+### Environment
+#### Environment=
+Works as expected. Extended to allow powershell syntax as well as bash
+
+#### EnvironmentFile=
+Works as expected. Extended to allow powershell syntax as well as bash
+
+#### PassEnvironment=
+#### UnsetEnvironment=
+
+### Logging and Standard Input/Output
+#### StandardInput=
+Works as expected
+
+#### StandardOutput=
+Works as expected
+
+#### StandardError=
+Works as expected
+
+####StandardInputText=, StandardInputData=
+Works as expected
+
+#### LogLevelMax=
+Works as expected
+
+#### LogExtraFields=
+Works as expected
+
+#### SyslogIdentifier=
+Works as expected
+
+#### SyslogFacility=
+Works as expected within the limits of windows. The functional options are syslog(which goes to the log file in /var/log), console
+(which goes to the process console), file.
+
+#### SyslogLevel=
+Works as expected
+
+#### SyslogLevelPrefix=
+Works as expected
+
+#### TTYPath= TTYReset= TTYVHangup= TTYVTDisallocate=
+Not Implemented
 
 Systemd Exec settings are not implemented except EnvironmentFile= which works as expected, with the extension that it allows powershell syntax environment files.
