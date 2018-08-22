@@ -37,7 +37,10 @@ under the License.
 
 using namespace std;
 
+void CWrapperService::RegisterMainPID()
 
+{
+}
 
 // Generates flags mask and removes special executable prefix characters
 unsigned 
@@ -736,6 +739,7 @@ DWORD WINAPI CWrapperService::ServiceThread(LPVOID param)
                       // to do, add special char processing
                     try {
                         self->StartProcess(ws.c_str(), 0, self->m_ExecStartPreProcInfo[i], true); 
+			self->RegisterMainPID();  // We register the pid in the registry so we can kill it later if we wish from systemctl
                     }
                     catch(RestartException &ex) {
                          if (!(self->m_ExecStartPreFlags[i] & EXECFLAG_IGNORE_FAIL)) {
@@ -929,17 +933,35 @@ void CWrapperService::OnStop()
     // Stop dependent services
     // this->StopServiceDependencies(); We don't do this .....
 
-    *logfile << Debug() << L"send  ctrl-c and wait for stop" << std::endl;
+    // *logfile << Debug() << L"send  ctrl-break and wait for stop" << std::endl;
+    *logfile << Error() << L"send  ctrl-break to process id " << m_ExecStartProcInfo.dwProcessId << " and wait for stop" << std::endl;
 
     // First, ask nicely. 
     // The CTRL_C_EVENT should go to all of the subprocesses since that all share a console.
     // We do this because some processes need warning before they terminate to perform cleanup. 
-    GenerateConsoleCtrlEvent(CTRL_C_EVENT, m_ExecStartProcInfo.dwProcessId);
-    // Wait for them to stop (fixed 20 sec timeout)
-    ::WaitForSingleObject(m_ExecStartProcInfo.hProcess, 20000);
+    DWORD wait_result = WAIT_FAILED;
+    if (AttachConsole( m_ExecStartProcInfo.dwProcessId)) {
+        SetConsoleCtrlHandler(NULL, true);
+        if (!GenerateConsoleCtrlEvent(CTRL_BREAK_EVENT, m_ExecStartProcInfo.dwProcessId)) {
+            *logfile << Error() << L"send  ctrl-break to process id " << m_ExecStartProcInfo.dwProcessId << " failed error code " << ::GetLastError() << std::endl;
+        }
+        else {
 
-    *logfile << Debug() << L"ctrl-c has no effect. terminate process " << m_ExecStartProcInfo.dwProcessId << "and wait for stop" << std::endl;
-    // Kill main process
+            // Wait for them to stop (fixed 20 sec timeout)
+            wait_result = ::WaitForSingleObject(m_ExecStartProcInfo.hProcess, 20000);
+        }
+	FreeConsole();
+        SetConsoleCtrlHandler(NULL, false);
+    }
+    else {
+        *logfile << Error() << L"could not attach console " << m_ExecStartProcInfo.dwProcessId << " failed error code " << ::GetLastError() << std::endl;
+    }
+
+    if (wait_result == WAIT_TIMEOUT || wait_result == WAIT_FAILED) {
+        *logfile << Info() << L"ctrl-c has no effect. forcibly terminate process " << m_ExecStartProcInfo.dwProcessId << "and wait for stop" << std::endl; 
+    }	
+
+    // Kill main process anyway. Worst case nothing happens because the process is gone.
     // ::TerminateProcess( m_ExecStartProcInfo.hProcess, ERROR_PROCESS_ABORTED);
     KillProcessTree( m_ExecStartProcInfo.dwProcessId);
 
