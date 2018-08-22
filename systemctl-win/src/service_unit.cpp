@@ -66,6 +66,41 @@ std::wstring NotifyActionToWString[] = {
           L"all"
     };
 
+
+// Systemd recognised units 
+// for converting time spans into milliseconds in double
+std::map<std::wstring, double>TimeScales = {
+     { L"usec", 0.001 },
+     { L"us",   0.001 },
+     { L"msec", 1.000 },
+     { L"ms",   1.000 },
+     { L"seconds", 1000.0},
+     { L"second",  1000.0},
+     { L"sec",     1000.0},
+     { L"s",       1000.0},
+     { L"minutes", 60000.0 },
+     { L"minute",  60000.0 },
+     { L"min",     60000.0 },
+     { L"m",       60000.0 },
+     { L"hours", 3600000.0 },
+     { L"hour",  3600000.0 },
+     { L"hr",    3600000.0 },
+     { L"h",     3600000.0 },
+     { L"days",  3600000.0*24.0 },
+     { L"day",   3600000.0*24.0 },
+     { L"d",     3600000.0*24.0 },
+     { L"weeks", 3600000.0*24.0*7.0 },
+     { L"week",  3600000.0*24.0*7.0 },
+     { L"w",     3600000.0*24.0*7.0 },
+     { L"months",3600000.0*24.0*30.44 },
+     { L"month", 3600000.0*24.0*30.44 },
+     { L"M",     3600000.0*24.0*30.44 }, // (defined as 30.44 days)
+     { L"years", 3600000.0*24.0*365.25 }, 
+     { L"year",3600000.0*24.0*365.25 }, 
+     { L"y", 3600000.0*24.0*365.25 }    // (defined as 365.25 days)
+};
+
+
 wchar_t BUFFER[MAX_BUFFER_SIZE] = { '\0' };
 
 static class SystemDUnitPool the_pool;
@@ -89,7 +124,8 @@ SystemDUnitPool::LinkWantedUnit(wstring file_path, wstring servicename)
 
     if (!::CreateHardLinkW(link_name.c_str(), orig_file_name.c_str(), NULL)) {
         DWORD last_err = GetLastError();
-        wcerr << L"could not link file " << link_name << " to " << last_err << std::endl; 
+        SystemCtlLog::msg << L"could not link file " << link_name << L" to " << last_err;
+    SystemCtlLog::Error();
     }
 
     return true;
@@ -114,12 +150,15 @@ SystemDUnitPool::CopyUnitFileToActive(wstring servicename)
         // Find the unit in the unit library
         wifstream fs(service_unit_path, std::fstream::in | std::fstream::binary);
         if (!fs.is_open()) {
-             wcerr << "No service unit " << servicename.c_str() << "Found in unit library" << endl;
+             SystemCtlLog::msg << L"No service unit " << servicename.c_str() << L"Found in unit library";
+             SystemCtlLog::Error();
              return false;
         }
         fs.seekg (0, fs.end);
         int length = fs.tellg();
-        std:wcerr << "length " << length << std::endl;
+        SystemCtlLog::msg << L"length " << length;
+    SystemCtlLog::Debug();
+
         fs.seekg (0, fs.beg);
         wchar_t *buffer = new wchar_t [length];
         fs.read (buffer, length);
@@ -147,14 +186,16 @@ SystemDUnitPool::ReadServiceUnit(std::wstring name, std::wstring service_unit_pa
          fs.open(service_unit_path, std::fstream::in);
      }
      catch (exception e) {
-         cerr << e.what();
+         SystemCtlLog::msg << e.what();
+	 SystemCtlLog::Error();
      }
      if (fs.is_open()) {
          // wstring justname = servicename.substr(0, servicename.find_last_of('.'));
          punit = SystemDUnit::ParseSystemDServiceUnit(servicename, service_unit_path, fs);
      }
      else {
-         cerr << L"No service unit " << servicename.c_str() << L"Found in unit library" << endl;
+         SystemCtlLog::msg << L"No service unit " << servicename.c_str() << L"Found in unit library";
+         SystemCtlLog::Error();
      }
      fs.close();
 
@@ -163,12 +204,14 @@ SystemDUnitPool::ReadServiceUnit(std::wstring name, std::wstring service_unit_pa
 
 class SystemDUnit *SystemDUnit::ParseSystemDServiceUnit(wstring servicename, wstring unit_path, wifstream &fs)
 { 
-    wcerr << L"ParseSystemDServiceUnit unit = " << servicename << std::endl;
-   std::wstring line;
-   class SystemDUnit *punit = new class SystemDUnit((wchar_t*)servicename.c_str(), unit_path.c_str());
+    SystemCtlLog::msg << L"ParseSystemDServiceUnit unit = " << servicename;
+    SystemCtlLog::Debug();
+
+    std::wstring line;
+    class SystemDUnit *punit = new class SystemDUnit((wchar_t*)servicename.c_str(), unit_path.c_str());
  
-   (void)fs.getline(BUFFER, MAX_BUFFER_SIZE);
-   line = BUFFER;
+    (void)fs.getline(BUFFER, MAX_BUFFER_SIZE);
+    line = BUFFER;
     while (true) {
         
         if (fs.eof()) {
@@ -190,24 +233,31 @@ class SystemDUnit *SystemDUnit::ParseSystemDServiceUnit(wstring servicename, wst
         }
         else if (line.compare(L"[Unit]") != wstring::npos) {
              // Then we need to parse the unit section
-             wcerr << "parse unit section\n";
+             SystemCtlLog::msg << L"parse unit section";
+	     SystemCtlLog::Debug();
+
              line = punit->ParseUnitSection(fs);
         }
         else if (line.compare(L"[Service]") != wstring::npos) {
              // Then we need to parse the service section
-             wcerr << "parse service section\n";
+             SystemCtlLog::msg << L"parse service section";
+	     SystemCtlLog::Debug();
+
              line = punit->ParseServiceSection(fs);
         }
         else if (line.compare(L"[Install]") != wstring::npos) {
              // Then we need to parse the install section
-             wcerr << "parse install section\n";
+             SystemCtlLog::msg << L"parse install section";
+	     SystemCtlLog::Debug();
+
              line = punit->ParseInstallSection(fs);
         }
         else {
             if (line.length() == 0) {
                 break;
             }
-            wcerr << L"invalid section heading " << line.c_str() << endl;
+            SystemCtlLog::msg << L"invalid section heading " << line.c_str();
+	    SystemCtlLog::Debug();
             break;
         }
     }
@@ -233,7 +283,8 @@ static inline wstring split_elems(wifstream &fs, vector<wstring> &attrs, vector<
             (void) fs.getline(BUFFER, MAX_BUFFER_SIZE);
         }
          catch (const std::exception &e) {
-            wcerr << e.what() << endl;
+            SystemCtlLog::msg << e.what();
+	    SystemCtlLog::Debug();
             break;
         }
 
@@ -272,7 +323,6 @@ static inline wstring split_elems(wifstream &fs, vector<wstring> &attrs, vector<
         attrval  = line.substr(split_pt+1, last_non_space );
         attrs.push_back(wstring(attrname));
         values.push_back(wstring(attrval));
-        // wcerr << "attr = " << attrname.c_str() << endl;
     }
     return line;
 }
@@ -334,14 +384,18 @@ wstring SystemDUnit::ParseUnitSection( wifstream &fs)
    
     for (auto i = 0; i < attrs.size(); i++) {
         if (attrs[i].compare(L"Description") == 0) {
-            wcerr << L"Description = " << values[i].c_str() << endl;
+            SystemCtlLog::msg << L"Description = " << values[i].c_str();
+	    SystemCtlLog::Debug();
+
             this->description = values[i].c_str(); 
         }
         else if (attrs[i].compare(L"Documentation") == 0) {
-            wcerr << "2do: attrs = " << attrs[i].c_str() << " value = " << values[i].c_str() << endl;
+            SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
+	    SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"Requires") == 0) {
-            wcerr << "Requires " << values[i].c_str() << endl;
+            SystemCtlLog::msg << L"Requires " << values[i].c_str();
+	    SystemCtlLog::Debug();
 
             wstring value_list = values[i]; 
             int end = 0;
@@ -351,7 +405,8 @@ wstring SystemDUnit::ParseUnitSection( wifstream &fs)
             }
         }
         else if (attrs[i].compare(L"Requisite") == 0) {
-            wcerr << "Requisite " << values[i].c_str() << endl;
+            SystemCtlLog::msg << L"Requisite " << values[i].c_str();
+	    SystemCtlLog::Debug();
 
             wstring value_list = values[i];
             int end = 0;
@@ -361,7 +416,8 @@ wstring SystemDUnit::ParseUnitSection( wifstream &fs)
             }
         }
         else if (attrs[i].compare(L"Wants") == 0) {
-            wcerr << "Wants " << values[i].c_str() << endl;
+            SystemCtlLog::msg << L"Wants " << values[i].c_str();
+	    SystemCtlLog::Debug();
 
             wstring value_list = values[i];
             int end = 0;
@@ -371,13 +427,16 @@ wstring SystemDUnit::ParseUnitSection( wifstream &fs)
             }
         }
         else if (attrs[i].compare(L"BindsTo") == 0) {
-            wcerr << "2do: attrs = " << attrs[i].c_str() << " value = " << values[i].c_str() << endl;
+            SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
+	    SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"PartOf") == 0) {
-            wcerr << "2do: attrs = " << attrs[i].c_str() << " value = " << values[i].c_str() << endl;
+            SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
+	    SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"Conflicts") == 0) {
-            wcerr << "Conflicts " << values[i].c_str() << endl;
+            SystemCtlLog::msg << L"Conflicts " << values[i].c_str();
+	    SystemCtlLog::Debug();
 
             wstring value_list = values[i];
             int end = 0;
@@ -387,7 +446,8 @@ wstring SystemDUnit::ParseUnitSection( wifstream &fs)
             }
         }
         else if (attrs[i].compare(L"Before") == 0) {
-            wcerr << "Before " << values[i].c_str() << endl;
+            SystemCtlLog::msg << L"Before " << values[i].c_str();
+	    SystemCtlLog::Debug();
 
             wstring value_list = values[i];
             int end = 0;
@@ -397,7 +457,8 @@ wstring SystemDUnit::ParseUnitSection( wifstream &fs)
             }
         }
         else if (attrs[i].compare(L"After") == 0) {
-            wcerr << "After " << values[i].c_str() << endl;
+            SystemCtlLog::msg << L"After " << values[i].c_str();
+	    SystemCtlLog::Debug();
 
             wstring value_list = values[i];
             int end = 0;
@@ -407,199 +468,264 @@ wstring SystemDUnit::ParseUnitSection( wifstream &fs)
             }
         }
         else if (attrs[i].compare(L"OnFailure") == 0) {
-            wcerr << "2do: attrs = " << attrs[i].c_str() << " value = " << values[i].c_str() << endl;
+            SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
+	    SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"PropagatesReloadTo") == 0) {
-            wcerr << "2do: attrs = " << attrs[i].c_str() << " value = " << values[i].c_str() << endl;
+            SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
+	    SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"ReloadPropagatedFrom") == 0) {
-            wcerr << "2do: attrs = " << attrs[i].c_str() << " value = " << values[i].c_str() << endl;
+            SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
+	    SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"JoinsNamespaceOf") == 0) {
-            wcerr << "2do: attrs = " << attrs[i].c_str() << " value = " << values[i].c_str() << endl;
+            SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
+	    SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"RequiresMountsFor") == 0) {
-            wcerr << "2do: attrs = " << attrs[i].c_str() << " value = " << values[i].c_str() << endl;
+            SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
+	    SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"OnFailureJobMode") == 0) {
-            wcerr << "2do: attrs = " << attrs[i].c_str() << " value = " << values[i].c_str() << endl;
+            SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
+	    SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"IgnoreOnIsolate") == 0) {
-            wcerr << "2do: attrs = " << attrs[i].c_str() << " value = " << values[i].c_str() << endl;
+            SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
+	    SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"StopWhenUnneeded") == 0) {
-            wcerr << "2do: attrs = " << attrs[i].c_str() << " value = " << values[i].c_str() << endl;
+            SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
+	    SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"RefuseManualStart") == 0) {
-            wcerr << "2do: attrs = " << attrs[i].c_str() << " value = " << values[i].c_str() << endl;
+            SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
+	    SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"RefuseManualStop") == 0) {
-            wcerr << "2do: attrs = " << attrs[i].c_str() << " value = " << values[i].c_str() << endl;
+            SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
+	    SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"AllowIsolate") == 0) {
-            wcerr << "2do: attrs = " << attrs[i].c_str() << " value = " << values[i].c_str() << endl;
+            SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
+	    SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"DefaultDependencies") == 0) {
-            wcerr << "2do: attrs = " << attrs[i].c_str() << " value = " << values[i].c_str() << endl;
+            SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
+	    SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"CollectMode") == 0) {
-            wcerr << "2do: attrs = " << attrs[i].c_str() << " value = " << values[i].c_str() << endl;
+            SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
+	    SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"JobTimeoutSec") == 0) {
-            wcerr << "2do: attrs = " << attrs[i].c_str() << " value = " << values[i].c_str() << endl;
+            SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
+	    SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"JobRunningTimeoutSec") == 0) {
-            wcerr << "2do: attrs = " << attrs[i].c_str() << " value = " << values[i].c_str() << endl;
+            SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
+	    SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"JobTimeoutAction") == 0) {
-            wcerr << "2do: attrs = " << attrs[i].c_str() << " value = " << values[i].c_str() << endl;
+            SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
+	    SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"JobTimeoutRebootArgument") == 0) {
-            wcerr << "2do: attrs = " << attrs[i].c_str() << " value = " << values[i].c_str() << endl;
+            SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
+	    SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"FailureAction") == 0) {
-            wcerr << "2do: attrs = " << attrs[i].c_str() << " value = " << values[i].c_str() << endl;
+            SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
+	    SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"SuccessAction") == 0) {
-            wcerr << "2do: attrs = " << attrs[i].c_str() << " value = " << values[i].c_str() << endl;
+            SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
+	    SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"RebootArgument") == 0) {
-            wcerr << "2do: attrs = " << attrs[i].c_str() << " value = " << values[i].c_str() << endl;
+            SystemCtlLog::msg <<  L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
+	    SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"ConditionArchitecture") == 0) {
-            wcerr << "2do: attrs = " << attrs[i].c_str() << " value = " << values[i].c_str() << endl;
+            SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
+	    SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"ConditionVirtualization") == 0) {
-            wcerr << "2do: attrs = " << attrs[i].c_str() << " value = " << values[i].c_str() << endl;
+            SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
+	    SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"ConditionHost") == 0) {
-            wcerr << "2do: attrs = " << attrs[i].c_str() << " value = " << values[i].c_str() << endl;
+            SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
+	    SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"ConditionKernelCommandLine") == 0) {
-            wcerr << "2do: attrs = " << attrs[i].c_str() << " value = " << values[i].c_str() << endl;
+            SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
+	    SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"ConditionKernelVersion") == 0) {
-            wcerr << "2do: attrs = " << attrs[i].c_str() << " value = " << values[i].c_str() << endl;
+            SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
+	    SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"ConditionSecurity") == 0) {
-            wcerr << "2do: attrs = " << attrs[i].c_str() << " value = " << values[i].c_str() << endl;
+            SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
+	    SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"ConditionCapability") == 0) {
-            wcerr << "2do: attrs = " << attrs[i].c_str() << " value = " << values[i].c_str() << endl;
+            SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
+	    SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"ConditionACPower") == 0) {
-            wcerr << "2do: attrs = " << attrs[i].c_str() << " value = " << values[i].c_str() << endl;
+            SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
+	    SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"ConditionNeedsUpdate") == 0) {
-            wcerr << "2do: attrs = " << attrs[i].c_str() << " value = " << values[i].c_str() << endl;
+            SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
+	    SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"ConditionFirstBoot") == 0) {
-            wcerr << "2do: attrs = " << attrs[i].c_str() << " value = " << values[i].c_str() << endl;
+            SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
+	    SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"ConditionPathExists") == 0) {
-            wcerr << "2do: attrs = " << attrs[i].c_str() << " value = " << values[i].c_str() << endl;
+            SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
+	    SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"ConditionPathExistsGlob") == 0) {
-            wcerr << "2do: attrs = " << attrs[i].c_str() << " value = " << values[i].c_str() << endl;
+            SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
+	    SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"ConditionPathIsDirectory") == 0) {
-            wcerr << "2do: attrs = " << attrs[i].c_str() << " value = " << values[i].c_str() << endl;
+            SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
+	    SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"ConditionPathIsSymbolicLink") == 0) {
-            wcerr << "2do: attrs = " << attrs[i].c_str() << " value = " << values[i].c_str() << endl;
+            SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
+	    SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"ConditionPathIsMountPoint") == 0) {
-            wcerr << "2do: attrs = " << attrs[i].c_str() << " value = " << values[i].c_str() << endl;
+            SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
+	    SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"ConditionPathIsReadWrite") == 0) {
-            wcerr << "2do: attrs = " << attrs[i].c_str() << " value = " << values[i].c_str() << endl;
+            SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
+	    SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"ConditionDirectoryNotEmpty") == 0) {
-            wcerr << "2do: attrs = " << attrs[i].c_str() << " value = " << values[i].c_str() << endl;
+            SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
+	    SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"ConditionFileNotEmpty") == 0) {
-            wcerr << "2do: attrs = " << attrs[i].c_str() << " value = " << values[i].c_str() << endl;
+            SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
+	    SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"ConditionFileIsExecutable") == 0) {
-            wcerr << "2do: attrs = " << attrs[i].c_str() << " value = " << values[i].c_str() << endl;
+            SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
+	    SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"ConditionUser") == 0) {
-            wcerr << "2do: attrs = " << attrs[i].c_str() << " value = " << values[i].c_str() << endl;
+            SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
+	    SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"ConditionGroup") == 0) {
-            wcerr << "2do: attrs = " << attrs[i].c_str() << " value = " << values[i].c_str() << endl;
+            SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
+	    SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"ConditionControlGroupController") == 0) {
-            wcerr << "2do: attrs = " << attrs[i].c_str() << " value = " << values[i].c_str() << endl;
+            SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
+	    SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"AssertArchitecture") == 0) {
-            wcerr << "2do: attrs = " << attrs[i].c_str() << " value = " << values[i].c_str() << endl;
+            SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
+	    SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"AssertVirtualization") == 0) {
-            wcerr << "2do: attrs = " << attrs[i].c_str() << " value = " << values[i].c_str() << endl;
+            SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
+	    SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"AssertHost") == 0) {
-            wcerr << "2do: attrs = " << attrs[i].c_str() << " value = " << values[i].c_str() << endl;
+            SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
+	    SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"AssertKernelCommandLine") == 0) {
-            wcerr << "2do: attrs = " << attrs[i].c_str() << " value = " << values[i].c_str() << endl;
+            SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
+	    SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"AssertKernelVersion") == 0) {
-            wcerr << "2do: attrs = " << attrs[i].c_str() << " value = " << values[i].c_str() << endl;
+            SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
+	    SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"AssertSecurity") == 0) {
-            wcerr << "2do: attrs = " << attrs[i].c_str() << " value = " << values[i].c_str() << endl;
+            SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
+	    SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"AssertCapability") == 0) {
-            wcerr << "2do: attrs = " << attrs[i].c_str() << " value = " << values[i].c_str() << endl;
+            SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
+	    SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"AssertACPower") == 0) {
-            wcerr << "2do: attrs = " << attrs[i].c_str() << " value = " << values[i].c_str() << endl;
+            SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
+	    SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"AssertNeedsUpdate") == 0) {
-            wcerr << "2do: attrs = " << attrs[i].c_str() << " value = " << values[i].c_str() << endl;
+            SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
+	    SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"AssertFirstBoot") == 0) {
-            wcerr << "2do: attrs = " << attrs[i].c_str() << " value = " << values[i].c_str() << endl;
+            SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
+	    SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"AssertPathExists") == 0) {
-            wcerr << "2do: attrs = " << attrs[i].c_str() << " value = " << values[i].c_str() << endl;
+            SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
+	    SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"AssertPathExistsGlob") == 0) {
-            wcerr << "2do: attrs = " << attrs[i].c_str() << " value = " << values[i].c_str() << endl;
+            SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
+	    SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"AssertPathIsDirectory") == 0) {
-            wcerr << "2do: attrs = " << attrs[i].c_str() << " value = " << values[i].c_str() << endl;
+            SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
+	    SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"AssertPathIsSymbolicLink") == 0) {
-            wcerr << "2do: attrs = " << attrs[i].c_str() << " value = " << values[i].c_str() << endl;
+            SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
+	    SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"AssertPathIsMountPoint") == 0) {
-            wcerr << "2do: attrs = " << attrs[i].c_str() << " value = " << values[i].c_str() << endl;
+            SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
+	    SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"AssertPathIsReadWrite") == 0) {
-            wcerr << "2do: attrs = " << attrs[i].c_str() << " value = " << values[i].c_str() << endl;
+            SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
+	    SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"AssertDirectoryNotEmpty") == 0) {
-            wcerr << "2do: attrs = " << attrs[i].c_str() << " value = " << values[i].c_str() << endl;
+            SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
+	    SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"AssertFileNotEmpty") == 0) {
-            wcerr << "2do: attrs = " << attrs[i].c_str() << " value = " << values[i].c_str() << endl;
+            SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
+	    SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"AssertFileIsExecutable") == 0) {
-            wcerr << "2do: attrs = " << attrs[i].c_str() << " value = " << values[i].c_str() << endl;
+            SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
+	    SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"AssertUser") == 0) {
-            wcerr << "2do: attrs = " << attrs[i].c_str() << " value = " << values[i].c_str() << endl;
+            SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
+	    SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"AssertGroup") == 0) {
-            wcerr << "2do: attrs = " << attrs[i].c_str() << " value = " << values[i].c_str() << endl;
+            SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
+	    SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"AssertControlGroupController") == 0) {
-            wcerr << "2do: attrs = " << attrs[i].c_str() << " value = " << values[i].c_str() << endl;
+            SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str() ;
+	    SystemCtlLog::Debug();
         }
         else {
-            wcerr << "attribute not recognised: " << attrs[i].c_str() << endl;
+            SystemCtlLog::msg << L"attribute not recognised: " << attrs[i].c_str();
+	    SystemCtlLog::Debug();
         }
     }
     
@@ -627,7 +753,8 @@ wstring SystemDUnit::ParseServiceSection( wifstream &fs)
             (this->*attr_method)(attrs[i], values[i], attr_bitmask);
         }
         else {
-            wcerr << "attribute not recognised: " << attrs[i].c_str() << endl;
+            SystemCtlLog::msg << L"attribute not recognised: " << attrs[i].c_str();
+	    SystemCtlLog::Warning();
         }
     }
 
@@ -670,10 +797,12 @@ wstring SystemDUnit::ParseInstallSection( wifstream &fs)
     wstring retval = split_elems(fs, attrs, values);
     for (auto i = 0; i < attrs.size(); i++) {
         if (attrs[i].compare(L"Alias") == 0) {
-            wcerr << "2do: attrs = " << attrs[i].c_str() << " value = " << values[i].c_str() << endl;
+            SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
+	    SystemCtlLog::Verbose();
         }
         else if (attrs[i].compare(L"WantedBy") == 0) {
-            wcerr << "WantedBy " << values[i].c_str() << endl;
+            SystemCtlLog::msg << L"WantedBy " << values[i].c_str();
+	    SystemCtlLog::Verbose();
 
             wstring value_list = values[i];
             int end = 0;
@@ -688,7 +817,7 @@ wstring SystemDUnit::ParseInstallSection( wifstream &fs)
             }
         }
         else if (attrs[i].compare(L"RequiredBy") == 0) {
-            wcerr << "RequiredBy " << values[i].c_str() << endl;
+            wcerr << "RequiredBy " << values[i].c_str();
 
             wstring value_list = values[i];
             int end = 0;
@@ -703,13 +832,16 @@ wstring SystemDUnit::ParseInstallSection( wifstream &fs)
             }
         }
         else if (attrs[i].compare(L"Also") == 0) {
-            wcerr << "2do: attrs = " << attrs[i].c_str() << " value = " << values[i].c_str() << endl;
+            SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
+            SystemCtlLog::Verbose();
         }
         else if (attrs[i].compare(L"DefaultInstance") == 0) {
-            wcerr << "2do: attrs = " << attrs[i].c_str() << " value = " << values[i].c_str() << endl;
+            SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
+            SystemCtlLog::Verbose();
         }
         else {
-            wcerr << "attribute not recognised: " << attrs[i].c_str() << endl;
+            SystemCtlLog::msg <<  L"attribute not recognised: " << attrs[i].c_str() ;
+            SystemCtlLog::Verbose();
         }
     }
     return retval;
@@ -764,7 +896,7 @@ SystemDUnitPool::FindServiceFilePath(wstring dir_path, wstring service_name)
     if (INVALID_HANDLE_VALUE == hFind) 
     {
         errval = GetLastError();
-        wcerr << L"Could not find directory path " << dir_path.c_str() << L" error = " << errval << endl;
+        wcerr << L"Could not find directory path " << dir_path.c_str() << L" error = " << errval ;
  
        return L"";
     } 
@@ -778,20 +910,20 @@ SystemDUnitPool::FindServiceFilePath(wstring dir_path, wstring service_name)
            wstring subpath = ffd.cFileName;
 
            if ( (subpath.compare(L".")) != 0 && ( subpath.compare(L"..") != 0)) {
-               wcerr << "subdir found " << subpath.c_str() << endl;
+               wcerr << "subdir found " << subpath.c_str() ;
                subpath = dir_path + L"\\" + subpath;
                wstring file_path = FindServiceFilePath(subpath, service_name);
                if (!file_path.empty()) {
                    return file_path;
                }
-               wcerr << "return from dir" << subpath.c_str() << endl;
+               wcerr << "return from dir" << subpath.c_str() ;
            }
        }
        else
        {
           filesize.LowPart = ffd.nFileSizeLow;
           filesize.HighPart = ffd.nFileSizeHigh;
-          wcerr << L"filename " << ffd.cFileName << L" file size " << filesize.QuadPart << endl;
+          wcerr << L"filename " << ffd.cFileName << L" file size " << filesize.QuadPart ;
           wstring filename = ffd.cFileName;
           if (filename.compare(service_name) == 0) {
               dir_path += L"\\";
@@ -835,7 +967,7 @@ SystemDUnitPool::Apply(wstring dir_path, boolean (*action)(wstring dir_path, voi
     if (INVALID_HANDLE_VALUE == hFind) 
     {
         errval = GetLastError();
-        wcerr << L"Could not find directory path " << dir_path.c_str() << L" error = " << errval << endl;
+        wcerr << L"Could not find directory path " << dir_path.c_str() << L" error = " << errval ;
  
        return false;
     } 
@@ -849,10 +981,10 @@ SystemDUnitPool::Apply(wstring dir_path, boolean (*action)(wstring dir_path, voi
            wstring subpath = ffd.cFileName;
 
            if ( (subpath.compare(L".")) != 0 && ( subpath.compare(L"..") != 0)) {
-               wcerr << "subdir found " << subpath.c_str() << endl;
+               wcerr << "subdir found " << subpath.c_str() ;
                subpath = dir_path + L"\\" + subpath;
                rslt = Apply(subpath, action, context);
-               wcerr << "return from dir" << subpath.c_str() << endl;
+               wcerr << "return from dir" << subpath.c_str() ;
            }
            
        }
@@ -860,7 +992,7 @@ SystemDUnitPool::Apply(wstring dir_path, boolean (*action)(wstring dir_path, voi
        {
           filesize.LowPart = ffd.nFileSizeLow;
           filesize.HighPart = ffd.nFileSizeHigh;
-          wcerr << L"filename " << ffd.cFileName << L" file size " << filesize.QuadPart << endl;
+          wcerr << L"filename " << ffd.cFileName << L" file size " << filesize.QuadPart ;
           if (action) {
               rslt = (*action)(dir_path+L"\\"+ffd.cFileName, context);
           }
@@ -883,7 +1015,7 @@ static boolean add_wanted_unit(wstring file_path, void *context)
         (file_type.compare(L".target") == 0) ||
         (file_type.compare(L".timer") == 0) ||
         (file_type.compare(L".socket") == 0)) {
-	pparent->AddWanted(servicename);
+    pparent->AddWanted(servicename);
     }
     return true;
 }
@@ -898,7 +1030,7 @@ static boolean add_requireed_unit(wstring file_path, void *context)
         (file_type.compare(L".target") == 0) ||
         (file_type.compare(L".timer") == 0) ||
         (file_type.compare(L".socket") == 0)) {
-	pparent->AddRequired(servicename);
+    pparent->AddRequired(servicename);
     }
     return true;
 }
@@ -920,19 +1052,19 @@ static boolean read_unit(wstring file_path, void *context)
             wcerr << "Failed to load unit: Unit file " << file_path.c_str() << "is invalid\n";
             return false;
         }
-	// Look for wanted directory
+    // Look for wanted directory
         wstring wants_dir_path = file_path+L".wants";
         if (SystemDUnitPool::DirExists(wants_dir_path)) {
-	    // Add to wants
+        // Add to wants
             (void)SystemDUnitPool::Apply(wants_dir_path, add_wanted_unit, (void*)punit);
-	}
+    }
 
-	// Look for required directory
+    // Look for required directory
         wstring requires_dir_path = file_path+L".wants";
         if (SystemDUnitPool::DirExists(requires_dir_path)) {
-	    // Add to requires
+        // Add to requires
             (void)SystemDUnitPool::Apply(requires_dir_path, add_wanted_unit, (void*)punit);
-	}
+    }
     }
     return true;
 }
@@ -947,11 +1079,11 @@ static boolean delete_unit(wstring file_path, void *context)
         (file_type.compare(L".target") == 0) ||
         (file_type.compare(L".timer") == 0) ||
         (file_type.compare(L".socket") == 0)) {
-	// Delete the service
+    // Delete the service
         class SystemDUnit *punit = SystemDUnitPool::FindUnit(servicename);
-	if (punit) {
-	    punit->Mask(true);
-	}
+    if (punit) {
+        punit->Mask(true);
+    }
     }
     return true;
 }
@@ -1160,16 +1292,36 @@ boolean SystemDUnit::Disable(boolean block)
 }
 
 
-boolean SystemDUnit::Kill(int action, std::wstring killtarget, boolean block)
+
+/*
+ *   A complication of systemctl kill is that windows doesn't have signals.
+ *   Because of that we must try to divine the purpose of the signal and expected result.
+ *   We currently only recognise sigkill and sigterm. SigTerm we send a Console Control Event to 
+ *   the process. SigKill we just kill the process
+ */
+boolean SystemDUnit::Kill(int action, int killtarget, boolean block)
 
 {
     wstring servicename = this->name;
 
     // identify info to kill
+    switch (action) {
+    case 9: // SIGKILL - We kill the process
+
+        // Now we need to figure out the process
+	// main: we look for the PID key in the registry for the exec start
+	// control we look for the PID keys of the execstartpre and or ExecStop or ExecReload
+	// all we do both...
+	switch(killtarget) {
+	case 
+	}
+
+        break;
+    case 15: // SIGTERM - We send a control-c-event
+        break;
+    }
     
-    // and mark the object
-    this->is_enabled = false;
-    return false;
+    return true;
 }
 
 
@@ -1205,10 +1357,10 @@ boolean SystemDUnit::Mask(boolean block)
     if (SystemDUnitPool::DirExists(requires_dir_path)) {
         // Enable all of the units and add to the requires list
         (void)SystemDUnitPool::Apply(requires_dir_path, mask_required_unit, (void*)this);
-	wcerr << L"remove directory " << requires_dir_path << std::endl;
-	if (!RemoveDirectoryW(requires_dir_path.c_str())) {
-	    wcerr << L"remove directory " << requires_dir_path << " failed " << std::endl;
-	}
+    wcerr << L"remove directory " << requires_dir_path << std::endl;
+    if (!RemoveDirectoryW(requires_dir_path.c_str())) {
+        wcerr << L"remove directory " << requires_dir_path << " failed " << std::endl;
+    }
     }
 
     // Is there a wants directory?
@@ -1217,10 +1369,10 @@ boolean SystemDUnit::Mask(boolean block)
         // Enable all of the units and add to the wants list
         (void)SystemDUnitPool::Apply(wants_dir_path, mask_wanted_unit, (void*)this);
 
-	wcerr << L"remove directory " << wants_dir_path << std::endl;
-	if (!RemoveDirectoryW(wants_dir_path.c_str())) {
-	    wcerr << L"remove directory " << wants_dir_path << " failed " << std::endl;
-	}
+    wcerr << L"remove directory " << wants_dir_path << std::endl;
+    if (!RemoveDirectoryW(wants_dir_path.c_str())) {
+        wcerr << L"remove directory " << wants_dir_path << " failed " << std::endl;
+    }
     }
 
     this->UnregisterService();
@@ -1296,7 +1448,7 @@ boolean SystemDUnit::Unmask(boolean block)
         // Find the unit in the unit library
         wifstream fs(service_unit_path, std::fstream::in);
         if (!fs.is_open()) {
-             wcerr << "No service unit " << servicename.c_str() << "Found in unit library" << endl;
+             wcerr << "No service unit " << servicename.c_str() << "Found in unit library" ;
              return false;
         }
         fs.seekg (0, fs.end);
@@ -1726,7 +1878,7 @@ SystemDUnitPool::SystemDUnitPool()
 void SystemDUnitPool::ReloadPool()
 
 {
-    wcerr << "do daemon reload" << endl;
+    wcerr << "do daemon reload" ;
 
     // 2do First clear out the pool, services and active dir and deregister the services
     //
@@ -1744,7 +1896,7 @@ void SystemDUnitPool::ReloadPool()
 void SystemDUnitPool::LoadPool()
 
 {
-    wcerr << "do daemon reload" << endl;
+    wcerr << "do daemon reload" ;
     (void)Apply(SystemDUnitPool::ACTIVE_UNIT_DIRECTORY_PATH.c_str(), read_unit, (void*)this);
 
 for (auto member: g_pool->GetPool()) {
@@ -1876,7 +2028,7 @@ SystemDUnit::attr_service_type( wstring attr_name, wstring attr_value, unsigned 
     }
     else {
         this->service_type = SERVICE_TYPE_UNDEFINED;
-        wcerr << "service type " << attr_value.c_str() << "is unknown" << endl;
+        wcerr << "service type " << attr_value.c_str() << "is unknown" ;
     }
     return true;
 }
@@ -2010,7 +2162,7 @@ SystemDUnit::attr_restart_sec( wstring attr_name, wstring attr_value, unsigned l
            this->restart_sec = std::stod(attr_value);
         }
         catch (const std::exception &e) {
-            wcerr << "restart_sec invalid value : " << attr_value.c_str() << endl;
+            wcerr << "restart_sec invalid value : " << attr_value.c_str() ;
         }
     }
     return true;
@@ -2030,7 +2182,7 @@ SystemDUnit::attr_timeout_start_sec( wstring attr_name, wstring attr_value, unsi
            this->timeout_start_sec = stod(attr_value);
         }
         catch (const std::exception &e) {
-            wcerr << "timeout_start_sec invalid value : " << attr_value.c_str() << endl;
+            wcerr << "timeout_start_sec invalid value : " << attr_value.c_str() ;
         }
     }
     return true;
@@ -2041,7 +2193,9 @@ boolean
 SystemDUnit::attr_timeout_stop_sec( wstring attr_name, wstring attr_value, unsigned long &attr_bitmask )
 
 {
-    wcerr << "2do: attrs = " << "Timeout Stop Sec" << " value = " << attr_value.c_str() << endl;
+    SystemCtlLog::msg << L"2do: attrs = " << attr_name.c_str() << L" value = " << attr_value.c_str();
+    SystemCtlLog::Verbose();
+
     attr_bitmask |= ATTRIBUTE_BIT_TIMEOUT_STOP_SEC;
     if (attr_value.compare(L"infinity") == 0 ) {
         this->timeout_stop_sec = DBL_MAX;
@@ -2052,7 +2206,7 @@ SystemDUnit::attr_timeout_stop_sec( wstring attr_name, wstring attr_value, unsig
         }
         catch (const std::exception &e) {
             // Try to convert from time span like "5min 20s"
-            wcerr << "timeout_stop_sec invalid value : " << attr_value.c_str() << endl;
+            wcerr << "timeout_stop_sec invalid value : " << attr_value.c_str() ;
         }
     }
     return true;
@@ -2064,7 +2218,9 @@ boolean
 SystemDUnit::attr_timeout_sec( wstring attr_name, wstring attr_value, unsigned long &attr_bitmask )
 
 {
-    wcerr << "2do: attrs = " << attr_name.c_str() << " value = " << attr_value.c_str() << endl;
+    SystemCtlLog::msg << L"2do: attrs = " << attr_name.c_str() << L" value = " << attr_value.c_str();
+    SystemCtlLog::Verbose();
+
     attr_bitmask |= (ATTRIBUTE_BIT_TIMEOUT_START_SEC | ATTRIBUTE_BIT_TIMEOUT_STOP_SEC);
     if (attr_value.compare(L"infinity") == 0 ) {
         this->timeout_start_sec = DBL_MAX;
@@ -2078,7 +2234,7 @@ SystemDUnit::attr_timeout_sec( wstring attr_name, wstring attr_value, unsigned l
         }
         catch (const std::exception &e) {
             // Try to convert from time span like "5min 20s"
-            wcerr << "timeout_sec invalid value : " << attr_value.c_str() << endl;
+            wcerr << "timeout_sec invalid value : " << attr_value.c_str() ;
         }
     }
     return true;
@@ -2089,7 +2245,9 @@ boolean
 SystemDUnit::attr_runtime_max_sec( wstring attr_name, wstring attr_value, unsigned long &attr_bitmask )
 
 {
-    wcerr << "2do: attrs = " << attr_name.c_str() << " value = " << attr_value.c_str() << endl;
+    SystemCtlLog::msg << L"2do: attrs = " << attr_name.c_str() << L" value = " << attr_value.c_str();
+    SystemCtlLog::Verbose();
+
     attr_bitmask |= ATTRIBUTE_BIT_RUNTIME_MAX_SEC;
     if (attr_value.compare(L"infinity") == 0) {
         this->max_runtime_sec = DBL_MAX;
@@ -2100,7 +2258,7 @@ SystemDUnit::attr_runtime_max_sec( wstring attr_name, wstring attr_value, unsign
         }
         catch (const std::exception &e) {
             // Try to convert from time span like "5min 20s"
-            wcerr << "RuntimeMaxSec invalid value : " << attr_value.c_str() << endl;
+            wcerr << "RuntimeMaxSec invalid value : " << attr_value.c_str() ;
         }
     }
     return true;
@@ -2111,7 +2269,9 @@ boolean
 SystemDUnit::attr_watchdog_sec( wstring attr_name, wstring attr_value, unsigned long &attr_bitmask )
 
 {
-    wcerr << "2do: attrs = " << attr_name.c_str() << " value = " << attr_value.c_str() << endl;
+    SystemCtlLog::msg << L"2do: attrs = " << attr_name.c_str() << L" value = " << attr_value.c_str();
+    SystemCtlLog::Verbose();
+
     attr_bitmask |= ATTRIBUTE_BIT_WATCHDOG_SEC;
     if (attr_value.compare(L"infinity") == 0 ) {
         this->watchdog_sec = DBL_MAX;
@@ -2122,7 +2282,8 @@ SystemDUnit::attr_watchdog_sec( wstring attr_name, wstring attr_value, unsigned 
         }
         catch (const std::exception &e) {
             // Try to convert from time span like "5min 20s"
-            wcerr << "watchdog_sec invalid value : " << attr_value.c_str() << endl;
+            SystemCtlLog::msg << L"watchdog_sec invalid value : " << attr_value.c_str() ;
+            SystemCtlLog::Warning();
         }
     }
     return true;
@@ -2144,13 +2305,15 @@ SystemDUnit::attr_restart( wstring attr_name, wstring attr_value, unsigned long 
               { L"on_watchdog", RESTART_ACTION_ON_WATCHDOG }
          };
 
-    wcerr << L"Restart=" << L" value = " << attr_value.c_str() << endl;
+    SystemCtlLog::msg << L"Restart=" << L" value = " << attr_value.c_str() ;
+    SystemCtlLog::Verbose();
     try {
         this->restart_action = restart_action_translate[attr_value];
         attr_bitmask |= ATTRIBUTE_BIT_RESTART;
     }
     catch (...) {
-        wcerr << L"Restart=" << L" value = " << attr_value.c_str() << " invalid" << endl;
+        SystemCtlLog::msg << L"Restart=" << L" value = " << attr_value.c_str() << " invalid" ;
+        SystemCtlLog::Warning();
         return false;
     }
     return true;
@@ -2161,7 +2324,8 @@ boolean
 SystemDUnit::attr_success_exit_status( wstring attr_name, wstring attr_value, unsigned long &attr_bitmask )
 
 {
-    wcerr << "2do: attrs = " << attr_name.c_str() << " value = " << attr_value.c_str() << endl;
+    SystemCtlLog::msg << L"2do: attrs = " << attr_name.c_str() << L" value = " << attr_value.c_str();
+    SystemCtlLog::Verbose();
     attr_bitmask |= ATTRIBUTE_BIT_SUCCESS_EXIT_STATUS;
     return true;
 }
@@ -2171,7 +2335,8 @@ boolean
 SystemDUnit::attr_restart_prevent_exit_status( wstring attr_name, wstring attr_value, unsigned long &attr_bitmask )
 
 {
-    wcerr << "2do: attrs = " << attr_name.c_str() << " value = " << attr_value.c_str() << endl;
+    SystemCtlLog::msg << L"2do: attrs = " << attr_name.c_str() << L" value = " << attr_value.c_str();
+    SystemCtlLog::Verbose();
     attr_bitmask |= ATTRIBUTE_BIT_RESTART_PREVENT_EXIT_STATUS;
     return true;
 }
@@ -2181,7 +2346,8 @@ boolean
 SystemDUnit::attr_restart_force_exit_status( wstring attr_name, wstring attr_value, unsigned long &attr_bitmask )
 
 {
-    wcerr << "2do: attrs = " << attr_name.c_str() << " value = " << attr_value.c_str() << endl;
+    SystemCtlLog::msg << L"2do: attrs = " << attr_name.c_str() << L" value = " << attr_value.c_str();
+    SystemCtlLog::Verbose();
     attr_bitmask |= ATTRIBUTE_BIT_RESTART_FORCE_EXIT_STATUS;
     return true;
 }
@@ -2191,7 +2357,8 @@ boolean
 SystemDUnit::attr_permissions_start_only( wstring attr_name, wstring attr_value, unsigned long &attr_bitmask )
 
 {
-    wcerr << "2do: attrs = " << attr_name.c_str() << " value = " << attr_value.c_str() << endl;
+    SystemCtlLog::msg << L"2do: attrs = " << attr_name.c_str() << L" value = " << attr_value.c_str();
+    SystemCtlLog::Verbose();
     attr_bitmask |= ATTRIBUTE_BIT_PERMISSIONS_START_ONLY;
     return true;
 }
@@ -2201,7 +2368,8 @@ boolean
 SystemDUnit::attr_root_directory_start_only( wstring attr_name, wstring attr_value, unsigned long &attr_bitmask )
 
 {
-    wcerr << "2do: attrs = " << attr_name.c_str() << " value = " << attr_value.c_str() << endl;
+    SystemCtlLog::msg << L"2do: attrs = " << attr_name.c_str() << L" value = " << attr_value.c_str();
+    SystemCtlLog::Verbose();
     attr_bitmask |= ATTRIBUTE_BIT_ROOT_DIRECTORY_START_ONLY;
     return true;
 }
@@ -2211,7 +2379,8 @@ boolean
 SystemDUnit::attr_non_blocking( wstring attr_name, wstring attr_value, unsigned long &attr_bitmask )
 
 {
-    wcerr << "2do: attrs = " << attr_name.c_str() << " value = " << attr_value.c_str() << endl;
+    SystemCtlLog::msg << L"2do: attrs = " << attr_name.c_str() << L" value = " << attr_value.c_str();
+    SystemCtlLog::Verbose();
     attr_bitmask |= ATTRIBUTE_BIT_NON_BLOCKING;
     return true;
 }
@@ -2221,7 +2390,8 @@ boolean
 SystemDUnit::attr_notify_access( wstring attr_name, wstring attr_value, unsigned long &attr_bitmask )
 
 {
-    wcerr << "2do: attrs = " << attr_name.c_str() << " value = " << attr_value.c_str() << endl;
+    SystemCtlLog::msg << L"2do: attrs = " << attr_name.c_str() << L" value = " << attr_value.c_str();
+    SystemCtlLog::Verbose();
     attr_bitmask |= ATTRIBUTE_BIT_NOTIFY_ACCESS;
     return true;
 }
@@ -2231,7 +2401,8 @@ boolean
 SystemDUnit::attr_sockets( wstring attr_name, wstring attr_value, unsigned long &attr_bitmask )
 
 {
-    wcerr << "2do: attrs = " << attr_name.c_str() << " value = " << attr_value.c_str() << endl;
+    SystemCtlLog::msg << L"2do: attrs = " << attr_name.c_str() << L" value = " << attr_value.c_str();
+    SystemCtlLog::Verbose();
     attr_bitmask |= ATTRIBUTE_BIT_SOCKETS;
     return true;
 }
@@ -2241,7 +2412,8 @@ boolean
 SystemDUnit::attr_file_descriptor_store_max( wstring attr_name, wstring attr_value, unsigned long &attr_bitmask )
 
 {
-    wcerr << "2do: attrs = " << attr_name.c_str() << " value = " << attr_value.c_str() << endl;
+    SystemCtlLog::msg << L"2do: attrs = " << attr_name.c_str() << L" value = " << attr_value.c_str();
+    SystemCtlLog::Verbose();
     attr_bitmask |= ATTRIBUTE_BIT_FILE_DESCRIPTOR_STORE_MAX;
     return true;
 }
@@ -2251,7 +2423,8 @@ boolean
 SystemDUnit::attr_usb_function_descriptors( wstring attr_name, wstring attr_value, unsigned long &attr_bitmask )
 
 {
-    wcerr << "2do: attrs = " << attr_name.c_str() << " value = " << attr_value.c_str() << endl;
+    SystemCtlLog::msg << L"2do: attrs = " << attr_name.c_str() << L" value = " << attr_value.c_str();
+    SystemCtlLog::Verbose();
     attr_bitmask |= ATTRIBUTE_BIT_USB_FUNCTION_DESCRIPTORS;
     return true;
 }
@@ -2261,7 +2434,8 @@ boolean
 SystemDUnit::attr_usb_function_strings( wstring attr_name, wstring attr_value, unsigned long &attr_bitmask )
 
 {
-    wcerr << "2do: attrs = " << attr_name.c_str() << " value = " << attr_value.c_str() << endl;
+    SystemCtlLog::msg << L"2do: attrs = " << attr_name.c_str() << L" value = " << attr_value.c_str();
+    SystemCtlLog::Verbose();
     attr_bitmask |= ATTRIBUTE_BIT_USB_FUNCTION_STRINGS;
     return true;
 }
@@ -2271,7 +2445,8 @@ boolean
 SystemDUnit::attr_environment( wstring attr_name, wstring attr_value, unsigned long &attr_bitmask )
 
 {
-    wcerr << "Environment " << attr_value.c_str() << endl;
+    SystemCtlLog::msg << L"Environment " << attr_value.c_str();
+    SystemCtlLog::Verbose();
 
     wstring value_list = attr_value;
     int end = 0;
@@ -2292,7 +2467,8 @@ boolean
 SystemDUnit::attr_environment_file( wstring attr_name, wstring attr_value, unsigned long &attr_bitmask )
 
 {
-    wcerr << "EnvironmentFile= " << attr_value.c_str() << endl;
+    SystemCtlLog::msg << L"EnvironmentFile= " << attr_value.c_str();
+    SystemCtlLog::Verbose();
     this->environment_file.push_back(attr_value.c_str());
     return true;
 }
@@ -2302,13 +2478,16 @@ boolean
 SystemDUnit::attr_standard_output( wstring attr_name, wstring attr_value, unsigned long &attr_bitmask )
 
 {
-    wcerr << "StandardOutput = " << attr_value.c_str() << endl;
+    SystemCtlLog::msg << L"StandardOutput = " << attr_value.c_str();
+    SystemCtlLog::Verbose();
     enum OUTPUT_TYPE out_type = String_To_OutputType(attr_value.c_str());
     switch (out_type) {
     default:
     case OUTPUT_TYPE_INVALID:
-        wcerr << "StandardOutput invalid value " << attr_value.c_str() << endl;
+        SystemCtlLog::msg << L"StandardOutput invalid value " << attr_value.c_str();
+        SystemCtlLog::Warning();
         break;
+
     case OUTPUT_TYPE_INHERIT:
     case OUTPUT_TYPE_NULL:
     case OUTPUT_TYPE_TTY:
@@ -2337,12 +2516,14 @@ boolean
 SystemDUnit::attr_standard_error( wstring attr_name, wstring attr_value, unsigned long &attr_bitmask )
 
 {
-    wcerr << "StandardError = " << attr_value.c_str() << endl;
+    SystemCtlLog::msg << L"StandardError = " << attr_value.c_str();
+    SystemCtlLog::Verbose();
     enum OUTPUT_TYPE out_type = String_To_OutputType(attr_value.c_str());
     switch (out_type) {
     default:
     case OUTPUT_TYPE_INVALID:
-        wcerr << "StandardError invalid value " << attr_value.c_str() << endl;
+        SystemCtlLog::msg << L"StandardError invalid value " << attr_value.c_str();
+        SystemCtlLog::Warning();
         break;
     case OUTPUT_TYPE_INHERIT:
     case OUTPUT_TYPE_NULL:
@@ -2372,7 +2553,8 @@ boolean
 SystemDUnit::attr_not_implemented( wstring attr_name, wstring attr_value, unsigned long &attr_bitmask )
 
 {
-    wcerr << "2do: attrs = " << attr_name.c_str() << " value = " << attr_value.c_str() << endl;
+    SystemCtlLog::msg << L"2do: attrs = " << attr_name.c_str() << L" value = " << attr_value.c_str();
+    SystemCtlLog::Debug();
     return true;
 }
 

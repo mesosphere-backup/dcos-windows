@@ -24,6 +24,37 @@ extern wchar_t BUFFER[];
 class SystemDUnit;
 extern class SystemDUnitPool *g_pool;
 
+namespace SystemCtl {
+    enum KillWho {
+        KILL_ACTION_NONE,
+        KILL_ACTION_MAIN,
+        KILL_ACTION_CONTROL,
+        KILL_ACTION_ALL
+    };
+};
+
+namespace SystemCtlLog {
+
+    enum LogLevel {
+        LogLevelDebug = 1,
+        LogLevelVerbose,
+        LogLevelInfo,
+        LogLevelWarning,
+        LogLevelError
+    };
+    
+    extern enum LogLevel current_log_level;
+    extern std::wstringstream msg;
+    
+    void Error();
+    void Warning();
+    void Info();
+    void Verbose();
+    void Debug();
+};
+
+
+
 class SystemDUnitPool {
 public:
     SystemDUnitPool();
@@ -415,7 +446,7 @@ public:
     boolean UnregisterService();
     boolean CheckForRequisites();
     boolean WaitForAfters();
-    boolean Kill(int action, std::wstring killtarget, boolean block);
+    boolean Kill(int action, int killtarget, boolean block);
 
    static void AddUserServiceLogonPrivilege();
 

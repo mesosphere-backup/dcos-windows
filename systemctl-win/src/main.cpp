@@ -29,6 +29,7 @@ wstring SystemDUnitPool::UNIT_DIRECTORY_PATH = L""; // Quasi constant
 wstring SystemDUnitPool::ACTIVE_UNIT_DIRECTORY_PATH = L""; // Quasi constant
 wstring SystemDUnitPool::UNIT_WORKING_DIRECTORY_PATH = L""; // Quasi constant
 
+
 enum SystemCtl_Cmd {
     SYETEMCTL_CMD_DAEMON_RELOAD = 0,
     SYSTEMCTL_CMD_LIST_UNITS,
@@ -120,14 +121,15 @@ int SystemCtrl_Cmd_List_Timers( boost::program_options::variables_map &vm )
 
 int SystemCtrl_Cmd_Start( boost::program_options::variables_map &vm )
 {
-   wstring usage = L"usage: Systemctl start <unitname>[ unitname .. unitname]\n";
+   wstring usage = L"usage: Systemctl start <unitname>[ unitname .. unitname]";
 
     vector<wstring> units = vm["system_units"].as<vector<wstring>>();
     if (units.empty()) {
         // Complain and exit
-        wcerr << "No unit specified\n";
-         wcerr << usage.c_str();
-         exit(1);
+
+        SystemCtlLog::msg << L"No unit specified"; SystemCtlLog::Error();
+        SystemCtlLog::msg << usage.c_str(); SystemCtlLog::Error();
+        exit(1);
     }
 
     for (wstring unitname: units) {
@@ -142,8 +144,8 @@ int SystemCtrl_Cmd_Start( boost::program_options::variables_map &vm )
         class SystemDUnit *unit = SystemDUnitPool::FindUnit(unitname);
         if (!unit) {
             // Complain and exit
-            wcerr << "Failed to enable unit: Unit file " << unitname.c_str() << "does not exist\n";
-            wcerr << usage.c_str();
+            SystemCtlLog::msg << L"Failed to enable unit: Unit file " << unitname.c_str() << L"does not exist"; SystemCtlLog::Error();
+            SystemCtlLog::msg << usage.c_str(); SystemCtlLog::Error();
             exit(1);
         }
         unit->StartService(false); // We will add non-blocking later
@@ -160,9 +162,9 @@ int SystemCtrl_Cmd_Stop( boost::program_options::variables_map &vm )
     vector<wstring> units = vm["system_units"].as<vector<wstring>>();
     if (units.empty()) {
         // Complain and exit
-        wcerr << "No unit specified\n";
-         wcerr << usage.c_str();
-         exit(1);
+        SystemCtlLog::msg << L"No unit specified"; SystemCtlLog::Error();
+        SystemCtlLog::msg << usage.c_str(); SystemCtlLog::Error();
+        exit(1);
     }
 
     for (wstring unitname: units) {
@@ -177,8 +179,8 @@ int SystemCtrl_Cmd_Stop( boost::program_options::variables_map &vm )
         class SystemDUnit *unit = SystemDUnitPool::FindUnit(unitname);
         if (!unit) {
             // Complain and exit
-            wcerr << "Failed to stop service: Unit file " << unitname.c_str() << "does not exist\n";
-            wcerr << usage.c_str();
+            SystemCtlLog::msg << "Failed to stop service: Unit file " << unitname.c_str() << "does not exist\n";
+            SystemCtlLog::msg << usage.c_str(); SystemCtlLog::Error();
             exit(1);
         }
         unit->StopService(false); // We will add non-blocking later
@@ -227,12 +229,85 @@ int SystemCtrl_Cmd_Kill( boost::program_options::variables_map &vm )
 
 {
     wstring usage = L"usage: Systemctl kill unitname1 [unitname2 ...]\n";
+    static std::map<std::wstring, int>kill_who_dict = {
+              { L"main",    SystemCtl::KILL_ACTION_MAIN},
+              { L"control", SystemCtl::KILL_ACTION_CONTROL},
+              { L"all",     SystemCtl::KILL_ACTION_ALL }
+         };
+
+    static std::map<std::wstring, int>signal_dict = {
+            { L"SIGHUP",   1},
+            { L"SIGINT",   2},
+            { L"SIGQUIT",  3},
+            { L"SIGILL",   4},
+            { L"SIGTRAP",  5},
+            { L"SIGABRT",  6},
+            { L"SIGIOT",   6},
+            { L"SIGBUS",   7},
+            { L"SIGFPE",   8},
+            { L"SIGKILL",  9},
+            { L"SIGUSR1", 10},
+            { L"SIGSEGV", 11},
+            { L"SIGUSR2", 12},
+            { L"SIGPIPE", 13},
+            { L"SIGALRM", 14},
+            { L"SIGTERM", 15},
+            { L"SIGSTKFLT", 16},
+            { L"SIGCHLD", 17},
+            { L"SIGCONT", 18},
+            { L"SIGSTOP", 19},
+            { L"SIGTSTP", 20},
+            { L"SIGTTIN", 21},
+            { L"SIGTTOU", 22},
+            { L"SIGURG", 23},
+            { L"SIGXCPU", 24},
+            { L"SIGXFSZ", 25},
+            { L"SIGVTALRM",26},
+            { L"SIGPROF", 27},
+            { L"SIGWINCH",28},
+            { L"SIGIO", 29},
+            { L"SIGPOLL", 29},
+            { L"SIGLOST", 29},
+            { L"SIGPWR", 30},
+            { L"SIGSYS", 31},
+            { L"1",   1},    // We do this so we don't have to parse a command with just the number .In linux land just the number is equivalent.
+            { L"2",   2},
+            { L"3",  3},
+            { L"4",   4},
+            { L"5",  5},
+            { L"6",  6},
+            { L"7",   7},
+            { L"8",   8},
+            { L"9L",  9},
+            { L"10", 10},
+            { L"11", 11},
+            { L"12", 12},
+            { L"13", 13},
+            { L"14", 14},
+            { L"15", 15},
+            { L"16", 16},
+            { L"17", 17},
+            { L"18", 18},
+            { L"19", 19},
+            { L"20", 20},
+            { L"21", 21},
+            { L"22", 22},
+            { L"23", 23},
+            { L"24", 24},
+            { L"25", 25},
+            { L"26",26},
+            { L"27", 27},
+            { L"28",28},
+            { L"29", 29},
+            { L"30", 30},
+            { L"31", 31}
+         };
 
     vector<wstring> units = vm["system_units"].as<vector<wstring>>();
     if (units.empty()) {
         // Complain and exit
-        wcerr << "No unit specified\n";
-        wcerr << usage.c_str();
+        SystemCtlLog::msg << L"No unit specified"; SystemCtlLog::Error();
+        SystemCtlLog::msg << usage.c_str(); SystemCtlLog::Error();
         exit(1);
     }
 
@@ -240,27 +315,38 @@ int SystemCtrl_Cmd_Kill( boost::program_options::variables_map &vm )
         if (unitname.rfind(L".service") == string::npos) {
               unitname.append(L".service");
         }
-    
 
-        wstring kill_who;
+	int kill_action = SystemCtl::KILL_ACTION_ALL;
         if (vm.count("kill-who")) {
-            kill_who = vm["kill-who"].as<wstring>();
+	    std::wstring who = vm["kill-who"].as<wstring>();
+            kill_action = kill_who_dict[who];
+	    if (!kill_action) {
+	        // Illegal Value
+                SystemCtlLog::msg << L"Kill action " << vm["kill-who"].as<wstring>() << L"is unknown";
+		SystemCtlLog::Error();
+		return 1;
+	    }
         }
 
-        wstring kill_signal;
+        int kill_signal;
         if (vm.count("signal")) {
-            kill_signal = vm["signal"].as<wstring>();
+            std::wstring signame = vm["signal"].as<wstring>();
+            kill_signal = signal_dict[signame];
+	    if (!kill_signal) {
+                SystemCtlLog::msg << L"Signal " << vm["signal"].as<wstring>() << L"is unknown";
+                SystemCtlLog::Error();
+		return 1;
+	    }
         }
-        int kill_action = 0; // 2 do. Mainly reject other than SIGKILL or SIGTERM
 
         class SystemDUnit *unit = SystemDUnitPool::FindUnit(unitname);
         if (!unit) {
             // Complain and exit
-            wcerr << "Failed to enable unit: Unit file " << unitname.c_str() << "does not exist\n";
-            wcerr << usage.c_str();
-            exit(1);
+            SystemCtlLog::msg << L"Failed to find unit to kill: Unit file " << unitname.c_str() << L"does not exist" << std::endl;
+            SystemCtlLog::msg << usage.c_str(); SystemCtlLog::Error();
+	    return 1;
         }
-        unit->Kill(kill_action, kill_who, false); // We will add non-blocking later
+        unit->Kill(kill_signal, kill_action, false); // We will add non-blocking later
     }
     return 0;
 }
@@ -268,30 +354,27 @@ int SystemCtrl_Cmd_Kill( boost::program_options::variables_map &vm )
 
 int SystemCtrl_Cmd_Is_Active( boost::program_options::variables_map &vm )
 {
+
     if (vm["system_units"].empty()) {
         // Complain and exit
-        wcerr << "No unit specified\n";
+        SystemCtlLog::msg << L"No unit specified"; SystemCtlLog::Error();
         exit(1);
     }
-    vector<wstring> units = vm["system_units"].as<vector<wstring>>();
-    if (units.size() > 1) {
-        wcerr << "One unit only\n";
-        exit(2);
-    }
 
+    vector<wstring> units = vm["system_units"].as<vector<wstring>>();
     for (wstring unitname: units) {
         SystemDUnit *unit = SystemDUnitPool::FindUnit(unitname);
         if (!unit) {
-                // Complain and exit
-                wcerr << "Failed to get unit file state for " << unitname.c_str() << ": No such file or directory\n";
-                exit(1);
+        // Not an error.
+            wcout << L"inactive";
+            exit(1);
         }
         if (unit->IsActive() ) {
             wcout << L"active";
             exit(0);
         }
         else {
-            wcout << L"false";
+            wcout << L"inactive";
             exit(1);
         }
     }
@@ -303,28 +386,23 @@ int SystemCtrl_Cmd_Is_Failed( boost::program_options::variables_map &vm )
 {
     if (vm["system_units"].empty()) {
         // Complain and exit
-        wcerr << "No unit specified\n";
+        SystemCtlLog::msg << L"No unit specified"; SystemCtlLog::Error();
         exit(1);
     }
     vector<wstring> units = vm["system_units"].as<vector<wstring>>();
-    if (units.size() > 1) {
-        wcerr << "One unit only\n";
-        exit(2);
-    }
-
     for (wstring unitname: units) {
         SystemDUnit *unit = SystemDUnitPool::FindUnit(unitname);
         if (!unit) {
-                // Complain and exit
-                wcerr << "Failed to get unit file state for " << unitname.c_str() << ": No such file or directory\n";
-                exit(1);
+            // Complain and exit
+            wcout << L"inactive";
+            exit(1);
         }
         if (unit->IsFailed() ) {
             wcout << L"failed";
             exit(0);
         }
         else {
-            wcout << L"false";
+            wcout << L"inactive";
             exit(1);
         }
     }
@@ -343,8 +421,8 @@ int SystemCtrl_Cmd_Show( boost::program_options::variables_map &vm )
    wstring usage = L"usage: Systemctl show [ <unitname> ]\n";
 
    if (vm["system_units"].empty()) {
-		g_pool->ShowGlobal();
-		return 0;
+        g_pool->ShowGlobal();
+        return 0;
    }
    vector<wstring> units = vm["system_units"].as<vector<wstring>>();
     for (wstring unitname: units) {
@@ -352,15 +430,16 @@ int SystemCtrl_Cmd_Show( boost::program_options::variables_map &vm )
             unitname.rfind(L".target")  == string::npos &&
             unitname.rfind(L".timer")   == string::npos &&
             unitname.rfind(L".socket")  == string::npos ) {
-              unitname.append(L".service");
+            unitname.append(L".service");
         }
     
-        wcerr << L"Show service " << unitname << std::endl;
+        SystemCtlLog::msg << L"Show service " << unitname; SystemCtlLog::Info();
+
         class SystemDUnit *unit = SystemDUnitPool::FindUnit(unitname);
         if (!unit) {
             // Complain and exit
-            wcerr << "Failed to show service: Unit file " << unitname.c_str() << "does not exist\n";
-            wcerr << usage.c_str();
+            SystemCtlLog::msg << L"Failed to show service: Unit file " << unitname.c_str() << L"does not exist"; SystemCtlLog::Error();
+            SystemCtlLog::msg << usage.c_str(); SystemCtlLog::Error();
             exit(1);
         }
         unit->ShowService(); // We will add non-blocking later
@@ -419,9 +498,9 @@ int SystemCtrl_Cmd_Enable( boost::program_options::variables_map &vm )
 
     if (vm["system_units"].empty()) {
         // Complain and exit
-         wcerr << "No unit specified\n";
-         wcerr << usage.c_str();
-         exit(1);
+        SystemCtlLog::msg << L"No unit specified"; SystemCtlLog::Error();
+        SystemCtlLog::msg << usage.c_str(); SystemCtlLog::Error();
+        exit(1);
     }
 
     vector<wstring> units = vm["system_units"].as<vector<wstring>>();
@@ -441,7 +520,8 @@ int SystemCtrl_Cmd_Enable( boost::program_options::variables_map &vm )
             unit = SystemDUnitPool::ReadServiceUnit(unitname, service_unit_path);
             if (!unit) {
                 // Complain and exit
-                wcerr << "Failed to load unit: Unit file " << service_unit_path.c_str() << "is invalid\n";
+                SystemCtlLog::msg << L"Failed to load unit: Unit file " << service_unit_path.c_str() << L"is invalid\n";
+	        SystemCtlLog::Error();
                 return -1;       
            }
         }
@@ -460,9 +540,9 @@ int SystemCtrl_Cmd_Disable( boost::program_options::variables_map &vm )
 
     if (vm["system_units"].empty()) {
         // Complain and exit
-        wcerr << "No unit specified\n";
-         wcerr << usage.c_str();
-         exit(1);
+        SystemCtlLog::msg << L"No unit specified"; SystemCtlLog::Error();
+        SystemCtlLog::msg << usage.c_str(); SystemCtlLog::Error();
+        exit(1);
     }
 
     vector<wstring> units = vm["system_units"].as<vector<wstring>>();
@@ -474,8 +554,10 @@ int SystemCtrl_Cmd_Disable( boost::program_options::variables_map &vm )
         class SystemDUnit *unit = SystemDUnitPool::FindUnit(unitname);
         if (!unit) {
             // Complain and exit
-            wcerr << "Failed to enable unit: Unit file " << unitname.c_str() << "does not exist\n";
-            wcerr << usage.c_str();
+            SystemCtlLog::msg << L"Failed to enable unit: Unit file " << unitname.c_str() << L"does not exist";
+            SystemCtlLog::Error();
+            SystemCtlLog::msg << usage.c_str();
+            SystemCtlLog::Error();
             exit(1);
         }
         unit->Disable(false); // We will add non-blocking later
@@ -506,28 +588,25 @@ int SystemCtrl_Cmd_Is_Enabled( boost::program_options::variables_map &vm )
 {
     if (vm["system_units"].empty()) {
         // Complain and exit
-        wcerr << "No unit specified\n";
+        SystemCtlLog::msg << L"No unit specified"; SystemCtlLog::Error();
         exit(1);
     }
     vector<wstring> units = vm["system_units"].as<vector<wstring>>();
-    if (units.size() > 1) {
-        wcerr << "One unit only\n";
-        exit(2);
-    }
 
     for (wstring unitname: units) {
         SystemDUnit *unit = SystemDUnitPool::FindUnit(unitname);
         if (!unit) {
-                // Complain and exit
-                wcerr << "Failed to get unit file state for " << unitname.c_str() << ": No such file or directory\n";
-                exit(1);
+            // Complain and exit
+            SystemCtlLog::msg << L"Failed to get unit file state for " << unitname.c_str() << L": No such file or directory";
+	    SystemCtlLog::Error();
+            exit(1);
         }
         if (unit->IsEnabled() ) {
-            wcout << L"enabled";
+            wcout << L"enabled" << std::endl;
             exit(0);
         }
         else {
-            wcout << L"false";
+            wcout << L"false" << std::endl;
             exit(1);
         }
     }
@@ -541,15 +620,11 @@ int SystemCtrl_Cmd_Mask( boost::program_options::variables_map &vm )
 
     if (vm["system_units"].empty()) {
         // Complain and exit
-        wcerr << "No unit specified\n";
+        SystemCtlLog::msg << L"No unit specified"; SystemCtlLog::Error();
+        SystemCtlLog::msg << usage.c_str(); SystemCtlLog::Error();
         exit(1);
     }
     vector<wstring> units = vm["system_units"].as<vector<wstring>>();
-    if (units.size() > 1) {
-        wcerr << "One unit only\n";
-        exit(2);
-    }
-
     for (wstring unitname: units) {
         if (unitname.rfind(L".service") == string::npos &&
             unitname.rfind(L".target")  == string::npos &&
@@ -558,13 +633,14 @@ int SystemCtrl_Cmd_Mask( boost::program_options::variables_map &vm )
             unitname.append(L".service");
         }
 
-wcerr << L"Mask unit " << unitname << std::endl;
-    
+        SystemCtlLog::msg << L"Mask unit " << unitname << std::endl;
+	SystemCtlLog::Info();
+
         class SystemDUnit *unit = SystemDUnitPool::FindUnit(unitname);
         if (!unit) {
             // Complain and exit
-            wcerr << "Failed to enable unit: Unit file " << unitname.c_str() << "does not exist\n";
-            wcerr << usage.c_str();
+            SystemCtlLog::msg << L"Failed to enable unit: Unit file " << unitname.c_str() << L"does not exist\n" << usage.c_str();
+	    SystemCtlLog::Error();
             exit(1);
         }
         unit->Mask(false); // We will add non-blocking later
@@ -579,28 +655,22 @@ int SystemCtrl_Cmd_Unmask( boost::program_options::variables_map &vm )
 
     if (vm["system_units"].empty()) {
         // Complain and exit
-        wcerr << "No unit specified\n";
-        wcerr << usage.c_str();
+        SystemCtlLog::msg << L"No unit specified"; SystemCtlLog::Error();
+        SystemCtlLog::msg << usage.c_str(); SystemCtlLog::Error();
         exit(1);
     }
 
     vector<wstring> units = vm["system_units"].as<vector<wstring>>();
-    if (units.size() > 1) {
-        wcerr << "One unit only\n";
-        wcerr << usage.c_str();
-        exit(2);
-    }
-
     for (wstring unitname: units) {
         if (unitname.rfind(L".service") == string::npos) {
-              unitname.append(L".service");
+            unitname.append(L".service");
         }
     
         class SystemDUnit *unit = SystemDUnitPool::FindUnit(unitname);
         if (!unit) {
             // Complain and exit
-            wcerr << "Failed to enable unit: Unit file " << unitname.c_str() << "does not exist\n";
-            wcerr << usage.c_str();
+            SystemCtlLog::msg << L"Failed to unmask unit: Unit file " << unitname.c_str() << L"does not exist\n" << usage.c_str();
+	    SystemCtlLog::Error();
             exit(1);
         }
         unit->Unmask(false); // We will add non-blocking later
@@ -965,7 +1035,8 @@ int wmain(int argc, wchar_t *argv[])
         ParseArgs(argc, argv);
     }
     catch(std::exception &e) {
-        wcerr << e.what() << endl;
+        SystemCtlLog::msg << e.what();
+	SystemCtlLog::Error();
         exit(1);
     }
     exit(0);

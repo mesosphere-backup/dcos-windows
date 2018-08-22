@@ -120,6 +120,7 @@
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\log.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\service_control.cpp" />
     <ClCompile Include="src\service_unit.cpp" />
