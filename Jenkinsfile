@@ -38,7 +38,6 @@ try {
                                               usernameVariable: 'DOCKER_HUB_USER')]) {
                 withEnv(["DCOS_DEPLOYMENT_TYPE=hybrid",
                          "DCOS_WINDOWS_BOOTSTRAP_URL=http://dcos-win.westus.cloudapp.azure.com/dcos-windows/testing/windows-agent-blob/dcos-windows-pr-${GITHUB_PR_NUMBER}-${GITHUB_PR_HEAD_SHA}",
-                         "MASTER_WHITELISTED_IPS=13.66.169.239 13.66.171.181 13.66.173.101 13.66.215.214 13.77.172.69",
                          "AUTOCLEAN=true",
                          "SET_CLEANUP_TAG=true",
                          "AZURE_KEYVAULT_NAME=ci-key-vault",
