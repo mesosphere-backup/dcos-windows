@@ -316,15 +316,15 @@ int SystemCtrl_Cmd_Kill( boost::program_options::variables_map &vm )
               unitname.append(L".service");
         }
 
-	int kill_action = SystemCtl::KILL_ACTION_ALL;
+	    int kill_action = SystemCtl::KILL_ACTION_ALL;
         if (vm.count("kill-who")) {
 	    std::wstring who = vm["kill-who"].as<wstring>();
-            kill_action = kill_who_dict[who];
+        kill_action = kill_who_dict[who];
 	    if (!kill_action) {
 	        // Illegal Value
-                SystemCtlLog::msg << L"Kill action " << vm["kill-who"].as<wstring>() << L"is unknown";
-		SystemCtlLog::Error();
-		return 1;
+            SystemCtlLog::msg << L"Kill action " << vm["kill-who"].as<wstring>() << L"is unknown";
+		    SystemCtlLog::Error();
+		    return 1;
 	    }
         }
 
@@ -332,7 +332,7 @@ int SystemCtrl_Cmd_Kill( boost::program_options::variables_map &vm )
         if (vm.count("signal")) {
             std::wstring signame = vm["signal"].as<wstring>();
             kill_signal = signal_dict[signame];
-	    if (!kill_signal) {
+	        if (!kill_signal) {
                 SystemCtlLog::msg << L"Signal " << vm["signal"].as<wstring>() << L"is unknown";
                 SystemCtlLog::Error();
 		return 1;
@@ -1036,7 +1036,7 @@ int wmain(int argc, wchar_t *argv[])
     }
     catch(std::exception &e) {
         SystemCtlLog::msg << e.what();
-	SystemCtlLog::Error();
+	    SystemCtlLog::Error();
         exit(1);
     }
     exit(0);

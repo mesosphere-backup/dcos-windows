@@ -458,6 +458,8 @@ private:
     void RegisterServiceProperties();
     DWORD GetMainPID();
 
+    boolean ParseDuration(std::wstring str, double &millis);
+
     wstring name;
     wstring description;
     wstring unit_file_path;

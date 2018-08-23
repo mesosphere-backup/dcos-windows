@@ -14,6 +14,7 @@
 #include <ios>
 #include <limits>
 #include <string>
+#include <cmath>
 #include <algorithm>
 #include <cstddef>
 #include <cstdlib>
@@ -100,6 +101,62 @@ std::map<std::wstring, double>TimeScales = {
      { L"y", 3600000.0*24.0*365.25 }    // (defined as 365.25 days)
 };
 
+
+// We need to be able to parse:
+// 1min3sec
+// 1min 3sec
+// 1 min 3sec
+// 1 min 3 sec
+// 1 min 3.0 sec
+// So, we have 2 types of token, one a string of digits, '-', or '.'
+// the other a string of characters, which have to match a set of constants
+
+boolean 
+SystemDUnit::ParseDuration(std::wstring str, double &millis)
+
+{
+    boolean done = false;
+
+    wchar_t *ptok = (wchar_t*)str.c_str();
+    wchar_t *plimit = ptok + str.length();
+
+    millis = 0.0;
+    do {
+        double numval = NAN;
+        double scale  = NAN;
+	size_t toklen = 0;
+
+        while (isspace(*ptok) && ptok < plimit) ptok++; // Skip white space
+        wchar_t *tokstart = ptok;
+	if (isdigit(*ptok) || *ptok == '-' || *ptok == '.' && ptok < plimit) {
+	    try {
+	        numval = stod(tokstart, &toklen);
+            }
+	    catch (...) {
+	        return false;  // Malformed string
+	    }
+	    ptok += toklen;
+	}
+
+        while (isspace(*ptok) && ptok < plimit) ptok++; // Just ignore white space
+
+	tokstart = ptok;
+        if (isalpha(*ptok) && ptok < plimit) {
+            while (isalpha(*ptok) && ptok < plimit) ptok++; // Skip white space
+            wstring token(tokstart, ptok-tokstart);
+	    scale = TimeScales[token];
+	}
+	else {
+	    return false;
+	}
+
+	if (!isnan(scale) && !isnan(numval)) {
+	    millis += numval*scale;
+	}
+    } while(!done);
+
+    return false;
+}
 
 wchar_t BUFFER[MAX_BUFFER_SIZE] = { '\0' };
 
@@ -798,11 +855,11 @@ wstring SystemDUnit::ParseInstallSection( wifstream &fs)
     for (auto i = 0; i < attrs.size(); i++) {
         if (attrs[i].compare(L"Alias") == 0) {
             SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
-        SystemCtlLog::Verbose();
+            SystemCtlLog::Verbose();
         }
         else if (attrs[i].compare(L"WantedBy") == 0) {
             SystemCtlLog::msg << L"WantedBy " << values[i].c_str();
-        SystemCtlLog::Verbose();
+            SystemCtlLog::Verbose();
 
             wstring value_list = values[i];
             int end = 0;
@@ -817,7 +874,8 @@ wstring SystemDUnit::ParseInstallSection( wifstream &fs)
             }
         }
         else if (attrs[i].compare(L"RequiredBy") == 0) {
-            wcerr << "RequiredBy " << values[i].c_str();
+            SystemCtlLog::msg << "RequiredBy " << values[i].c_str();
+            SystemCtlLog::Verbose();
 
             wstring value_list = values[i];
             int end = 0;
@@ -896,9 +954,10 @@ SystemDUnitPool::FindServiceFilePath(wstring dir_path, wstring service_name)
     if (INVALID_HANDLE_VALUE == hFind) 
     {
         errval = GetLastError();
-        wcerr << L"Could not find directory path " << dir_path.c_str() << L" error = " << errval ;
+        SystemCtlLog::msg << L"Could not find directory path " << dir_path.c_str() << L" error = " << errval ;
+    SystemCtlLog::Warning();
  
-       return L"";
+        return L"";
     } 
     
     // List all the files in the directory with some info about them.
@@ -910,20 +969,24 @@ SystemDUnitPool::FindServiceFilePath(wstring dir_path, wstring service_name)
            wstring subpath = ffd.cFileName;
 
            if ( (subpath.compare(L".")) != 0 && ( subpath.compare(L"..") != 0)) {
-               wcerr << "subdir found " << subpath.c_str() ;
+               SystemCtlLog::msg << "subdir found " << subpath.c_str() ;
+           SystemCtlLog::Debug();
+
                subpath = dir_path + L"\\" + subpath;
                wstring file_path = FindServiceFilePath(subpath, service_name);
                if (!file_path.empty()) {
                    return file_path;
                }
-               wcerr << "return from dir" << subpath.c_str() ;
+               SystemCtlLog::msg << "return from dir" << subpath.c_str() ;
+           SystemCtlLog::Debug();
            }
        }
        else
        {
           filesize.LowPart = ffd.nFileSizeLow;
           filesize.HighPart = ffd.nFileSizeHigh;
-          wcerr << L"filename " << ffd.cFileName << L" file size " << filesize.QuadPart ;
+          SystemCtlLog::msg << L"filename " << ffd.cFileName << L" file size " << filesize.QuadPart ; ;
+          SystemCtlLog::Debug();
           wstring filename = ffd.cFileName;
           if (filename.compare(service_name) == 0) {
               dir_path += L"\\";
@@ -967,9 +1030,10 @@ SystemDUnitPool::Apply(wstring dir_path, boolean (*action)(wstring dir_path, voi
     if (INVALID_HANDLE_VALUE == hFind) 
     {
         errval = GetLastError();
-        wcerr << L"Could not find directory path " << dir_path.c_str() << L" error = " << errval ;
+        SystemCtlLog::msg << L"Could not find directory path " << dir_path.c_str() << L" error = " << errval;
+        SystemCtlLog::Warning();
  
-       return false;
+        return false;
     } 
     
     // List all the files in the directory with some info about them.
@@ -981,10 +1045,12 @@ SystemDUnitPool::Apply(wstring dir_path, boolean (*action)(wstring dir_path, voi
            wstring subpath = ffd.cFileName;
 
            if ( (subpath.compare(L".")) != 0 && ( subpath.compare(L"..") != 0)) {
-               wcerr << "subdir found " << subpath.c_str() ;
+               SystemCtlLog::msg << "subdir found " << subpath.c_str();
+               SystemCtlLog::Debug();
                subpath = dir_path + L"\\" + subpath;
                rslt = Apply(subpath, action, context);
-               wcerr << "return from dir" << subpath.c_str() ;
+               SystemCtlLog::msg << "return from dir" << subpath.c_str();
+               SystemCtlLog::Debug();
            }
            
        }
@@ -992,7 +1058,8 @@ SystemDUnitPool::Apply(wstring dir_path, boolean (*action)(wstring dir_path, voi
        {
           filesize.LowPart = ffd.nFileSizeLow;
           filesize.HighPart = ffd.nFileSizeHigh;
-          wcerr << L"filename " << ffd.cFileName << L" file size " << filesize.QuadPart ;
+          SystemCtlLog::msg << L"filename " << ffd.cFileName << L" file size " << filesize.QuadPart ;
+          SystemCtlLog::Debug();
           if (action) {
               rslt = (*action)(dir_path+L"\\"+ffd.cFileName, context);
           }
@@ -1015,7 +1082,7 @@ static boolean add_wanted_unit(wstring file_path, void *context)
         (file_type.compare(L".target") == 0) ||
         (file_type.compare(L".timer") == 0) ||
         (file_type.compare(L".socket") == 0)) {
-    pparent->AddWanted(servicename);
+        pparent->AddWanted(servicename);
     }
     return true;
 }
@@ -1030,7 +1097,7 @@ static boolean add_requireed_unit(wstring file_path, void *context)
         (file_type.compare(L".target") == 0) ||
         (file_type.compare(L".timer") == 0) ||
         (file_type.compare(L".socket") == 0)) {
-    pparent->AddRequired(servicename);
+        pparent->AddRequired(servicename);
     }
     return true;
 }
@@ -1049,7 +1116,8 @@ static boolean read_unit(wstring file_path, void *context)
         SystemDUnit *punit = SystemDUnitPool::ReadServiceUnit(servicename, file_path);
         if (!punit) {
             // Complain and exit
-            wcerr << "Failed to load unit: Unit file " << file_path.c_str() << "is invalid\n";
+            SystemCtlLog::msg << "Failed to load unit: Unit file " << file_path.c_str() << "is invalid";
+            SystemCtlLog::Error();
             return false;
         }
     // Look for wanted directory
@@ -1092,7 +1160,8 @@ static boolean
 enable_required_unit(wstring file_path, void *context )
 
 {
-    wcerr << L"enable required Unit " << file_path.c_str() << std::endl;
+    SystemCtlLog::msg << L"enable required Unit " << file_path.c_str();
+    SystemCtlLog::Verbose();
     return true;
 }
 
@@ -1103,7 +1172,8 @@ load_wanted_unit(wstring file_path, void *context )
     boolean unit_loaded = false;
     wstring servicename = file_path.substr(file_path.find_last_of('\\') + 1);
 
-    wcerr << L"enable wanted Unit " << servicename.c_str() << std::endl;
+    SystemCtlLog::msg << L"enable wanted Unit " << servicename.c_str();
+    SystemCtlLog::Verbose();
 
     // normalise the file path
     wstring src_path = SystemDUnitPool::UNIT_DIRECTORY_PATH + L"\\" + servicename; // We only look for the unit file on the top directory
@@ -1116,14 +1186,16 @@ load_wanted_unit(wstring file_path, void *context )
     unit_loaded = read_unit(src_path, context);
     class  SystemDUnit *punit = NULL;
     if (unit_loaded) {
-       punit = SystemDUnitPool::FindUnit(servicename);
+        punit = SystemDUnitPool::FindUnit(servicename);
         if (!punit) {
-            wcerr << L"could not find unit " << servicename << std::endl;
+            SystemCtlLog::msg << L"could not find unit " << servicename;
+            SystemCtlLog::Warning();
             return false;
         }
     }
     else {
-        wcerr << L"could not find unit " << servicename << std::endl;
+        SystemCtlLog::msg << L"could not find unit " << servicename;
+        SystemCtlLog::Warning();
         return false;
     }
 
@@ -1132,14 +1204,14 @@ load_wanted_unit(wstring file_path, void *context )
     assert(parent_unit != NULL);
 
     if (!SystemDUnitPool::CopyUnitFileToActive(servicename)) {
-        wcerr << L"Cold not activated service unit" << std::endl;
+        SystemCtlLog::msg << L"Could not copy to active service unit";
+        SystemCtlLog::Warning();
         return false;
     }
 
     // Create the link in the active version of the wanted dir to the unit file copy in the active dir
     // Note we had to ensure the unit file was enabled first
     SystemDUnitPool::LinkWantedUnit(parent_unit->Name() + L".wants", servicename);
-
     parent_unit->AddWanted(punit->Name());
 
     return true;
@@ -1156,12 +1228,14 @@ SystemDUnit::Enable(boolean block)
     wstring active_dir_path = SystemDUnitPool::ACTIVE_UNIT_DIRECTORY_PATH;
     if (!SystemDUnitPool::DirExists(active_dir_path)) {
          if (!CreateDirectoryW(active_dir_path.c_str(), NULL)) {  // 2do: security attributes
-             wcerr << L"Cold not create active directory" << std::endl;
+             SystemCtlLog::msg << L"Cold not create active directory";
+             SystemCtlLog::Error();
          }
     }
 
     if (!SystemDUnitPool::CopyUnitFileToActive(servicename)) {
-        wcerr << L"Cold not activated service unit" << std::endl;
+        SystemCtlLog::msg << L"Cold not copy activated service unit";
+        SystemCtlLog::Error();
         return false;
     }
 
@@ -1189,7 +1263,8 @@ SystemDUnit::Enable(boolean block)
     // Enable all of the units and add to the requires list
     for(auto other_service : this->GetRequires()) {
 
-wcerr << L"required service = " << other_service << std::endl;
+        SystemCtlLog::msg << L"required service = " << other_service;
+        SystemCtlLog::Debug();
 
         class SystemDUnit *pother_unit = g_pool->GetPool()[other_service];
         if (!pother_unit) {
@@ -1197,12 +1272,14 @@ wcerr << L"required service = " << other_service << std::endl;
             pother_unit = SystemDUnitPool::ReadServiceUnit(other_service, file_path);
             if (pother_unit) {
                 if (!pother_unit->Enable(true)) {
-                    wcerr << L"cannot enable dependency " << other_service << std::endl;
+                    SystemCtlLog::msg << L"cannot enable dependency " << other_service;
+                    SystemCtlLog::Error();
                     return false;
                 }
             }
             else {
-                wcerr << L"cannot enable dependency " << other_service << std::endl;
+                SystemCtlLog::msg << L"cannot enable dependency " << other_service;
+                SystemCtlLog::Error();
                 return false;
             }
         }
@@ -1213,33 +1290,32 @@ wcerr << L"required service = " << other_service << std::endl;
 
     for(auto other_service : this->GetWants()) {
 
-wcerr << L"wanted service = " << other_service << std::endl;
+        SystemCtlLog::msg << L"wanted service = " << other_service;
+        SystemCtlLog::Verbose();
 
         class SystemDUnit *pother_unit = g_pool->GetPool()[other_service];
         if (!pother_unit) {
             wstring file_path = SystemDUnitPool::UNIT_DIRECTORY_PATH+L"\\"+other_service;
             pother_unit = SystemDUnitPool::ReadServiceUnit(other_service, file_path);
-wcerr << L"w1" << std::endl;
-
             // This is wanted not needed. We don't fail
         }
-wcerr << L"w3 other_unit->name = " << pother_unit->name << std::endl;
         if (pother_unit) {
             (void)pother_unit->Enable(true);
-wcerr << L"w4" << std::endl;
             this->AddStartDependency(pother_unit);
         }
     }
 
     if (this->IsEnabled()) {
         // We don't error but we don't do anything
-wcerr << L"Already enabled = " << this->name << std::endl;
+        SystemCtlLog::msg << L"Already enabled = ";
+        SystemCtlLog::Debug();
         return true;
     }
 
-for( auto dependent : this->start_dependencies ) {
-wcerr << L"w5 dep = " << dependent->name << std::endl;
-}
+    for( auto dependent : this->start_dependencies ) {
+        SystemCtlLog::msg << L"w5 dep = " << dependent->name;
+        SystemCtlLog::Debug();
+    }
 
     this->RegisterService();
     this->is_enabled = true;
@@ -1250,7 +1326,8 @@ static boolean
 disable_required_unit(wstring file_path, void *context )
 
 {
-    wcerr << L"disable required Unit " << file_path.c_str() << std::endl;
+    SystemCtlLog::msg << L"disable required Unit is a stub " << file_path.c_str();
+    SystemCtlLog::Debug();
     return true;
 }
 
@@ -1258,7 +1335,8 @@ static boolean
 disable_wanted_unit(wstring file_path, void *context )
 
 {
-    wcerr << L"disable wanted Unit " << file_path.c_str() << std::endl;
+    SystemCtlLog::msg << L"disable wanted Unit is a stub " << file_path.c_str();
+    SystemCtlLog::Debug();
     return true;
 }
 
@@ -1433,7 +1511,8 @@ static boolean
 mask_required_unit(wstring file_path, void *context )
 
 {
-    wcerr << L"mask required Unit " << file_path.c_str() << std::endl;
+    SystemCtlLog::msg << L"mask required Unit " << file_path.c_str();
+    SystemCtlLog::Debug();
     std::string filepath_A = std::string(file_path.begin(), file_path.end());
     std::remove(filepath_A.c_str());
     return true;
@@ -1443,7 +1522,8 @@ static boolean
 mask_wanted_unit(wstring file_path, void *context )
 
 {
-    wcerr << L"mask wanted Unit " << file_path.c_str() << std::endl;
+    SystemCtlLog::msg << L"mask wanted Unit " << file_path.c_str();
+    SystemCtlLog::Debug();
     std::string filepath_A = std::string(file_path.begin(), file_path.end());
     std::remove(filepath_A.c_str());
     return true;
@@ -1461,10 +1541,12 @@ boolean SystemDUnit::Mask(boolean block)
     if (SystemDUnitPool::DirExists(requires_dir_path)) {
         // Enable all of the units and add to the requires list
         (void)SystemDUnitPool::Apply(requires_dir_path, mask_required_unit, (void*)this);
-    wcerr << L"remove directory " << requires_dir_path << std::endl;
-    if (!RemoveDirectoryW(requires_dir_path.c_str())) {
-        wcerr << L"remove directory " << requires_dir_path << " failed " << std::endl;
-    }
+        SystemCtlLog::msg << L"remove directory " << requires_dir_path;
+        SystemCtlLog::Debug();
+        if (!RemoveDirectoryW(requires_dir_path.c_str())) {
+            SystemCtlLog::msg << L"remove directory " << requires_dir_path << " failed " << std::endl; ;
+            SystemCtlLog::Debug();
+        }
     }
 
     // Is there a wants directory?
@@ -1473,10 +1555,12 @@ boolean SystemDUnit::Mask(boolean block)
         // Enable all of the units and add to the wants list
         (void)SystemDUnitPool::Apply(wants_dir_path, mask_wanted_unit, (void*)this);
 
-    wcerr << L"remove directory " << wants_dir_path << std::endl;
-    if (!RemoveDirectoryW(wants_dir_path.c_str())) {
-        wcerr << L"remove directory " << wants_dir_path << " failed " << std::endl;
-    }
+        SystemCtlLog::msg << L"remove directory " << wants_dir_path << std::endl; ;
+        SystemCtlLog::Debug();
+        if (!RemoveDirectoryW(wants_dir_path.c_str())) {
+            SystemCtlLog::msg << L"remove directory " << wants_dir_path << " failed " << std::endl; ;
+            SystemCtlLog::Debug();
+        }
     }
 
     this->UnregisterService();
@@ -1497,7 +1581,8 @@ static boolean
 unmask_required_unit(wstring file_path, void *context )
 
 {
-    wcerr << L"unmask required Unit " << file_path.c_str() << std::endl;
+    SystemCtlLog::msg << L"unmask required Unit is a stub " << file_path.c_str();
+    SystemCtlLog::Debug();
     return true;
 }
 
@@ -1505,7 +1590,8 @@ static boolean
 unmask_wanted_unit(wstring file_path, void *context )
 
 {
-    wcerr << L"unmask wanted Unit " << file_path.c_str() << std::endl;
+    SystemCtlLog::msg << L"unmask wanted Unit is a stub " << file_path.c_str();
+    SystemCtlLog::Debug();
     return true;
 }
 
@@ -1552,7 +1638,8 @@ boolean SystemDUnit::Unmask(boolean block)
         // Find the unit in the unit library
         wifstream fs(service_unit_path, std::fstream::in);
         if (!fs.is_open()) {
-             wcerr << "No service unit " << servicename.c_str() << "Found in unit library" ;
+             SystemCtlLog::msg << "No service unit " << servicename.c_str() << "Found in unit library" ;
+             SystemCtlLog::Error();
              return false;
         }
         fs.seekg (0, fs.end);
@@ -1793,7 +1880,8 @@ static void register_unit(std::pair<std::wstring, class SystemDUnit *> entry)
 {
     class SystemDUnit *punit = entry.second;
 
-wcerr <<L"register unit " << punit->Name() <<std::endl;
+    SystemCtlLog::msg <<L"register unit " << punit->Name();
+    SystemCtlLog::Debug();
     punit->RegisterService();
 }
 
@@ -1807,7 +1895,8 @@ static void query_register_unit(std::pair<std::wstring, class SystemDUnit *> ent
     // Is the service loaded? Load it if not
     if (punit) {
         if (!punit->IsEnabled()) {
-wcerr <<L"query register unit " << punit->Name() <<std::endl;
+            SystemCtlLog::msg <<L"query register unit " << punit->Name();
+            SystemCtlLog::Debug();
             punit->RegisterService();
         }
     }
@@ -1819,7 +1908,8 @@ void setup_own_dependencies(std::pair<std::wstring, class SystemDUnit *> entry)
     class SystemDUnit *punit = entry.second;
 
     if (punit) {
-wcerr << L"setup own dependencies for = " << punit->Name() << std::endl;
+        SystemCtlLog::msg << L"setup own dependencies for = " << punit->Name();
+        SystemCtlLog::Debug();
         for(auto other_service: punit->GetAfter()) {
             class SystemDUnit *pother_unit = g_pool->GetPool()[other_service];
             if (pother_unit) {
@@ -1828,8 +1918,8 @@ wcerr << L"setup own dependencies for = " << punit->Name() << std::endl;
         }
 
         for(auto other_service : punit->GetRequires()) {
-
-wcerr << L"required service = " << other_service << std::endl;
+            SystemCtlLog::msg << L"required service = " << other_service;
+            SystemCtlLog::Debug();
 
             class SystemDUnit *pother_unit = g_pool->GetPool()[other_service];
             if (pother_unit) {
@@ -1839,7 +1929,8 @@ wcerr << L"required service = " << other_service << std::endl;
 
         for(auto other_service : punit->GetWants()) {
 
-wcerr << L"wanted service = " << other_service << std::endl;
+           SystemCtlLog::msg << L"wanted service = " << other_service;
+           SystemCtlLog::Debug();
 
             class SystemDUnit *pother_unit = g_pool->GetPool()[other_service];
             if (pother_unit) {
@@ -1982,7 +2073,8 @@ SystemDUnitPool::SystemDUnitPool()
 void SystemDUnitPool::ReloadPool()
 
 {
-    wcerr << "do daemon reload" ;
+    SystemCtlLog::msg << "do daemon reload" ; 
+    SystemCtlLog::Debug();
 
     // 2do First clear out the pool, services and active dir and deregister the services
     //
@@ -2000,12 +2092,14 @@ void SystemDUnitPool::ReloadPool()
 void SystemDUnitPool::LoadPool()
 
 {
-    wcerr << "do daemon reload" ;
-    (void)Apply(SystemDUnitPool::ACTIVE_UNIT_DIRECTORY_PATH.c_str(), read_unit, (void*)this);
+     SystemCtlLog::msg << "do daemon load" ;
+     SystemCtlLog::Debug();
+     (void)Apply(SystemDUnitPool::ACTIVE_UNIT_DIRECTORY_PATH.c_str(), read_unit, (void*)this);
 
-for (auto member: g_pool->GetPool()) {
-wcerr << L"key = " << member.first << "value = " << member.second->Name() << std::endl;
-}
+     for (auto member: g_pool->GetPool()) {
+         SystemCtlLog::msg << L"key = " << member.first << "value = " << member.second->Name() << std::endl; ;
+         SystemCtlLog::Debug();
+     }
 
      // Now we have the graph, we need to resolve a dependencies graph.
      for_each(g_pool->pool.begin(), g_pool->pool.end(), setup_own_dependencies);
@@ -2132,7 +2226,8 @@ SystemDUnit::attr_service_type( wstring attr_name, wstring attr_value, unsigned 
     }
     else {
         this->service_type = SERVICE_TYPE_UNDEFINED;
-        wcerr << "service type " << attr_value.c_str() << "is unknown" ;
+        SystemCtlLog::msg << "service type " << attr_value.c_str() << "is unknown" ; ;
+        SystemCtlLog::Warning();
     }
     return true;
 }
@@ -2263,10 +2358,20 @@ SystemDUnit::attr_restart_sec( wstring attr_name, wstring attr_value, unsigned l
     }
     else {
         try {
-           this->restart_sec = std::stod(attr_value);
+            this->restart_sec = std::stod(attr_value);
         }
         catch (const std::exception &e) {
-            wcerr << "restart_sec invalid value : " << attr_value.c_str() ;
+	    double millis = NAN;
+
+            // We don't have a nice double, but we could have one or more of the time shorthands
+
+            if (!ParseDuration(attr_value, millis) ) {
+                SystemCtlLog::msg << "restart_sec invalid value : " << attr_value.c_str() ; ;
+                SystemCtlLog::Warning();
+            }
+	    else {
+                this->restart_sec = millis*0.001;
+	    }
         }
     }
     return true;
@@ -2286,7 +2391,15 @@ SystemDUnit::attr_timeout_start_sec( wstring attr_name, wstring attr_value, unsi
            this->timeout_start_sec = stod(attr_value);
         }
         catch (const std::exception &e) {
-            wcerr << "timeout_start_sec invalid value : " << attr_value.c_str() ;
+	    double millis = NAN;
+
+            if (!ParseDuration(attr_value, millis) ) {
+                SystemCtlLog::msg << "timeout_start_sec invalid value : " << attr_value.c_str() ; ;
+                SystemCtlLog::Warning();
+            }
+	    else {
+                this->timeout_start_sec = millis*0.001;
+	    }
         }
     }
     return true;
@@ -2310,7 +2423,8 @@ SystemDUnit::attr_timeout_stop_sec( wstring attr_name, wstring attr_value, unsig
         }
         catch (const std::exception &e) {
             // Try to convert from time span like "5min 20s"
-            wcerr << "timeout_stop_sec invalid value : " << attr_value.c_str() ;
+            SystemCtlLog::msg << "timeout_stop_sec invalid value : " << attr_value.c_str();
+            SystemCtlLog::Warning();
         }
     }
     return true;
@@ -2334,11 +2448,17 @@ SystemDUnit::attr_timeout_sec( wstring attr_name, wstring attr_value, unsigned l
         try {
            auto val = stod(attr_value);
            this->timeout_stop_sec = val;
-           this->timeout_stop_sec = val;
         }
         catch (const std::exception &e) {
-            // Try to convert from time span like "5min 20s"
-            wcerr << "timeout_sec invalid value : " << attr_value.c_str() ;
+	    double millis = NAN;
+
+            if (!ParseDuration(attr_value, millis) ) {
+                SystemCtlLog::msg << "timeout_sec invalid value : " << attr_value.c_str() ;
+                SystemCtlLog::Warning();
+            }
+	    else {
+                this->timeout_stop_sec = millis*0.001;
+	    }
         }
     }
     return true;
@@ -2362,7 +2482,15 @@ SystemDUnit::attr_runtime_max_sec( wstring attr_name, wstring attr_value, unsign
         }
         catch (const std::exception &e) {
             // Try to convert from time span like "5min 20s"
-            wcerr << "RuntimeMaxSec invalid value : " << attr_value.c_str() ;
+	    double millis = NAN;
+
+            if (!ParseDuration(attr_value, millis) ) {
+                SystemCtlLog::msg << "RuntimeMaxSec invalid value : " << attr_value.c_str();
+                SystemCtlLog::Warning();
+            }
+	    else {
+                this->max_runtime_sec = millis*0.001;
+	    }
         }
     }
     return true;
