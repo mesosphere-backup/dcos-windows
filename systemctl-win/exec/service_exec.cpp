@@ -18,6 +18,7 @@ under the License.
 #pragma region Includes
 #include "service_exec.h"
 #include <windows.h>
+#include <winreg.h>
 #include <strsafe.h>
 #include <direct.h>
 #include <string.h>
@@ -38,9 +39,60 @@ under the License.
 using namespace std;
 
 void CWrapperService::RegisterMainPID()
-
 {
+    HKEY hRunKey = NULL;
+    LSTATUS status = ERROR_SUCCESS;
+
+    std::wstring subkey(L"SYSTEM\\CurrentControlSet\\Services\\");
+    subkey.append(m_name);
+    subkey.append(L"\\run");
+*logfile << Error() << L"create registry key \\HKLM\\" << subkey << std::endl;
+    status = RegCreateKeyW(HKEY_LOCAL_MACHINE, subkey.c_str(),  &hRunKey);
+    if (status != ERROR_SUCCESS) {
+        *logfile << Error() << L"could not create registry key \\HKLM\\" << subkey << "status = " << status << std::endl;
+    return;
+    }
+
+*logfile << Error() << L"set registry value \\HKLM\\" << subkey << "\\ExecStartPID" << std::endl;
+    status = RegSetValueExW( hRunKey, L"ExecStartPID", 0, REG_DWORD, (const BYTE*) &m_ExecStartProcInfo.dwProcessId, sizeof(DWORD));
+    if (status != ERROR_SUCCESS) {
+        *logfile << Error() << L"could not create registry value \\HKLM\\" << subkey << "\\ExecStartPID status = " << status << std::endl;
+    return;
+    }
+    status = RegCloseKey(hRunKey);
+    if (status != ERROR_SUCCESS) {
+        *logfile << Error() << L"could not close registry key \\HKLM\\" << subkey << " status = " << status << std::endl;
+    return;
+    }
 }
+
+void CWrapperService::DeregisterMainPID()
+{
+    HKEY hRunKey = NULL;
+    LSTATUS status = ERROR_SUCCESS;
+
+    std::wstring subkey(L"SYSTEM\\CurrentControlSet\\Services\\");
+    subkey.append(m_name);
+    subkey.append(L"\\run");
+    RegOpenKeyW(HKEY_CURRENT_CONFIG, subkey.c_str(),  &hRunKey);
+    if (status != ERROR_SUCCESS) {
+        *logfile << Error() << L"DeregisterMainPID could not open registry key \\HKLM\\" << subkey << " status = " << status << std::endl;
+    return;
+    }
+
+    RegDeleteValueW( hRunKey, L"ExecStartPID");
+    if (status != ERROR_SUCCESS) {
+        *logfile << Error() << L"DeregisterMainPID could not delete registry value \\HKLM\\" << subkey << "\\ExecStartPID status = " << status << std::endl;
+    return;
+    }
+    
+    status = RegCloseKey(hRunKey);
+    if (status != ERROR_SUCCESS) {
+        *logfile << Error() << L"could not close registry key \\HKLM\\" << subkey << " status = " << status << std::endl;
+    return;
+    }
+}
+
 
 // Generates flags mask and removes special executable prefix characters
 unsigned 
@@ -270,7 +322,7 @@ CWrapperService::GetServiceDependencies()
         wostringstream os;
         int last_error = GetLastError();
         os << L"WaitForDependents could not open service manager win err = " << last_error << std::endl;
-	*logfile << Error() << os.str();
+    *logfile << Error() << os.str();
         throw ServiceManagerException(last_error, os.str().c_str());
     }
 
@@ -279,7 +331,7 @@ CWrapperService::GetServiceDependencies()
         wostringstream os;
         int last_error = GetLastError();
         os << L"WaitForDependents OpeService failed " << GetLastError() << std::endl;
-	*logfile << Error() << os.str();
+    *logfile << Error() << os.str();
         CloseServiceHandle(hsc);
         throw ServiceManagerException(last_error, os.str().c_str());
     }
@@ -295,7 +347,7 @@ CWrapperService::GetServiceDependencies()
         wostringstream os;
         int last_error = GetLastError();
         os << L"WaitForDependents could not get config err = " << last_error << std::endl;
-	*logfile << Error() << os.str();
+    *logfile << Error() << os.str();
         CloseServiceHandle(hsc);
         throw ServiceManagerException(last_error, os.str().c_str());
     }
@@ -306,12 +358,12 @@ CWrapperService::GetServiceDependencies()
     wchar_t *pdep = service_config->lpDependencies;
     if (pdep) {
         while (*pdep ) {
-	    this->m_Dependencies.push_back(pdep);
-	    pdep += wcslen(pdep);
-	    pdep++; // Skip the null
+        this->m_Dependencies.push_back(pdep);
+        pdep += wcslen(pdep);
+        pdep++; // Skip the null
             *logfile << Info() << L"dep = " << this->m_Dependencies.back() << std::endl;
         }
-	// Should leave a null at the end
+    // Should leave a null at the end
     }
 }
 
@@ -739,7 +791,6 @@ DWORD WINAPI CWrapperService::ServiceThread(LPVOID param)
                       // to do, add special char processing
                     try {
                         self->StartProcess(ws.c_str(), 0, self->m_ExecStartPreProcInfo[i], true); 
-			self->RegisterMainPID();  // We register the pid in the registry so we can kill it later if we wish from systemctl
                     }
                     catch(RestartException &ex) {
                          if (!(self->m_ExecStartPreFlags[i] & EXECFLAG_IGNORE_FAIL)) {
@@ -758,12 +809,14 @@ DWORD WINAPI CWrapperService::ServiceThread(LPVOID param)
         
             if (!self->m_ExecStartCmdLine.empty()) {
                 self->StartProcess(self->m_ExecStartCmdLine.c_str(), CREATE_NEW_PROCESS_GROUP, self->m_ExecStartProcInfo, false);
+        self->RegisterMainPID();  // We register the pid in the registry so we can kill it later if we wish from systemctl
         
                 *logfile << Verbose() << "waitfor main process " << std::endl;
                 ::WaitForSingleObject(self->m_ExecStartProcInfo.hProcess, INFINITE);
         
                 BOOL result = ::GetExitCodeProcess(self->m_ExecStartProcInfo.hProcess, &exitCode);
                 ::CloseHandle(self->m_ExecStartProcInfo.hProcess);
+                self->DeregisterMainPID();
         
                 if (!result || exitCode)
                 {
@@ -773,7 +826,7 @@ DWORD WINAPI CWrapperService::ServiceThread(LPVOID param)
                     }
                     else {
                         *logfile << Error() << L"Command \"" << self->m_ExecStartCmdLine 
-		             << L"\" failed with exit code: " << exitCode << std::endl;
+                     << L"\" failed with exit code: " << exitCode << std::endl;
                         throw RestartException(exitCode, "start command failed");
                     }
                 }
@@ -800,11 +853,11 @@ DWORD WINAPI CWrapperService::ServiceThread(LPVOID param)
             }
 
             // We should stay active until all of the depends are finished
-	    self->WaitForDependents(self->m_Dependencies);
+        self->WaitForDependents(self->m_Dependencies);
             *logfile << Verbose() << "process success " << self->m_ExecStartCmdLine << std::endl;
             throw RestartException(0, "success");
-	}
-	catch (RestartException &ex) {
+    }
+    catch (RestartException &ex) {
     
             self->SetServiceStatus(SERVICE_PAUSED);
             switch ( self->m_RestartAction ) {
@@ -950,7 +1003,7 @@ void CWrapperService::OnStop()
             // Wait for them to stop (fixed 20 sec timeout)
             wait_result = ::WaitForSingleObject(m_ExecStartProcInfo.hProcess, 20000);
         }
-	FreeConsole();
+        FreeConsole();
         SetConsoleCtrlHandler(NULL, false);
     }
     else {
@@ -959,7 +1012,7 @@ void CWrapperService::OnStop()
 
     if (wait_result == WAIT_TIMEOUT || wait_result == WAIT_FAILED) {
         *logfile << Info() << L"ctrl-c has no effect. forcibly terminate process " << m_ExecStartProcInfo.dwProcessId << "and wait for stop" << std::endl; 
-    }	
+    }    
 
     // Kill main process anyway. Worst case nothing happens because the process is gone.
     // ::TerminateProcess( m_ExecStartProcInfo.hProcess, ERROR_PROCESS_ABORTED);
@@ -983,7 +1036,7 @@ void CWrapperService::OnStop()
             os << L"Running ExecStopPost command: " << ws.c_str();
             *logfile << Verbose() << os.str() << std::endl;
             StartProcess(ws.c_str(), 0, m_ExecStopPostProcInfo[i], true);
-	    i++;
+        i++;
         }
     }
 

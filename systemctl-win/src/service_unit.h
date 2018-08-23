@@ -456,6 +456,7 @@ private:
     wstring ParseInstallSection( wifstream &fs);
 
     void RegisterServiceProperties();
+    DWORD GetMainPID();
 
     wstring name;
     wstring description;

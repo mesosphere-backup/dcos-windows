@@ -187,7 +187,7 @@ SystemDUnitPool::ReadServiceUnit(std::wstring name, std::wstring service_unit_pa
      }
      catch (exception e) {
          SystemCtlLog::msg << e.what();
-	 SystemCtlLog::Error();
+     SystemCtlLog::Error();
      }
      if (fs.is_open()) {
          // wstring justname = servicename.substr(0, servicename.find_last_of('.'));
@@ -234,21 +234,21 @@ class SystemDUnit *SystemDUnit::ParseSystemDServiceUnit(wstring servicename, wst
         else if (line.compare(L"[Unit]") != wstring::npos) {
              // Then we need to parse the unit section
              SystemCtlLog::msg << L"parse unit section";
-	     SystemCtlLog::Debug();
+         SystemCtlLog::Debug();
 
              line = punit->ParseUnitSection(fs);
         }
         else if (line.compare(L"[Service]") != wstring::npos) {
              // Then we need to parse the service section
              SystemCtlLog::msg << L"parse service section";
-	     SystemCtlLog::Debug();
+         SystemCtlLog::Debug();
 
              line = punit->ParseServiceSection(fs);
         }
         else if (line.compare(L"[Install]") != wstring::npos) {
              // Then we need to parse the install section
              SystemCtlLog::msg << L"parse install section";
-	     SystemCtlLog::Debug();
+         SystemCtlLog::Debug();
 
              line = punit->ParseInstallSection(fs);
         }
@@ -257,7 +257,7 @@ class SystemDUnit *SystemDUnit::ParseSystemDServiceUnit(wstring servicename, wst
                 break;
             }
             SystemCtlLog::msg << L"invalid section heading " << line.c_str();
-	    SystemCtlLog::Debug();
+        SystemCtlLog::Debug();
             break;
         }
     }
@@ -284,7 +284,7 @@ static inline wstring split_elems(wifstream &fs, vector<wstring> &attrs, vector<
         }
          catch (const std::exception &e) {
             SystemCtlLog::msg << e.what();
-	    SystemCtlLog::Debug();
+        SystemCtlLog::Debug();
             break;
         }
 
@@ -385,17 +385,17 @@ wstring SystemDUnit::ParseUnitSection( wifstream &fs)
     for (auto i = 0; i < attrs.size(); i++) {
         if (attrs[i].compare(L"Description") == 0) {
             SystemCtlLog::msg << L"Description = " << values[i].c_str();
-	    SystemCtlLog::Debug();
+        SystemCtlLog::Debug();
 
             this->description = values[i].c_str(); 
         }
         else if (attrs[i].compare(L"Documentation") == 0) {
             SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
-	    SystemCtlLog::Debug();
+        SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"Requires") == 0) {
             SystemCtlLog::msg << L"Requires " << values[i].c_str();
-	    SystemCtlLog::Debug();
+        SystemCtlLog::Debug();
 
             wstring value_list = values[i]; 
             int end = 0;
@@ -406,7 +406,7 @@ wstring SystemDUnit::ParseUnitSection( wifstream &fs)
         }
         else if (attrs[i].compare(L"Requisite") == 0) {
             SystemCtlLog::msg << L"Requisite " << values[i].c_str();
-	    SystemCtlLog::Debug();
+        SystemCtlLog::Debug();
 
             wstring value_list = values[i];
             int end = 0;
@@ -417,7 +417,7 @@ wstring SystemDUnit::ParseUnitSection( wifstream &fs)
         }
         else if (attrs[i].compare(L"Wants") == 0) {
             SystemCtlLog::msg << L"Wants " << values[i].c_str();
-	    SystemCtlLog::Debug();
+        SystemCtlLog::Debug();
 
             wstring value_list = values[i];
             int end = 0;
@@ -428,15 +428,15 @@ wstring SystemDUnit::ParseUnitSection( wifstream &fs)
         }
         else if (attrs[i].compare(L"BindsTo") == 0) {
             SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
-	    SystemCtlLog::Debug();
+        SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"PartOf") == 0) {
             SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
-	    SystemCtlLog::Debug();
+        SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"Conflicts") == 0) {
             SystemCtlLog::msg << L"Conflicts " << values[i].c_str();
-	    SystemCtlLog::Debug();
+        SystemCtlLog::Debug();
 
             wstring value_list = values[i];
             int end = 0;
@@ -447,7 +447,7 @@ wstring SystemDUnit::ParseUnitSection( wifstream &fs)
         }
         else if (attrs[i].compare(L"Before") == 0) {
             SystemCtlLog::msg << L"Before " << values[i].c_str();
-	    SystemCtlLog::Debug();
+        SystemCtlLog::Debug();
 
             wstring value_list = values[i];
             int end = 0;
@@ -458,7 +458,7 @@ wstring SystemDUnit::ParseUnitSection( wifstream &fs)
         }
         else if (attrs[i].compare(L"After") == 0) {
             SystemCtlLog::msg << L"After " << values[i].c_str();
-	    SystemCtlLog::Debug();
+        SystemCtlLog::Debug();
 
             wstring value_list = values[i];
             int end = 0;
@@ -469,263 +469,263 @@ wstring SystemDUnit::ParseUnitSection( wifstream &fs)
         }
         else if (attrs[i].compare(L"OnFailure") == 0) {
             SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
-	    SystemCtlLog::Debug();
+        SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"PropagatesReloadTo") == 0) {
             SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
-	    SystemCtlLog::Debug();
+        SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"ReloadPropagatedFrom") == 0) {
             SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
-	    SystemCtlLog::Debug();
+        SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"JoinsNamespaceOf") == 0) {
             SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
-	    SystemCtlLog::Debug();
+        SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"RequiresMountsFor") == 0) {
             SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
-	    SystemCtlLog::Debug();
+        SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"OnFailureJobMode") == 0) {
             SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
-	    SystemCtlLog::Debug();
+        SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"IgnoreOnIsolate") == 0) {
             SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
-	    SystemCtlLog::Debug();
+        SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"StopWhenUnneeded") == 0) {
             SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
-	    SystemCtlLog::Debug();
+        SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"RefuseManualStart") == 0) {
             SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
-	    SystemCtlLog::Debug();
+        SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"RefuseManualStop") == 0) {
             SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
-	    SystemCtlLog::Debug();
+        SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"AllowIsolate") == 0) {
             SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
-	    SystemCtlLog::Debug();
+        SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"DefaultDependencies") == 0) {
             SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
-	    SystemCtlLog::Debug();
+        SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"CollectMode") == 0) {
             SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
-	    SystemCtlLog::Debug();
+        SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"JobTimeoutSec") == 0) {
             SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
-	    SystemCtlLog::Debug();
+        SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"JobRunningTimeoutSec") == 0) {
             SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
-	    SystemCtlLog::Debug();
+        SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"JobTimeoutAction") == 0) {
             SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
-	    SystemCtlLog::Debug();
+        SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"JobTimeoutRebootArgument") == 0) {
             SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
-	    SystemCtlLog::Debug();
+        SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"FailureAction") == 0) {
             SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
-	    SystemCtlLog::Debug();
+        SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"SuccessAction") == 0) {
             SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
-	    SystemCtlLog::Debug();
+        SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"RebootArgument") == 0) {
             SystemCtlLog::msg <<  L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
-	    SystemCtlLog::Debug();
+        SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"ConditionArchitecture") == 0) {
             SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
-	    SystemCtlLog::Debug();
+        SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"ConditionVirtualization") == 0) {
             SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
-	    SystemCtlLog::Debug();
+        SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"ConditionHost") == 0) {
             SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
-	    SystemCtlLog::Debug();
+        SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"ConditionKernelCommandLine") == 0) {
             SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
-	    SystemCtlLog::Debug();
+        SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"ConditionKernelVersion") == 0) {
             SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
-	    SystemCtlLog::Debug();
+        SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"ConditionSecurity") == 0) {
             SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
-	    SystemCtlLog::Debug();
+        SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"ConditionCapability") == 0) {
             SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
-	    SystemCtlLog::Debug();
+        SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"ConditionACPower") == 0) {
             SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
-	    SystemCtlLog::Debug();
+        SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"ConditionNeedsUpdate") == 0) {
             SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
-	    SystemCtlLog::Debug();
+        SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"ConditionFirstBoot") == 0) {
             SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
-	    SystemCtlLog::Debug();
+        SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"ConditionPathExists") == 0) {
             SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
-	    SystemCtlLog::Debug();
+        SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"ConditionPathExistsGlob") == 0) {
             SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
-	    SystemCtlLog::Debug();
+        SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"ConditionPathIsDirectory") == 0) {
             SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
-	    SystemCtlLog::Debug();
+        SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"ConditionPathIsSymbolicLink") == 0) {
             SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
-	    SystemCtlLog::Debug();
+        SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"ConditionPathIsMountPoint") == 0) {
             SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
-	    SystemCtlLog::Debug();
+        SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"ConditionPathIsReadWrite") == 0) {
             SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
-	    SystemCtlLog::Debug();
+        SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"ConditionDirectoryNotEmpty") == 0) {
             SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
-	    SystemCtlLog::Debug();
+        SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"ConditionFileNotEmpty") == 0) {
             SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
-	    SystemCtlLog::Debug();
+        SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"ConditionFileIsExecutable") == 0) {
             SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
-	    SystemCtlLog::Debug();
+        SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"ConditionUser") == 0) {
             SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
-	    SystemCtlLog::Debug();
+        SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"ConditionGroup") == 0) {
             SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
-	    SystemCtlLog::Debug();
+        SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"ConditionControlGroupController") == 0) {
             SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
-	    SystemCtlLog::Debug();
+        SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"AssertArchitecture") == 0) {
             SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
-	    SystemCtlLog::Debug();
+        SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"AssertVirtualization") == 0) {
             SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
-	    SystemCtlLog::Debug();
+        SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"AssertHost") == 0) {
             SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
-	    SystemCtlLog::Debug();
+        SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"AssertKernelCommandLine") == 0) {
             SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
-	    SystemCtlLog::Debug();
+        SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"AssertKernelVersion") == 0) {
             SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
-	    SystemCtlLog::Debug();
+        SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"AssertSecurity") == 0) {
             SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
-	    SystemCtlLog::Debug();
+        SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"AssertCapability") == 0) {
             SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
-	    SystemCtlLog::Debug();
+        SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"AssertACPower") == 0) {
             SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
-	    SystemCtlLog::Debug();
+        SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"AssertNeedsUpdate") == 0) {
             SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
-	    SystemCtlLog::Debug();
+        SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"AssertFirstBoot") == 0) {
             SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
-	    SystemCtlLog::Debug();
+        SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"AssertPathExists") == 0) {
             SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
-	    SystemCtlLog::Debug();
+        SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"AssertPathExistsGlob") == 0) {
             SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
-	    SystemCtlLog::Debug();
+        SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"AssertPathIsDirectory") == 0) {
             SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
-	    SystemCtlLog::Debug();
+        SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"AssertPathIsSymbolicLink") == 0) {
             SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
-	    SystemCtlLog::Debug();
+        SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"AssertPathIsMountPoint") == 0) {
             SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
-	    SystemCtlLog::Debug();
+        SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"AssertPathIsReadWrite") == 0) {
             SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
-	    SystemCtlLog::Debug();
+        SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"AssertDirectoryNotEmpty") == 0) {
             SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
-	    SystemCtlLog::Debug();
+        SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"AssertFileNotEmpty") == 0) {
             SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
-	    SystemCtlLog::Debug();
+        SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"AssertFileIsExecutable") == 0) {
             SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
-	    SystemCtlLog::Debug();
+        SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"AssertUser") == 0) {
             SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
-	    SystemCtlLog::Debug();
+        SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"AssertGroup") == 0) {
             SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
-	    SystemCtlLog::Debug();
+        SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"AssertControlGroupController") == 0) {
             SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str() ;
-	    SystemCtlLog::Debug();
+        SystemCtlLog::Debug();
         }
         else {
             SystemCtlLog::msg << L"attribute not recognised: " << attrs[i].c_str();
-	    SystemCtlLog::Debug();
+        SystemCtlLog::Debug();
         }
     }
     
@@ -754,7 +754,7 @@ wstring SystemDUnit::ParseServiceSection( wifstream &fs)
         }
         else {
             SystemCtlLog::msg << L"attribute not recognised: " << attrs[i].c_str();
-	    SystemCtlLog::Warning();
+        SystemCtlLog::Warning();
         }
     }
 
@@ -798,11 +798,11 @@ wstring SystemDUnit::ParseInstallSection( wifstream &fs)
     for (auto i = 0; i < attrs.size(); i++) {
         if (attrs[i].compare(L"Alias") == 0) {
             SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
-	    SystemCtlLog::Verbose();
+        SystemCtlLog::Verbose();
         }
         else if (attrs[i].compare(L"WantedBy") == 0) {
             SystemCtlLog::msg << L"WantedBy " << values[i].c_str();
-	    SystemCtlLog::Verbose();
+        SystemCtlLog::Verbose();
 
             wstring value_list = values[i];
             int end = 0;
@@ -1291,6 +1291,40 @@ boolean SystemDUnit::Disable(boolean block)
     return false;
 }
 
+DWORD SystemDUnit::GetMainPID()
+
+{
+    HKEY hRunKey = NULL;
+    LSTATUS status = ERROR_SUCCESS;
+    DWORD main_pid = 0;
+    DWORD pid_size = sizeof(main_pid);
+    DWORD pid_type = REG_DWORD;
+
+    std::wstring subkey(L"SYSTEM\\CurrentControlSet\\Services\\");
+    subkey.append(name);
+    subkey.append(L"\\run");
+    status = RegOpenKeyW(HKEY_LOCAL_MACHINE, subkey.c_str(),  &hRunKey);
+    if (status != ERROR_SUCCESS) {
+        SystemCtlLog::msg << L"DeregisterMainPID could not open registry key \\HKLM\\" << subkey << " status = " << status;
+    SystemCtlLog::Error();
+    return 0;
+    }
+
+    status = RegGetValueW( hRunKey, NULL, L"ExecStartPID", RRF_RT_ANY, &pid_type, &main_pid, &pid_size );
+    if (status != ERROR_SUCCESS) {
+        SystemCtlLog::msg << L"DeregisterMainPID could not delete registry value \\HKLM\\" << subkey << "\\ExecStartPID status = " << status;
+    SystemCtlLog::Info(); // If there is no 
+    return 0;
+    }
+    
+    status = RegCloseKey(hRunKey);
+    if (status != ERROR_SUCCESS) {
+        SystemCtlLog::msg << L"could not close registry key \\HKLM\\" << subkey << " status = " << status;
+        SystemCtlLog::Error();
+        return 0;
+    }
+    return main_pid;
+}
 
 
 /*
@@ -1309,15 +1343,85 @@ boolean SystemDUnit::Kill(int action, int killtarget, boolean block)
     case 9: // SIGKILL - We kill the process
 
         // Now we need to figure out the process
-	// main: we look for the PID key in the registry for the exec start
-	// control we look for the PID keys of the execstartpre and or ExecStop or ExecReload
-	// all we do both...
-	switch(killtarget) {
-	case 
-	}
-
+        // main: we look for the PID key in the registry for the exec start
+        // control we look for the PID keys of the execstartpre and or ExecStop or ExecReload
+        // all we do both...
+        switch(killtarget) {
+        case SystemCtl::KILL_ACTION_MAIN: {
+                DWORD pid = GetMainPID();
+                HANDLE hProc = INVALID_HANDLE_VALUE;
+            
+                if (!pid) {
+                    SystemCtlLog::msg << L"the process is not active, nothing to do. Operation skipped" ;
+                    SystemCtlLog::Warning();
+                }
+            
+                        // SIGKILL just kills the process unceremoniously. 
+                hProc = ::OpenProcess(PROCESS_TERMINATE, false, pid);
+                if (hProc == INVALID_HANDLE_VALUE) {
+                    SystemCtlLog::msg << L"could not open process " << pid << " presumed no longer active. Operation skipped";
+                    SystemCtlLog::Warning();
+                }
+                ::TerminateProcess(hProc, ERROR_PROCESS_ABORTED);
+                DWORD wait_rslt = 0;
+                do {
+                    wait_rslt = ::WaitForSingleObject(hProc, 120000);  
+                    if  (wait_rslt == WAIT_TIMEOUT) {
+                        SystemCtlLog::msg << L"terminate process " << pid << L": timeout. Retrying";
+                        SystemCtlLog::Warning();
+                    }
+                } while (wait_rslt == WAIT_TIMEOUT);
+            
+                CloseHandle(hProc);
+            }
+            break;
+    
+        case SystemCtl::KILL_ACTION_CONTROL:
+        case SystemCtl::KILL_ACTION_ALL:
+        default:
+            // 2Do.
+            break;
+        }
         break;
+
     case 15: // SIGTERM - We send a control-c-event
+        switch(killtarget) {
+        case SystemCtl::KILL_ACTION_MAIN: {
+                DWORD pid = GetMainPID();
+                HANDLE hProc = INVALID_HANDLE_VALUE;
+            
+                if (!pid) {
+                    SystemCtlLog::msg << L"the process is not active, nothing to do. Operation skipped" ;
+                    SystemCtlLog::Warning();
+                }
+            
+                        // SIGKILL just kills the process unceremoniously. 
+                hProc = ::OpenProcess(PROCESS_TERMINATE, false, pid);
+                if (hProc == INVALID_HANDLE_VALUE) {
+                    SystemCtlLog::msg << L"could not open process " << pid << " presumed no longer active. Operation skipped";
+                    SystemCtlLog::Warning();
+                }
+            
+                if (AttachConsole(pid)) {
+                    SetConsoleCtrlHandler(NULL, true);
+                    if (!GenerateConsoleCtrlEvent(CTRL_BREAK_EVENT, pid)) {
+                        SystemCtlLog::msg << L"send ctrl-break to process id " << pid << " failed error code " << ::GetLastError();
+                        SystemCtlLog::Warning();
+                    }
+                    FreeConsole();
+                    SetConsoleCtrlHandler(NULL, false);
+                }
+                CloseHandle(hProc);
+            }
+            break;
+    
+        case SystemCtl::KILL_ACTION_CONTROL:
+        case SystemCtl::KILL_ACTION_ALL:
+        default:
+            // 2Do.
+            break;
+        }
+        break;
         break;
     }
     
