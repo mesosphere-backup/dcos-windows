@@ -212,6 +212,7 @@ private:
     void StartProcess(LPCWSTR cmdLine, DWORD processFlags, PROCESS_INFORMATION &procInfo, bool waitForProcess, bool failOnError=false);
     void RegisterMainPID();
     void DeregisterMainPID();
+
     boolean EvaluateConditions();
     std::wstring ResolveEnvVars(std::wstring str); // Expands any environment variables that are in the 
                                                    // string. We need to do this for things like directories

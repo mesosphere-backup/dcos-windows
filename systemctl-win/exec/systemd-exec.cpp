@@ -87,6 +87,12 @@ struct CLIArgs
     wstring stdoutFilePath;
     enum CWrapperService::RestartAction restartAction;
     int  restartMillis;
+    int  timeoutStartMillis;
+    int  timeoutStopMillis;
+    int  timeoutMillis;
+    int  runtimeMaxMillis;
+    int  watchdogMillis;
+    int  startLimitIntervalMillis;
     wstring workingDirectory;
     int verbosity;  
 };
@@ -115,40 +121,90 @@ wstring DEFAULT_START_ACTION = L"Write-Host \"No Start Action\" ";
 CWrapperService::ServiceParams params;
 
 
-static int string_duration_to_millis(wstring dur)
+// Systemd recognised units 
+// for converting time spans into milliseconds in double
+std::map<std::wstring, double>TimeScales = {
+     { L"usec", 0.001 },
+     { L"us",   0.001 },
+     { L"msec", 1.000 },
+     { L"ms",   1.000 },
+     { L"seconds", 1000.0},
+     { L"second",  1000.0},
+     { L"sec",     1000.0},
+     { L"s",       1000.0},
+     { L"minutes", 60000.0 },
+     { L"minute",  60000.0 },
+     { L"min",     60000.0 },
+     { L"m",       60000.0 },
+     { L"hours", 3600000.0 },
+     { L"hour",  3600000.0 },
+     { L"hr",    3600000.0 },
+     { L"h",     3600000.0 },
+     { L"days",  3600000.0*24.0 },
+     { L"day",   3600000.0*24.0 },
+     { L"d",     3600000.0*24.0 },
+     { L"weeks", 3600000.0*24.0*7.0 },
+     { L"week",  3600000.0*24.0*7.0 },
+     { L"w",     3600000.0*24.0*7.0 },
+     { L"months",3600000.0*24.0*30.44 },
+     { L"month", 3600000.0*24.0*30.44 },
+     { L"M",     3600000.0*24.0*30.44 }, // (defined as 30.44 days)
+     { L"years", 3600000.0*24.0*365.25 }, 
+     { L"year",3600000.0*24.0*365.25 }, 
+     { L"y", 3600000.0*24.0*365.25 }    // (defined as 365.25 days)
+};
 
-{ int millis = 0;
+static boolean string_duration_to_millis(std::wstring str, double &millis)
 
-    *logfile << L"restart duration " << dur << std::endl;
-    *logfile << Debug() << L"first not of " << dur.find_first_not_of(L"0123456789 ") << std::endl;
+{
+    boolean done = false;
 
-    if (dur.find_first_not_of(L"0123456789 ") == std::string::npos) {
-        // Then it is just a decimal number of seconds
-        millis = std::stoi(dur);
-        return millis*1000;
-    }
-    else if (dur.find(L"ns") != std::string::npos) {
-        return 1;  // We just don't resolve down to nanoseconds
-    }
-    else if  (dur.find(L"ms") != std::string::npos) {
-        wstring millistr = dur.substr(dur.find(L"ms"));
-        millis = std::stoi(millistr);
-        return millis;
-    }
-    else if (dur.find(L"hour") != std::string::npos) {
-        return -1;
-    }
-    else if (dur.find(L"hr") != std::string::npos) {
-        return -1;
-    }
-    else if (dur.find(L"min") != std::string::npos) {
-        wstring minutes = dur.substr(dur.find(L"min"));
-        minutes = minutes.substr(minutes.find_last_of(L"012345678"));
-        millis = std::stoi(minutes)*60000;
-        return millis;
-    }
-    return -1;
+    wchar_t *ptok = (wchar_t*)str.c_str();
+    wchar_t *plimit = ptok + str.length();
 
+    millis = 0.0;
+    do {
+        double numval = NAN;
+        double scale  = NAN;
+        size_t toklen = 0;
+
+        while (isspace(*ptok) && ptok < plimit) ptok++; // Skip white space
+        wchar_t *tokstart = ptok;
+        if (isdigit(*ptok) || *ptok == '-' || *ptok == '.' && ptok < plimit) {
+            try {
+                numval = stod(tokstart, &toklen);
+            }
+            catch (...) {
+                *logfile << Warning() << L"string_duration_to_millis: malformed string: " << str << std::endl;
+                return false;  // Malformed string
+            }
+            ptok += toklen;
+        }
+
+        while (isspace(*ptok) && ptok < plimit) ptok++; // Just ignore white space
+
+        tokstart = ptok;
+        if (isalpha(*ptok) && ptok < plimit) {
+            while (isalpha(*ptok) && ptok < plimit) ptok++; // Skip white space
+            wstring token(tokstart, ptok-tokstart);
+            scale = TimeScales[token];
+        }
+        else {
+            *logfile << Warning() << L"string_duration_to_millis: malformed string: " << str << std::endl;
+            return false;
+        }
+
+        if (!isnan(scale) && !isnan(numval)) {
+            millis += numval*scale;
+        }
+        else {
+            *logfile << Warning() << L"string_duration_to_millis: malformed string: " << str << std::endl;
+            return false;
+        }
+
+    } while(ptok < plimit);
+
+    return true;
 }
 
 static void EscapeForPowershell(std::wstring &cmdline)
@@ -225,7 +281,13 @@ CLIArgs ParseArgs(int argc, wchar_t *argv[])
         ("Service.StandardError", wvalue<wstring>(), "standard error")
         ("Service.BusName", wvalue<wstring>(), "Systemd dbus name. Used only for resolving service type")
         ("Service.Restart", wvalue<wstring>(), "restart policy for the service")
-        ("Service.RestartSec", wvalue<wstring>(), "restart policy for the service")
+        ("Service.RestartSec", wvalue<wstring>(), "time between restarts in seconds")
+        ("Service.TimeoutStartSec",  wvalue<wstring>(), "timeout for start")
+        ("Service.TimeoutStopSec",  wvalue<wstring>(), "timeout for stop")
+        ("Service.TimeoutSec",     wvalue<wstring>(), "timeout used when timeout is not defined")
+        ("Service.RuntimeMaxSec", wvalue<wstring>(), "maximum run time for service")
+        ("Service.WatchdogSec",  wvalue<wstring>(), "watchdog timer")
+        ("StartLimitIntervalSec", wvalue<wstring>(), "timeout for start")
         ("Service.WorkingDirectory", wvalue<wstring>(), "working directory")
         ("Service.StartLimitInterval", wvalue<wstring>(), "minimum time between restarts")
         ("Service.KillSignal", wvalue<wstring>(), "signal to send process when stopping. Ignored")
@@ -348,10 +410,18 @@ CLIArgs ParseArgs(int argc, wchar_t *argv[])
         args.logFilePath = vm["log-file"].as<wstring>();
         args.logFilePath.erase(remove( args.logFilePath.begin(), args.logFilePath.end(), '\"' ), args.logFilePath.end());
         args.logFilePath.erase(remove( args.logFilePath.begin(), args.logFilePath.end(), '\'' ), args.logFilePath.end());
-        *logfile << Info() << "open log " << args.logFilePath << std::endl;
-        unit_log.open(L"file:", args.logFilePath);
-        logfile = &unit_log;
     }
+    #if 0
+    else  {
+        args.logFilePath = DEFAULT_LOG_DIRECTORY;
+        args.stderrFilePath.append(args.serviceUnit);
+        args.stderrFilePath.append(L".log");
+    }
+
+    *logfile << Error() << "open log " << args.logFilePath << std::endl;
+    unit_log.open(L"file:", args.logFilePath);
+    logfile = &unit_log;
+    #endif
 
     if (vm.count("service-name")) {
         args.serviceName = vm["service-name"].as<wstring>();
@@ -430,14 +500,96 @@ CLIArgs ParseArgs(int argc, wchar_t *argv[])
         args.workingDirectory = service_unit_options["Service.Restart"].as<std::wstring>();
     }
 
+    args.restartMillis = 100; // From systemd.service default 100ms
     if (service_unit_options.count("Service.RestartSec")) {
         wstring str_sec = service_unit_options["Service.RestartSec"].as<std::wstring>();
-        int millis = string_duration_to_millis(str_sec);
-        args.restartMillis = millis;
+        double millis = 0.0;
+        if (string_duration_to_millis(str_sec, millis)) {
+            args.restartMillis = millis;
+        }
+        else {
+            *logfile << Warning() << "restart_sec " << str_sec << " is not a valid string" << std::endl;
+        }
     }
-    else {
-        args.restartMillis = 100; // From systemd.service default 100ms
+    *logfile << Info() << "restart_sec " << args.restartMillis << " milliseconds" << std::endl;
+
+    args.timeoutStartMillis = 90000;  // Default timeout start
+    if (service_unit_options.count("Service.TimeoutStartSec")) {
+        wstring str_sec = service_unit_options["Service.TimeoutStartSec"].as<std::wstring>();
+        double millis = 0.0;
+        if (string_duration_to_millis(str_sec, millis)) {
+            args.timeoutStartMillis = millis;
+        }
+        else {
+            *logfile << Warning() << "timeout_start_sec " << str_sec << " is not a valid string" << std::endl;
+        }
     }
+    *logfile << Info() << "timeout_start_sec " << args.timeoutStartMillis << " milliseconds" << std::endl;
+
+    args.timeoutStopMillis = 90000;  // Default timeout stop
+    if (service_unit_options.count("Service.TimeoutStopSec")) {
+        wstring str_sec = service_unit_options["Service.TimeoutStopSec"].as<std::wstring>();
+        double millis = 0.0;
+        if (string_duration_to_millis(str_sec, millis)) {
+            args.timeoutStopMillis = millis;
+        }
+        else {
+            *logfile << Warning() << "timeout_stop_sec " << str_sec << " is not a valid string" << std::endl;
+        }
+    }
+    *logfile << Info() << "timeout_stop_sec " << args.timeoutStopMillis << " milliseconds" << std::endl;
+
+    args.timeoutMillis = 90000;  // Default timeout
+    if (service_unit_options.count("Service.TimeoutSec")) {
+        wstring str_sec = service_unit_options["Service.TimeoutSec"].as<std::wstring>();
+        double millis = 0.0;
+        if (string_duration_to_millis(str_sec, millis)) {
+            args.timeoutMillis = millis;
+        }
+        else {
+            *logfile << Warning() << "timeout_sec " << str_sec << " is not a valid string" << std::endl;
+        }
+    }
+    *logfile << Info() << "timeout_stop_sec " << args.timeoutMillis << " milliseconds" << std::endl;
+
+    args.runtimeMaxMillis = 0;  // Default runtimeMax, off
+    if (service_unit_options.count("Service.RuntimeMaxSec")) {
+        wstring str_sec = service_unit_options["Service.RuntimeMaxSec"].as<std::wstring>();
+        double millis = 0.0;
+        if (string_duration_to_millis(str_sec, millis)) {
+            args.runtimeMaxMillis = millis;
+        }
+        else {
+            *logfile << Warning() << "runtime_max_sec " << str_sec << " is not a valid string" << std::endl;
+        }
+    }
+    *logfile << Info() << "runtime_max_sec " << args.runtimeMaxMillis << " milliseconds" << std::endl;
+
+    args.watchdogMillis = 0;  // Default watchdog
+    if (service_unit_options.count("Service.WatchdogSec")) {
+        wstring str_sec = service_unit_options["Service.WatchdogSec"].as<std::wstring>();
+        double millis = 0.0;
+        if (string_duration_to_millis(str_sec, millis)) {
+            args.watchdogMillis = millis;
+        }
+        else {
+            *logfile << Warning() << "watchdog_sec " << str_sec << " is not a valid string" << std::endl;
+        }
+    }
+    *logfile << Info() << "watchdog_sec " << args.watchdogMillis << " milliseconds" << std::endl;
+
+    args.startLimitIntervalMillis = 0;  // Default startLimitInterval
+    if (service_unit_options.count("Service.StartLimitIntervalSec")) {
+        wstring str_sec = service_unit_options["Service.StartLimitIntervalSec"].as<std::wstring>();
+        double millis = 0.0;
+        if (string_duration_to_millis(str_sec, millis)) {
+            args.startLimitIntervalMillis = millis;
+        }
+        else {
+            *logfile << Warning() << "start_limit_interval_sec " << str_sec << " is not a valid string" << std::endl;
+        }
+    }
+    *logfile << Info() << "start_limit_interval_sec " << args.startLimitIntervalMillis << " milliseconds" << std::endl;
 
     *logfile << Info() << "service type " << args.serviceType << std::endl;
     if (service_unit_options.count("Unit.Requisite")) {
@@ -657,16 +809,15 @@ int wmain(int argc, wchar_t *argv[])
         EnvMap env;
 
         unit_log.open(L"file:", L"c:\\var\\log\\openstackservice.log");
-	unit_log.setlogginglevel(journalstreams::LOGGING_LEVEL_WARNING);
-	unit_log.set_default_msglevel(journalstreams::LOGGING_LEVEL_INFO);
+
+        unit_log.setlogginglevel(journalstreams::LOGGING_LEVEL_WARNING);
+        unit_log.set_default_msglevel(journalstreams::LOGGING_LEVEL_INFO);
         auto args = ParseArgs(argc, argv);
 
-        *logfile << Info() << L"log file name " << args.logFilePath.c_str() << std::endl;
+        *logfile << Error() << L"log file name " << args.logFilePath.c_str() << std::endl;
 
         params.szServiceName  = args.serviceName.c_str();
-   //     params.szShellCmdPre  = args.shellCmd_pre.c_str();
         params.szShellCmdPre  = L"";
-   //     params.szShellCmdPost = args.shellCmd_post.c_str();
         params.szShellCmdPost = L"";
 
         params.execStartPre = args.execStartPre;

@@ -43,12 +43,14 @@ GetUserCreds(wstring &username, wstring &user_password)
         if (ok) {
             user_password = wstring((wchar_t*)pcred->CredentialBlob, pcred->CredentialBlobSize / sizeof(wchar_t));
             username = wstring(pcred->UserName); // L"wp128869010\\azureuser"; // 
-            // wcerr << L"Read username = " << username << " password= " << user_password << std::endl;
+            // SystemCtlLog::msg << L"Read username = " << username << " password= " << user_password;
+            // SystemCtlLog::Debug();
             ::CredFree (pcred);
             return;
         }
         else {
-            wcerr << L"CredRead() failed - errno -  fallback to env " << GetLastError() << std::endl;
+            SystemCtlLog::msg << L"CredRead() failed - errno -  fallback to env " << GetLastError();
+            SystemCtlLog::Warning();
         }
     }
 
@@ -73,8 +75,8 @@ GetUserCreds(wstring &username, wstring &user_password)
     }
     catch( std::exception &e ) {
         string cmsg = e.what();
-        wstring msg = wstring(cmsg.begin(), cmsg.end());
-        wcerr << msg << std::endl;
+        SystemCtlLog::msg << wstring(cmsg.begin(), cmsg.end());
+        SystemCtlLog::Error();
         
         // No env var there. We fall back and try to use what we have
         buff_size = GetEnvironmentVariableW(L"USERDOMAIN", buf.data(), buff_size);
@@ -112,8 +114,8 @@ GetUserCreds(wstring &username, wstring &user_password)
     }
     catch( std::exception &e ) {
         string cmsg = e.what();
-        wstring msg = wstring(cmsg.begin(), cmsg.end());
-        wcerr << msg << std::endl;
+        SystemCtlLog::msg << wstring(cmsg.begin(), cmsg.end());
+        SystemCtlLog::Error();
         user_password = L""; // It is possible we actually don't have a password for this service account if it is 
                              // a managed service account
     }
@@ -129,7 +131,8 @@ SystemDUnit::AddUserServiceLogonPrivilege()
 
     GetUserCreds(username, password);
  
-    // wcerr << L"username = " << username << " password = " << password << std::endl;
+    // SystemCtlLog::msg << L"username = " << username << " password = " << password << std::endl; 
+    // SystemCtlLog::Debug();
 
     // Get the sid
     SID *psid;
@@ -137,7 +140,8 @@ SystemDUnit::AddUserServiceLogonPrivilege()
     DWORD sid_size = 0;
     DWORD domain_size = 0;
     // Get sizes
-    wcerr << L"ADD the SERVICELOGON PRIVILEGE" << std::endl;
+    SystemCtlLog::msg << L"ADD the SERVICELOGON PRIVILEGE";
+    SystemCtlLog::Info();
     (void)LookupAccountNameW(  NULL, // local machine
                            username.c_str(),  // Account name
                            NULL,   // sid ptr
@@ -146,7 +150,8 @@ SystemDUnit::AddUserServiceLogonPrivilege()
                            &domain_size,
                            &nameuse );
     // ignore the return
-    wcerr << L"p2 sid_size = " << sid_size << " domainlen = " << domain_size << std::endl;
+    SystemCtlLog::msg << L"p2 sid_size = " << sid_size << " domainlen = " << domain_size;
+    SystemCtlLog::Debug();
     std::vector<char>sid_buff(sid_size);
     psid = (SID*)sid_buff.data();
     std::vector<wchar_t>refdomain(domain_size+1);
@@ -158,7 +163,8 @@ SystemDUnit::AddUserServiceLogonPrivilege()
                            &domain_size,
                            &nameuse )) {
         DWORD err = GetLastError();
-        wcerr << L"LookupAccountName() failed in AddUserServiceLogonPrivilege - errno " << GetLastError() << L" sid size " << sid_size << " domain_size << " << domain_size << std::endl;
+        SystemCtlLog::msg << L"LookupAccountName() failed in AddUserServiceLogonPrivilege - errno " << GetLastError() << L" sid size " << sid_size << " domain_size << " << domain_size;
+        SystemCtlLog::Warning();
         return;
     }
 
@@ -167,7 +173,8 @@ SystemDUnit::AddUserServiceLogonPrivilege()
     LSA_HANDLE policy_h;
     DWORD status = LsaOpenPolicy(NULL, &attrs, POLICY_ALL_ACCESS, &policy_h);
     if (status) {
-        wcerr << L"LsaOpenPolicy() failed in AddUserServiceLogonPrivilege - errno " << status << std::endl;
+        SystemCtlLog::msg << L"LsaOpenPolicy() failed in AddUserServiceLogonPrivilege - errno " << status;
+        SystemCtlLog::Warning();
         return;
     }
 
@@ -188,17 +195,17 @@ SystemDUnit::AddUserServiceLogonPrivilege()
     // if no privs are configured.
     for (unsigned long i = 0; i < priv_count; i++ ) {
         if (pprivs && pprivs[i].Buffer) {
-        if (se_service_logon.compare(0, pprivs[i].Length, pprivs[i].Buffer) == 0) {
-                wcerr << L"Service Logon right already present" << std::endl;
+            if (se_service_logon.compare(0, pprivs[i].Length, pprivs[i].Buffer) == 0) {
+                SystemCtlLog::msg << L"Service Logon right already present";
+                SystemCtlLog::Warning();
                 LsaFreeMemory(pprivs);
-        LsaClose(policy_h);
-        return;
+                LsaClose(policy_h);
+                return;
+            }
         }
-    }
     }
 
     LsaFreeMemory(pprivs);
-
 
     LSA_UNICODE_STRING privs[1];
     privs[0].Length = se_service_logon.length()*sizeof(wchar_t);
@@ -210,13 +217,15 @@ SystemDUnit::AddUserServiceLogonPrivilege()
                                   privs,
                                   1);
     if (status) {
-        wcerr << L"LsaAddAccountRights() failed in AddUserServiceLogonPrivilege - errno " << status << std::endl;
-    LsaClose(policy_h);
+        SystemCtlLog::msg << L"LsaAddAccountRights() failed in AddUserServiceLogonPrivilege - errno " << status;
+        SystemCtlLog::Warning();
+        LsaClose(policy_h);
         return;
     }
 
     LsaClose(policy_h);
-    wcerr << L"Service Logon right added" << std::endl;
+    SystemCtlLog::msg << L"Service Logon right added";
+    SystemCtlLog::Info();
 }
 
 
@@ -227,13 +236,15 @@ boolean SystemDUnit::StartService(boolean blocking)
     SC_HANDLE hsc = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
     if (!hsc) {
         int last_error = GetLastError();
-        wcerr << L"failed to open service manager, err = " << last_error << std::endl;
+        SystemCtlLog::msg << L"failed to open service manager, err = " << last_error;
+        SystemCtlLog::Error();
         return false;
     }
 
     SC_HANDLE hsvc = OpenServiceW(hsc, this->name.c_str(), SERVICE_ALL_ACCESS);
     if (!hsvc) {
-        wcerr << L"In StartService(" << this->name << "): OpenService failed " << GetLastError() << std::endl;
+        SystemCtlLog::msg << L"In StartService(" << this->name << "): OpenService failed " << GetLastError();
+        SystemCtlLog::Error();
         CloseServiceHandle(hsc);
         return false;
     }
@@ -244,7 +255,8 @@ boolean SystemDUnit::StartService(boolean blocking)
         switch(errcode) {
         case ERROR_SERVICE_EXISTS:
             // The service already running is not an error
-            wcerr << L"In StartService(" << this->name  << "): StartService failed " << GetLastError() << std::endl;
+            SystemCtlLog::msg << L"In StartService(" << this->name  << "): StartService failed " << GetLastError();
+            SystemCtlLog::Info();
             CloseServiceHandle(hsvc);
             return false;
 
@@ -253,7 +265,8 @@ boolean SystemDUnit::StartService(boolean blocking)
 
             // The user lacks the necessary privelege. Add it and retry once
 
-            wcerr << L"In StartService(" << this->name  << "): StartService failed to logon erno = " << GetLastError() << std::endl;
+            SystemCtlLog::msg << L"In StartService(" << this->name  << "): StartService failed to logon erno = " << GetLastError();
+            SystemCtlLog::Info();
             CloseServiceHandle(hsvc); 
             AddUserServiceLogonPrivilege();  // We do this unconditionally 
             if (!this->m_retry++ ) {
@@ -262,13 +275,15 @@ boolean SystemDUnit::StartService(boolean blocking)
             return false;
 
         default:
-            wcerr << L"In StartService(" << this->name  << "): StartService error =  " << errcode << std::endl;
+            SystemCtlLog::msg << L"In StartService(" << this->name  << "): StartService error =  " << errcode;
+            SystemCtlLog::Warning();
             return false;
             break;
         }
     }
     
-    wcerr << L"In StartService(" << this->name  << "): StartService running " << std::endl;
+    SystemCtlLog::msg << L"In StartService(" << this->name  << "): StartService running ";
+    SystemCtlLog::Info();
     CloseServiceHandle(hsvc); 
     CloseServiceHandle(hsc);
     
@@ -280,25 +295,29 @@ boolean SystemDUnit::StopService(boolean blocking)
     SC_HANDLE hsc = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
     if (!hsc) {
         int last_error = GetLastError();
-        wcerr << "failed to open service manager, err = " << last_error << std::endl;
+        SystemCtlLog::msg << "failed to open service manager, err = " << last_error;
+        SystemCtlLog::Error();
         return false;
     }
 
     SC_HANDLE hsvc = OpenServiceW(hsc, this->name.c_str(), SERVICE_ALL_ACCESS);
     if (!hsvc) {
-        wcerr << L"In Stop service(" << this->name << "): OpenService failed " << GetLastError() << std::endl;
+        SystemCtlLog::msg << L"In Stop service(" << this->name << "): OpenService failed " << GetLastError();
+        SystemCtlLog::Error();
         CloseServiceHandle(hsc);
         return false;
     }
 
     SERVICE_STATUS status = { 0 };
     if (!ControlService(hsvc, SERVICE_CONTROL_STOP, &status)) {
-        wcerr << L"StopService(" << this->name << ") failed " << GetLastError() << std::endl;
+        SystemCtlLog::msg << L"StopService(" << this->name << ") failed " << GetLastError();
+        SystemCtlLog::Error();
         CloseServiceHandle(hsvc);
         return false;
     }
     
-    wcerr << L"StopService(" << this->name << ") in progress" << std::endl;
+    SystemCtlLog::msg << L"StopService(" << this->name << ") in progress" ;
+    SystemCtlLog::Info();
     CloseServiceHandle(hsvc); 
     CloseServiceHandle(hsc);
     
@@ -324,7 +343,8 @@ boolean SystemDUnit::IsEnabled()
     SC_HANDLE hsc = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
     if (!hsc) {
         int last_error = GetLastError();
-        wcerr << "failed to open service manager, err = " << last_error << std::endl;
+        SystemCtlLog::msg << "failed to open service manager, err = " << last_error;
+        SystemCtlLog::Error();
         return false;
     }
 
@@ -334,10 +354,12 @@ boolean SystemDUnit::IsEnabled()
 
         if (last_err == ERROR_SERVICE_DOES_NOT_EXIST ||
             last_err == ERROR_SERVICE_DISABLED ) {
-            wcerr << L"service " << this->name << " is not enabled " << std::endl;
+            SystemCtlLog::msg << L"service " << this->name << " is not enabled ";
+            SystemCtlLog::Warning();
         }
         else {
-            wcerr << L" In IsEnabled error from OpenService " << last_err << std::endl;
+            SystemCtlLog::msg << L" In IsEnabled error from OpenService " << last_err;
+            SystemCtlLog::Error();
         }
         CloseServiceHandle(hsc);
         return false;
@@ -355,7 +377,8 @@ boolean SystemDUnit::IsActive()
     SC_HANDLE hsc = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
     if (!hsc) {
         int last_error = GetLastError();
-        wcerr << "failed to open service manager, err = " << last_error << std::endl;
+        SystemCtlLog::msg << "failed to open service manager, err = " << last_error;
+        SystemCtlLog::Error();
         return false;
     }
 
@@ -365,10 +388,12 @@ boolean SystemDUnit::IsActive()
 
         if (last_err == ERROR_SERVICE_DOES_NOT_EXIST ||
             last_err == ERROR_SERVICE_DISABLED ) {
-            wcerr << L"service " << this->name << " is not enabled " << std::endl;
+            SystemCtlLog::msg << L"service " << this->name << " is not enabled ";
+            SystemCtlLog::Info();
         }
         else {
-            wcerr << L" In IsEnabled error from OpenService " << last_err << std::endl;
+            SystemCtlLog::msg << L" In IsEnabled error from OpenService " << last_err;
+            SystemCtlLog::Error();
         }
         CloseServiceHandle(hsc);
         return false;
@@ -378,10 +403,12 @@ boolean SystemDUnit::IsActive()
 
     for (int retries = 0; retries < 5; retries++ ) {
         if (QueryServiceStatus(hsvc, &svc_stat)) {
-            wcerr << L"IsActive::QueryServiceStatus succeed" << std::endl; 
+            SystemCtlLog::msg << L"IsActive::QueryServiceStatus succeed";
+            SystemCtlLog::Debug();
             break;
         }
-        wcerr << L"QueryServiceStatus failed " << GetLastError() << std::endl; 
+        SystemCtlLog::msg << L"QueryServiceStatus failed " << GetLastError();
+        SystemCtlLog::Warning();
     }
 
     if (svc_stat.dwCurrentState == SERVICE_RUNNING) {
@@ -400,7 +427,8 @@ boolean SystemDUnit::IsFailed()
     SC_HANDLE hsc = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
     if (!hsc) {
         int last_error = GetLastError();
-        wcerr << "failed to open service manager, err = " << last_error << std::endl;
+        SystemCtlLog::msg << "failed to open service manager, err = " << last_error;
+        SystemCtlLog::Error();
         return false;
     }
 
@@ -410,10 +438,12 @@ boolean SystemDUnit::IsFailed()
 
         if (last_err == ERROR_SERVICE_DOES_NOT_EXIST ||
             last_err == ERROR_SERVICE_DISABLED ) {
-            wcerr << L"service " << this->name << " is not enabled " << std::endl;
+            SystemCtlLog::msg << L"service " << this->name << " is not enabled ";
+            SystemCtlLog::Debug();
         }
         else {
-            wcerr << L" In IsEnabled error from OpenService " << last_err << std::endl;
+            SystemCtlLog::msg << L" In IsEnabled error from OpenService " << last_err;
+            SystemCtlLog::Error();
         }
         CloseServiceHandle(hsc);
         return false;
@@ -423,16 +453,18 @@ boolean SystemDUnit::IsFailed()
 
     for (int retries = 0; retries < 5; retries++ ) {
         if (QueryServiceStatus(hsvc, &svc_stat)) {
-            wcerr << L"IsActive::QueryServiceStatus succeed" << std::endl; 
+            SystemCtlLog::msg << L"IsActive::QueryServiceStatus succeed";
+            SystemCtlLog::Debug();
             break;
         }
-        wcerr << L"QueryServiceStatus failed " << GetLastError() << std::endl; 
+        SystemCtlLog::msg << L"QueryServiceStatus failed " << GetLastError();
+        SystemCtlLog::Warning();
     }
 
     if (svc_stat.dwCurrentState == SERVICE_STOPPED) {
         if (svc_stat.dwWin32ExitCode != 0) {
             return true;
-	}
+	    }
     }
 
     CloseServiceHandle(hsvc); 
@@ -468,7 +500,8 @@ SystemDUnit::RegisterService()
     std::wstring wservice_name         = this->name;
     std::wstring wservice_display_name = this->name;
 
-    wcerr << "RegisterService: " << this->name << std::endl;
+    SystemCtlLog::msg << L"RegisterService: " << this->name;
+    SystemCtlLog::Verbose();
 
     std::wstringstream wcmdline ;
 
@@ -492,8 +525,10 @@ SystemDUnit::RegisterService()
     }
     wchar_needed++; // For the trailing null
 
-wcerr << "start_dependencies.size(): " << this->start_dependencies.size() << std::endl;
-wcerr << "dep buffer chars required: " << wchar_needed << std::endl;
+    SystemCtlLog::msg << L"start_dependencies.size(): " << this->start_dependencies.size();
+    SystemCtlLog::Debug();
+    SystemCtlLog::msg << L"dep buffer chars required: " << wchar_needed << std::endl; 
+    SystemCtlLog::Debug();
 
     vector<wchar_t> dep_buffer(wchar_needed+10);
     wchar_t *bufp = dep_buffer.data();
@@ -504,17 +539,19 @@ wcerr << "dep buffer chars required: " << wchar_needed << std::endl;
     }
     *bufp++ = L'\0';
 
-wchar_t *pelem = dep_buffer.data();
-wchar_t *plimit = pelem+dep_buffer.max_size();
-while ( pelem < plimit ) {
-wcerr << "dependent: " << pelem << std::endl;
-pelem += wcslen(pelem);    
-pelem++;
-if (!*pelem) {
-wcerr << "end of dep list" << std::endl;
-    break;
-}
-}
+    wchar_t *pelem = dep_buffer.data();
+    wchar_t *plimit = pelem+dep_buffer.max_size();
+    while ( pelem < plimit ) {
+        SystemCtlLog::msg << "dependent: " << pelem ;
+        SystemCtlLog::Debug();
+        pelem += wcslen(pelem);    
+        pelem++;
+        if (!*pelem) {
+            SystemCtlLog::msg << L"end of dep list" ;
+            SystemCtlLog::Debug();
+            break;
+        }
+    }
 
     wstring username;
     wstring user_password;
@@ -524,11 +561,12 @@ wcerr << "end of dep list" << std::endl;
     SC_HANDLE hsc = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
     if (!hsc) {
         int last_error = GetLastError();
-        wcerr << L"Could not open service manager win err = " << last_error << std::endl;
+        SystemCtlLog::msg << L"Could not open service manager win err = " << last_error;
+        SystemCtlLog::Error();
         return false;
     }
 
-        SC_HANDLE hsvc = CreateServiceW( 
+    SC_HANDLE hsvc = CreateServiceW( 
             hsc,                       // SCM database 
             wservice_name.c_str(),             // name of service 
             wservice_display_name.c_str(),     // service name to display 
@@ -543,23 +581,26 @@ wcerr << "end of dep list" << std::endl;
             username.c_str(), //pcred? username.c_str(): NULL,  // LocalSystem account 
             user_password.c_str()); // pcred ? user_password.c_str() : NULL);   // no password 
  
-        if (hsvc == NULL) 
-        {
-            wcerr << L"CreateService failed " << GetLastError() << std::endl; 
-            CloseServiceHandle(hsc);
-            return false;
-        }
+    if (hsvc == NULL) 
+    {
+        SystemCtlLog::msg << L"CreateService failed " << GetLastError();
+        SystemCtlLog::Error();
+        CloseServiceHandle(hsc);
+        return false;
+    }
     
-        // We query the status to ensure that the service has actually been created.
+    // We query the status to ensure that the service has actually been created.
 
-        SERVICE_STATUS svc_stat = {0};
+    SERVICE_STATUS svc_stat = {0};
 
-        for (int retries = 0; retries < 5; retries++ ) {
-            if (QueryServiceStatus(hsvc, &svc_stat)) {
-                wcerr << L"QueryServiceStatus succeed" << std::endl; 
+    for (int retries = 0; retries < 5; retries++ ) {
+        if (QueryServiceStatus(hsvc, &svc_stat)) {
+            SystemCtlLog::msg << L"QueryServiceStatus succeed";
+            SystemCtlLog::Debug();
             break;
         }
-        wcerr << L"QueryServiceStatus failed " << GetLastError() << std::endl; 
+        SystemCtlLog::msg << L"QueryServiceStatus failed " << GetLastError();
+        SystemCtlLog::Debug();
     }
 
     CloseServiceHandle(hsvc); 
@@ -575,19 +616,22 @@ boolean SystemDUnit::UnregisterService()
     SC_HANDLE hsc = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
     if (!hsc) {
         int last_error = GetLastError();
-        wcerr << "failed to open service manager, err = " << last_error << std::endl;
+        SystemCtlLog::msg << L"failed to open service manager, err = " << last_error;
+        SystemCtlLog::Error();
         return false;
     }
 
     SC_HANDLE hsvc = OpenServiceW(hsc, this->name.c_str(), DELETE);
     if (!hsvc) {
-        wcerr << L"In unregister: OpenService " << this->name << " failed " << GetLastError() << std::endl;
+        SystemCtlLog::msg << L"In unregister: OpenService " << this->name << L" failed " << GetLastError();
+        SystemCtlLog::Error();
         CloseServiceHandle(hsvc);
         return false;
     }
 
     if (!DeleteService(hsvc)) {
-        wcerr << L"In unregister: DeleteService " << this->name << " failed " << GetLastError() << std::endl;
+        SystemCtlLog::msg << L"In unregister: DeleteService " << this->name << " failed " << GetLastError();
+        SystemCtlLog::Error();
         CloseServiceHandle(hsvc);
         return false;
     }
