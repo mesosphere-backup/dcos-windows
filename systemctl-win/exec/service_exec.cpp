@@ -46,23 +46,26 @@ void CWrapperService::RegisterMainPID()
     std::wstring subkey(L"SYSTEM\\CurrentControlSet\\Services\\");
     subkey.append(m_name);
     subkey.append(L"\\run");
-*logfile << Error() << L"create registry key \\HKLM\\" << subkey << std::endl;
+    *logfile << Debug() << L"create registry key \\HKLM\\" << subkey << std::endl;
     status = RegCreateKeyW(HKEY_LOCAL_MACHINE, subkey.c_str(),  &hRunKey);
     if (status != ERROR_SUCCESS) {
         *logfile << Error() << L"could not create registry key \\HKLM\\" << subkey << "status = " << status << std::endl;
-    return;
+        return;
     }
 
-*logfile << Error() << L"set registry value \\HKLM\\" << subkey << "\\ExecStartPID" << std::endl;
+    *logfile << Debug() << L"set registry value \\HKLM\\" << subkey << "\\ExecStartPID" << std::endl;
+
     status = RegSetValueExW( hRunKey, L"ExecStartPID", 0, REG_DWORD, (const BYTE*) &m_ExecStartProcInfo.dwProcessId, sizeof(DWORD));
     if (status != ERROR_SUCCESS) {
-        *logfile << Error() << L"could not create registry value \\HKLM\\" << subkey << "\\ExecStartPID status = " << status << std::endl;
-    return;
+        *logfile << Error() << L"RegisterMainPID: could not create registry value \\HKLM\\" << subkey << "\\ExecStartPID status = " << status << std::endl;
+        RegCloseKey(hRunKey);
+        return;
     }
+
     status = RegCloseKey(hRunKey);
     if (status != ERROR_SUCCESS) {
-        *logfile << Error() << L"could not close registry key \\HKLM\\" << subkey << " status = " << status << std::endl;
-    return;
+        *logfile << Error() << L"RegisterMainPID: could not close registry key \\HKLM\\" << subkey << " status = " << status << std::endl;
+        return;
     }
 }
 
@@ -77,19 +80,20 @@ void CWrapperService::DeregisterMainPID()
     RegOpenKeyW(HKEY_CURRENT_CONFIG, subkey.c_str(),  &hRunKey);
     if (status != ERROR_SUCCESS) {
         *logfile << Error() << L"DeregisterMainPID could not open registry key \\HKLM\\" << subkey << " status = " << status << std::endl;
-    return;
+        return;
     }
 
     RegDeleteValueW( hRunKey, L"ExecStartPID");
     if (status != ERROR_SUCCESS) {
         *logfile << Error() << L"DeregisterMainPID could not delete registry value \\HKLM\\" << subkey << "\\ExecStartPID status = " << status << std::endl;
-    return;
+        RegCloseKey(hRunKey);
+        return;
     }
     
     status = RegCloseKey(hRunKey);
     if (status != ERROR_SUCCESS) {
-        *logfile << Error() << L"could not close registry key \\HKLM\\" << subkey << " status = " << status << std::endl;
-    return;
+        *logfile << Error() << L"DeregisterMainPID could not close registry key \\HKLM\\" << subkey << " status = " << status << std::endl;
+        return;
     }
 }
 

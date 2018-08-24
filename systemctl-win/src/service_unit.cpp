@@ -124,38 +124,39 @@ SystemDUnit::ParseDuration(std::wstring str, double &millis)
     do {
         double numval = NAN;
         double scale  = NAN;
-	size_t toklen = 0;
+        size_t toklen = 0;
 
         while (isspace(*ptok) && ptok < plimit) ptok++; // Skip white space
         wchar_t *tokstart = ptok;
-	if (isdigit(*ptok) || *ptok == '-' || *ptok == '.' && ptok < plimit) {
-	    try {
-	        numval = stod(tokstart, &toklen);
+        if (isdigit(*ptok) || *ptok == '-' || *ptok == '.' && ptok < plimit) {
+            try {
+                numval = stod(tokstart, &toklen);
             }
-	    catch (...) {
-	        return false;  // Malformed string
-	    }
-	    ptok += toklen;
-	}
+            catch (...) {
+                return false;  // Malformed string
+            }
+            ptok += toklen;
+        }
 
         while (isspace(*ptok) && ptok < plimit) ptok++; // Just ignore white space
 
-	tokstart = ptok;
+        tokstart = ptok;
         if (isalpha(*ptok) && ptok < plimit) {
             while (isalpha(*ptok) && ptok < plimit) ptok++; // Skip white space
             wstring token(tokstart, ptok-tokstart);
-	    scale = TimeScales[token];
-	}
-	else {
-	    return false;
-	}
+            scale = TimeScales[token];
+        }
+        else {
+            return false;
+        }
 
-	if (!isnan(scale) && !isnan(numval)) {
-	    millis += numval*scale;
-	}
-    } while(!done);
+        if (!isnan(scale) && !isnan(numval)) {
+            millis += numval*scale;
+        }
 
-    return false;
+    } while(ptok < plimit);
+
+    return true;
 }
 
 wchar_t BUFFER[MAX_BUFFER_SIZE] = { '\0' };
@@ -1384,15 +1385,16 @@ DWORD SystemDUnit::GetMainPID()
     status = RegOpenKeyW(HKEY_LOCAL_MACHINE, subkey.c_str(),  &hRunKey);
     if (status != ERROR_SUCCESS) {
         SystemCtlLog::msg << L"DeregisterMainPID could not open registry key \\HKLM\\" << subkey << " status = " << status;
-    SystemCtlLog::Error();
-    return 0;
+        SystemCtlLog::Error();
+        return 0;
     }
 
     status = RegGetValueW( hRunKey, NULL, L"ExecStartPID", RRF_RT_ANY, &pid_type, &main_pid, &pid_size );
     if (status != ERROR_SUCCESS) {
         SystemCtlLog::msg << L"DeregisterMainPID could not delete registry value \\HKLM\\" << subkey << "\\ExecStartPID status = " << status;
-    SystemCtlLog::Info(); // If there is no 
-    return 0;
+        SystemCtlLog::Info(); // If there is no 
+        RegCloseKey(hRunKey);
+        return 0;
     }
     
     status = RegCloseKey(hRunKey);
@@ -2358,20 +2360,30 @@ SystemDUnit::attr_restart_sec( wstring attr_name, wstring attr_value, unsigned l
     }
     else {
         try {
-            this->restart_sec = std::stod(attr_value);
+        size_t toklen = 0;
+            this->restart_sec = std::stod(attr_value, &toklen);
+            if (toklen < attr_value.length()) {
+                double millis = NAN;
+    
+                if (!ParseDuration(attr_value, millis) ) {
+                    SystemCtlLog::msg << "restart_sec invalid value : " << attr_value.c_str() ; ;
+                    SystemCtlLog::Warning();
+                }
+                else {
+                        this->restart_sec = millis*0.001;
+                }
+            }
         }
         catch (const std::exception &e) {
-	    double millis = NAN;
-
-            // We don't have a nice double, but we could have one or more of the time shorthands
+            double millis = NAN;
 
             if (!ParseDuration(attr_value, millis) ) {
                 SystemCtlLog::msg << "restart_sec invalid value : " << attr_value.c_str() ; ;
                 SystemCtlLog::Warning();
             }
-	    else {
+            else {
                 this->restart_sec = millis*0.001;
-	    }
+            }
         }
     }
     return true;
@@ -2391,15 +2403,15 @@ SystemDUnit::attr_timeout_start_sec( wstring attr_name, wstring attr_value, unsi
            this->timeout_start_sec = stod(attr_value);
         }
         catch (const std::exception &e) {
-	    double millis = NAN;
+        double millis = NAN;
 
             if (!ParseDuration(attr_value, millis) ) {
                 SystemCtlLog::msg << "timeout_start_sec invalid value : " << attr_value.c_str() ; ;
                 SystemCtlLog::Warning();
             }
-	    else {
+        else {
                 this->timeout_start_sec = millis*0.001;
-	    }
+        }
         }
     }
     return true;
@@ -2450,15 +2462,15 @@ SystemDUnit::attr_timeout_sec( wstring attr_name, wstring attr_value, unsigned l
            this->timeout_stop_sec = val;
         }
         catch (const std::exception &e) {
-	    double millis = NAN;
+        double millis = NAN;
 
             if (!ParseDuration(attr_value, millis) ) {
                 SystemCtlLog::msg << "timeout_sec invalid value : " << attr_value.c_str() ;
                 SystemCtlLog::Warning();
             }
-	    else {
+        else {
                 this->timeout_stop_sec = millis*0.001;
-	    }
+        }
         }
     }
     return true;
@@ -2481,16 +2493,15 @@ SystemDUnit::attr_runtime_max_sec( wstring attr_name, wstring attr_value, unsign
             this->max_runtime_sec = stod(attr_value);
         }
         catch (const std::exception &e) {
-            // Try to convert from time span like "5min 20s"
-	    double millis = NAN;
+            double millis = NAN;
 
             if (!ParseDuration(attr_value, millis) ) {
                 SystemCtlLog::msg << "RuntimeMaxSec invalid value : " << attr_value.c_str();
                 SystemCtlLog::Warning();
             }
-	    else {
+            else {
                 this->max_runtime_sec = millis*0.001;
-	    }
+            }
         }
     }
     return true;
