@@ -1,5 +1,4 @@
 # DCOS common configurations
-$LOG_SERVER_BASE_URL = "http://dcos-win.westus.cloudapp.azure.com"
 $ZOOKEEPER_PORT = 2181
 $EXHIBITOR_PORT = 8181
 $DCOS_DIR = Join-Path $env:SystemDrive "DCOS"
