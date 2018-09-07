@@ -208,9 +208,23 @@ boolean
 SystemDTimer::Enable(boolean block)
 
 {
-    wstring servicename = this->name;
-    SystemCtlLog::msg << L"SystemDTimer::Enable is a stub " << this->name;
+    wstring unitname = this->unit;
+    SystemCtlLog::msg << L"SystemDTimer::Enable" << this->name;
     SystemCtlLog::Debug();
+
+    wstring service_unit_path = SystemDUnitPool::UNIT_DIRECTORY_PATH+L"\\"+unitname; // We only look for service
+                                                                            //  unit files in the top level directory
+    class SystemDUnit *unit = SystemDUnitPool::FindUnit(unitname);
+    if (!unit) {
+        unit = SystemDUnitPool::ReadServiceUnit(unitname, service_unit_path);
+        if (!unit) {
+            // Complain and exit
+            SystemCtlLog::msg << L"Failed to load unit from timer: Unit file " << service_unit_path.c_str() << L"is invalid\n";
+            SystemCtlLog::Error();
+            return -1;       
+        }
+    }
+    SystemDUnit::Enable(block);
 
     return true;
 }
