@@ -632,9 +632,22 @@ private:
 class SystemDTimer:public SystemDUnit {
 public: 
 
-    SystemDTimer(const wchar_t *name, const wchar_t *file_path = NULL): 
-         SystemDUnit(name, file_path) {
-    }
+     SystemDTimer::SystemDTimer(const wchar_t *name, const wchar_t *file_path = NULL):
+         SystemDUnit::SystemDUnit(name, file_path) {
+
+        std::wstring servicename = std::wstring(name);
+        servicename = servicename.substr(0, servicename.find_last_of('.'));
+
+        this->unit = servicename + L".service";
+        this->on_active_sec  = NAN;
+        this->on_boot_sec    = NAN;
+        this->on_startup_sec = NAN;
+        this->on_unit_active_sec   = NAN;
+        this->on_unit_inactive_sec = NAN;
+        this->accuracy_sec         = NAN;
+        this->randomized_delay_sec = NAN;
+    };
+
 
     virtual SystemDUnitPool::UnitType UnitType() { return SystemDUnitPool::UNIT_TYPE_TIMER; }
     static class SystemDTimer *ParseSystemDTimerUnit(wstring servicename, wstring unit_path, wifstream &fs);
