@@ -124,12 +124,14 @@
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\service_control.cpp" />
     <ClCompile Include="src\service_unit.cpp" />
+    <ClCompile Include="src\timer_unit.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\resource.h" />
+    <ClInclude Include="src\service_unit.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="src\Resource.rc" />

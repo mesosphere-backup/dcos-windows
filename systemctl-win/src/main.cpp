@@ -140,7 +140,7 @@ int SystemCtrl_Cmd_Start( boost::program_options::variables_map &vm )
             unitname.rfind(L".socket")  == string::npos ) {
               unitname.append(L".service");
         }
-    
+
         class SystemDUnit *unit = SystemDUnitPool::FindUnit(unitname);
         if (!unit) {
             // Complain and exit

@@ -245,7 +245,7 @@ SystemDUnitPool::ReadServiceUnit(std::wstring name, std::wstring service_unit_pa
      }
      catch (exception e) {
          SystemCtlLog::msg << e.what();
-     SystemCtlLog::Error();
+         SystemCtlLog::Error();
      }
      if (fs.is_open()) {
          // wstring justname = servicename.substr(0, servicename.find_last_of('.'));
@@ -292,30 +292,37 @@ class SystemDUnit *SystemDUnit::ParseSystemDServiceUnit(wstring servicename, wst
         else if (line.compare(L"[Unit]") != wstring::npos) {
              // Then we need to parse the unit section
              SystemCtlLog::msg << L"parse unit section";
-         SystemCtlLog::Debug();
+             SystemCtlLog::Debug();
 
              line = punit->ParseUnitSection(fs);
         }
         else if (line.compare(L"[Service]") != wstring::npos) {
              // Then we need to parse the service section
              SystemCtlLog::msg << L"parse service section";
-         SystemCtlLog::Debug();
+             SystemCtlLog::Debug();
 
              line = punit->ParseServiceSection(fs);
         }
         else if (line.compare(L"[Install]") != wstring::npos) {
              // Then we need to parse the install section
              SystemCtlLog::msg << L"parse install section";
-         SystemCtlLog::Debug();
+             SystemCtlLog::Debug();
 
              line = punit->ParseInstallSection(fs);
+        }
+        else if (line.compare(L"[Timer]") != wstring::npos) {
+             // Then we need to parse the unit section
+             SystemCtlLog::msg << L"parse timer section";
+             SystemCtlLog::Debug();
+
+             line = punit->ParseTimerSection(fs);
         }
         else {
             if (line.length() == 0) {
                 break;
             }
             SystemCtlLog::msg << L"invalid section heading " << line.c_str();
-        SystemCtlLog::Debug();
+            SystemCtlLog::Debug();
             break;
         }
     }
@@ -812,7 +819,7 @@ wstring SystemDUnit::ParseServiceSection( wifstream &fs)
         }
         else {
             SystemCtlLog::msg << L"attribute not recognised: " << attrs[i].c_str();
-        SystemCtlLog::Warning();
+            SystemCtlLog::Warning();
         }
     }
 
@@ -843,6 +850,69 @@ wstring SystemDUnit::ParseServiceSection( wifstream &fs)
     // Set the values if value
     this->service_type = attr_type;
 
+    return retval;
+}
+
+wstring SystemDUnit::ParseTimerSection( wifstream &fs)
+
+{ 
+    vector<wstring> attrs;
+    vector<wstring> values;
+
+    wstring retval = split_elems(fs, attrs, values);
+   
+    for (auto i = 0; i < attrs.size(); i++) {
+
+        if (attrs[i].compare( L"OnActiveSec") == 0) {
+            SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
+            SystemCtlLog::Debug();
+        }
+        else if (attrs[i].compare( L"OnBootSec") == 0) {
+            SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str() ;
+            SystemCtlLog::Debug();
+        }
+        else if (attrs[i].compare( L"OnStartupSec") == 0) {
+            SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str() ;
+            SystemCtlLog::Debug();
+        }
+        else if (attrs[i].compare( L"OnUnitActiveSec") == 0) {
+            SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str() ;
+            SystemCtlLog::Debug();
+        }
+        else if (attrs[i].compare( L"OnUnitInactiveSec") == 0) {
+            SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str() ;
+            SystemCtlLog::Debug();
+        }
+        else if (attrs[i].compare( L"AccuracySec") == 0) {
+            SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str() ;
+            SystemCtlLog::Debug();
+        }
+        else if (attrs[i].compare( L"RandomizedDelaySec") == 0) {
+            SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str() ;
+            SystemCtlLog::Debug();
+        }
+        else if (attrs[i].compare( L"Unit") == 0) {
+            SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str() ;
+            SystemCtlLog::Debug();
+        }
+        else if (attrs[i].compare( L"Persistent") == 0) {
+            SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str() ;
+            SystemCtlLog::Debug();
+        }
+        else if (attrs[i].compare( L"WakeSystem") == 0) {
+            SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str() ;
+            SystemCtlLog::Debug();
+        }
+        else if (attrs[i].compare( L"RemainAfterElapse") == 0) {
+            SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str() ;
+            SystemCtlLog::Debug();
+        }
+        else {
+            SystemCtlLog::msg << L"attribute not recognised: " << attrs[i].c_str();
+            SystemCtlLog::Debug();
+        }
+    }
+    
     return retval;
 }
 
@@ -1110,9 +1180,18 @@ static boolean read_unit(wstring file_path, void *context)
     wstring servicename = file_path.substr(file_path.find_last_of('\\') + 1);
     wstring file_type = file_path.substr(file_path.find_last_of('.'));
 
-    if ((file_type.compare(L".service") == 0) ||
+    if (file_type.compare(L".timer") == 0) {
+        //  A timer refers to a service, target, wants or requires. So we need to look at the timer info
+        SystemDTimer *punit = SystemDUnitPool::ReadTimerUnit(servicename, file_path);
+        if (!punit) {
+            // Complain and exit
+            SystemCtlLog::msg << "Failed to load timer: Unit file " << file_path.c_str() << "is invalid";
+            SystemCtlLog::Error();
+            return false;
+        }
+    }
+    else if ((file_type.compare(L".service") == 0) ||
         (file_type.compare(L".target") == 0) ||
-        (file_type.compare(L".timer") == 0) ||
         (file_type.compare(L".socket") == 0)) {
         SystemDUnit *punit = SystemDUnitPool::ReadServiceUnit(servicename, file_path);
         if (!punit) {
@@ -1121,19 +1200,19 @@ static boolean read_unit(wstring file_path, void *context)
             SystemCtlLog::Error();
             return false;
         }
-    // Look for wanted directory
+        // Look for wanted directory
         wstring wants_dir_path = file_path+L".wants";
         if (SystemDUnitPool::DirExists(wants_dir_path)) {
         // Add to wants
             (void)SystemDUnitPool::Apply(wants_dir_path, add_wanted_unit, (void*)punit);
-    }
+        }
 
-    // Look for required directory
-        wstring requires_dir_path = file_path+L".wants";
+        // Look for required directory
+        wstring requires_dir_path = file_path+L".requires";
         if (SystemDUnitPool::DirExists(requires_dir_path)) {
         // Add to requires
             (void)SystemDUnitPool::Apply(requires_dir_path, add_wanted_unit, (void*)punit);
-    }
+        }
     }
     return true;
 }
