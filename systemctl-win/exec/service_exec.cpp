@@ -25,6 +25,7 @@ under the License.
 #include <locale>
 #include <codecvt>
 #include <regex>
+#include <chrono>
 #include <sstream>
 #include <fstream>
 #include <algorithm>
@@ -687,36 +688,303 @@ void CWrapperService::OnStart(DWORD dwArgc, LPWSTR *lpszArgv)
 {
     boolean waitforfinish = true;
 
-    SetServiceStatus(SERVICE_RUNNING);
+    // Are we a timer? 
+    HKEY hRunKey = NULL;
+    LSTATUS status = ERROR_SUCCESS;
 
-    m_IsStopping = FALSE;
+    std::wstring subkey(L"SYSTEM\\CurrentControlSet\\Services\\");
+    subkey.append(this->m_name);
+    subkey.append(L"\\timer");
 
-    *logfile << Info() << L"Starting service: " << m_ServiceName << std::endl;
+    *logfile << Debug() << L"open registry key \\HKLM\\" << subkey << std::endl;
 
-    if (m_hServiceThread != NULL ) {
-        *logfile << Warning() << L"service thread for service " << m_name << " is already running" << std::endl;
-         // 
+    status = RegOpenKeyW(HKEY_LOCAL_MACHINE, subkey.c_str(),  &hRunKey);
+    if (status == ERROR_SUCCESS) {
+        this->m_IsTimer = true;
+        *logfile << Info() << L"Starting timer: " << m_ServiceName << std::endl;
+    
+        if (m_hServiceThread != NULL ) {
+            *logfile << Warning() << L"timer thread for service " << m_name << " is already running" << std::endl;
+             // 
+        }
+        else {
+    
+            // Spawn Service Thread
+            m_hServiceThread = CreateThread( 
+                    NULL,               // default security attributes
+                    1024*1024*64,       // use 128M stack size  
+                    TimerThread,        // thread function name
+                    this,               // argument to thread function 
+                    0,                  // use default creation flags 
+                    &m_dwServiceThreadId);   // returns the thread identifier 
+        
+            if (m_hServiceThread == NULL ) {
+                 throw ::GetLastError();
+            }
+        }
     }
     else {
 
-        // Spawn Service Thread
-        m_hServiceThread = CreateThread( 
-                NULL,                   // default security attributes
-                1024*1024*128,         // use 128M stack size  
-                ServiceThread,          // thread function name
-                this,                   // argument to thread function 
-                0,                      // use default creation flags 
-                &m_dwServiceThreadId);   // returns the thread identifier 
-    
-        if (m_hServiceThread == NULL ) {
-             throw ::GetLastError();
+        this->m_IsTimer = false;
+        if (status != ERROR_FILE_NOT_FOUND && status != ERROR_PATH_NOT_FOUND) {
+            *logfile << Error() << L"could not find registry key \\HKLM\\" << subkey << "status = " << status << std::endl;
+            // Unexpected behaviour...
+            return;
         }
+
+        *logfile << Debug() << L"could not find registry key \\HKLM\\" << subkey << L": is not a timer" << std::endl;
+
+        SetServiceStatus(SERVICE_RUNNING);
+        m_IsStopping = FALSE;
+    
+        *logfile << Info() << L"Starting service: " << m_ServiceName << std::endl;
+    
+        if (m_hServiceThread != NULL ) {
+            *logfile << Warning() << L"service thread for service " << m_name << " is already running" << std::endl;
+             // 
+        }
+        else {
+    
+            // Spawn Service Thread
+            m_hServiceThread = CreateThread( 
+                    NULL,                   // default security attributes
+                    1024*1024*128,         // use 128M stack size  
+                    ServiceThread,          // thread function name
+                    this,                   // argument to thread function 
+                    0,                      // use default creation flags 
+                    &m_dwServiceThreadId);   // returns the thread identifier 
+        
+            if (m_hServiceThread == NULL ) {
+                 throw ::GetLastError();
+            }
+        }
+        *logfile << Info() << L"exit service OnStart: " << std::endl;
     }
-    *logfile << Info() << L"exit service OnStart: " << std::endl;
 
 }
 
 
+
+// OnStart will spawn a timer thread or a service thread depending on the presence of the key 
+// \\HKLM\CurrentControlSet\Services\<service>\timer.  If that key is present we spawn a timer thread, 
+// which discovers the timer attributes from the registry, and executes the service thread according to 
+// their specification. If the attributes on_unit_active_millis or on_unit_inactive_millis are set, this is a 
+// recurring timer. Otherwise we wait as required and spawn the service in the same manner otherwise as
+// OnStart would have. 
+
+DWORD WINAPI CWrapperService::TimerThread(LPVOID param)
+
+{
+    CWrapperService *self = (CWrapperService *)param;
+    DWORD exitCode = 0;
+    boolean done  = false;
+
+    int64_t since_system_start_millis = GetTickCount64();
+    int64_t since_timer_start_millis    = 0;
+    int64_t since_service_active_millis = 0;
+    int64_t since_service_inactive_millis = 0;
+
+    DWORD on_active_millis        = 0;
+    DWORD on_boot_millis          = 0;
+    DWORD on_startup_millis       = 0;
+    DWORD on_unit_active_millis   = 0;
+    DWORD on_unit_inactive_millis = 0;
+    DWORD accuracy_millis         = 0;
+    DWORD randomized_delay_millis = 0;
+
+    wchar_t unit_name[256] = { 0 };
+    DWORD unit_name_size = 256;
+
+    HKEY hRunKey = NULL;
+    LSTATUS status = ERROR_SUCCESS;
+
+    std::wstring subkey(L"SYSTEM\\CurrentControlSet\\Services\\");
+    subkey.append(self->m_name);
+    subkey.append(L"\\timer");
+
+    *logfile << Debug() << L"open registry key \\HKLM\\" << subkey << std::endl;
+
+    status = RegOpenKeyW(HKEY_LOCAL_MACHINE, subkey.c_str(),  &hRunKey);
+    if (status != ERROR_SUCCESS) {
+
+       // This key is present in the registry or we would not have been called.
+
+        *logfile << Error() << L"could not open registry key \\HKLM\\" << subkey << "status = " << status << std::endl;
+        return status;
+    }
+
+    *logfile << Debug() << L"get registry value \\HKLM\\" << subkey << "\\unit" << std::endl;
+    status = RegGetValueW( hRunKey, NULL, L"unit", RRF_RT_ANY, NULL, unit_name, &unit_name_size );
+    if (status != ERROR_SUCCESS) {
+        *logfile << Error() << L"\\HKLM\\" << subkey << "\\unit not read status = " << status << std::endl;
+    }
+
+    DWORD parm_size = sizeof(DWORD);
+    DWORD parm_type = REG_DWORD;
+
+    *logfile << Debug() << L"get registry value \\HKLM\\" << subkey << "\\on_active_millis" << std::endl;
+    status = RegGetValueW( hRunKey, NULL, L"on_active_millis", RRF_RT_ANY, NULL, &on_active_millis, &parm_size );
+    if (status != ERROR_SUCCESS) {
+        *logfile << Debug() << L"\\HKLM\\" << subkey << L"\\on_active_millis not read status = " << status << std::endl;
+    }
+
+    *logfile << Debug() << L"get registry value \\HKLM\\" << subkey << "\\on_boot_millis" << std::endl;
+    status = RegGetValueW( hRunKey, NULL, L"on_boot_millis", RRF_RT_ANY, NULL, &on_boot_millis, &parm_size );
+    if (status != ERROR_SUCCESS) {
+        *logfile << Debug() << L"\\HKLM\\" << subkey << "\\on_boot_millis not read status = " << status << std::endl;
+    }
+
+    *logfile << Debug() << L"get registry value \\HKLM\\" << subkey << "\\on_startup_millis" << std::endl;
+    status = RegGetValueW( hRunKey, NULL, L"on_startup_millis", RRF_RT_ANY, NULL, &on_startup_millis, &parm_size );
+    if (status != ERROR_SUCCESS) {
+        *logfile << Debug() << L"\\HKLM\\" << subkey << "\\on_startup_millis not read status = " << status << std::endl;
+    }
+
+    *logfile << Debug() << L"get registry value \\HKLM\\" << subkey << "\\on_unit_active_millis" << std::endl;
+    status = RegGetValueW( hRunKey, NULL, L"on_unit_active_millis", RRF_RT_ANY, NULL, &on_unit_active_millis, &parm_size );
+    if (status != ERROR_SUCCESS) {
+        *logfile << Debug() << L"\\HKLM\\" << subkey << "\\on_unit_active_millis not read status = " << status << std::endl;
+    }
+
+    *logfile << Debug() << L"get registry value \\HKLM\\" << subkey << "\\on_unit_inactive_millis" << std::endl;
+    status = RegGetValueW( hRunKey, NULL, L"on_unit_inactive_millis", RRF_RT_ANY, NULL, &on_unit_inactive_millis, &parm_size );
+    if (status != ERROR_SUCCESS) {
+        *logfile << Debug() << L"\\HKLM\\" << subkey << "\\on_unit_inactive_millis not read status = " << status << std::endl;
+    }
+
+    *logfile << Debug() << L"get registry value \\HKLM\\" << subkey << "\\accuracy_millis" << std::endl;
+    status = RegGetValueW( hRunKey, NULL, L"accuracy_millis", RRF_RT_ANY, NULL, &accuracy_millis, &parm_size );
+    if (status != ERROR_SUCCESS) {
+        *logfile << Debug() << L"\\HKLM\\" << subkey << "\\accuracy_millis not read status = " << status << std::endl;
+    }
+    else {
+        accuracy_millis = 500; // Default accuracy for timer 
+    }
+
+    *logfile << Debug() << L"get registry value \\HKLM\\" << subkey << "\\randomized_delay_millis" << std::endl;
+    status = RegGetValueW( hRunKey, NULL, L"randomized_delay_millis", RRF_RT_ANY, NULL, &randomized_delay_millis, &parm_size );
+    if (status != ERROR_SUCCESS) {
+        *logfile << Debug() << L"\\HKLM\\" << subkey << "\\randomized_delay_millis not read status = " << status << std::endl;
+    }
+
+    status = RegCloseKey(hRunKey);
+    if (status != ERROR_SUCCESS) {
+        *logfile << Error() << L"StartTimer: could not close registry key \\HKLM\\" << subkey << " status = " << status << std::endl;
+        return false;
+    }
+
+    // That out of the way, we execute the service unit.
+
+    // On Active and On Boot are one time delays. 
+
+    if (on_boot_millis > 0) {
+        *logfile << Debug() << L"StartTimer start on boot sleep for " << on_boot_millis << L" millis" << std::endl;
+        Sleep(on_boot_millis);
+        *logfile << Debug() << L"StartTimer done with boot sleep" << std::endl;
+    }
+
+    if (on_active_millis > 0) {
+        since_timer_start_millis = DWORD(GetTickCount64()-since_system_start_millis);
+        
+        DWORD wait_time = (DWORD)(on_active_millis - since_timer_start_millis);
+        *logfile << Debug() << L"StartTimer start on active sleep for " << wait_time << L" millis" << std::endl;
+        if (wait_time > 0) {
+            Sleep(wait_time);
+        }
+    }
+
+    SC_HANDLE hsc = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
+    if (!hsc) {
+        int last_error = GetLastError();
+        *logfile << Error() << L"failed to open service manager, err = " << last_error << std::endl;
+        return last_error;
+    }
+
+
+    SC_HANDLE hsvc = OpenServiceW(hsc, unit_name, SERVICE_ALL_ACCESS);
+    if (!hsvc) {
+        int last_error = GetLastError();
+        *logfile << Error() << L"In StartService(" << unit_name << "): OpenService failed " << last_error << std::endl;
+        CloseServiceHandle(hsc);
+        return last_error;
+    }
+
+    self->SetServiceStatus(SERVICE_RUNNING);
+    int64_t next_deadline = -1;
+    do {
+        done = true;   
+        since_service_active_millis = GetTickCount64();
+        if (on_unit_active_millis > 0) {
+            next_deadline = GetTickCount64()+on_unit_active_millis;
+            done = false;
+        }
+
+        time_t now_time = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+        *logfile << Info() << L"Start service(" << unit_name  << ") at " << std::ctime(&now_time) << std::endl;
+        if (!StartServiceW(hsvc, 0, NULL)) {
+            DWORD errcode = GetLastError();
+    
+            switch(errcode) {
+            case ERROR_SERVICE_EXISTS:
+                // The service already running is not an error
+                *logfile << Info() << L"In start timer service(" << unit_name  << "): StartService failed " << GetLastError() << std::endl;
+                break;
+    
+            case ERROR_ACCESS_DENIED:
+            case ERROR_SERVICE_LOGON_FAILED:
+    
+                // The user lacks the necessary privelege. Add it and retry once
+    
+                *logfile << Warning() << L"In StartService(" << unit_name  << "): StartService failed to logon erno = " 
+                                      << GetLastError() << " account lacks privelege" << std::endl;
+
+                break;
+    
+            default:
+                *logfile << Warning() << "In StartService(" << unit_name  << "): StartService error =  " << errcode << std::endl;
+                break;
+            }
+        }
+        *logfile << Debug() << L"service " << unit_name << L" started wait for " << (next_deadline-GetTickCount64()) << L" millis" << std::endl;
+
+        // Wait for service inactive
+        since_service_inactive_millis = -1;
+        while (GetTickCount64() < next_deadline) {
+            Sleep(accuracy_millis);
+            SERVICE_STATUS svc_status = {0};
+            if (!QueryServiceStatus(hsvc, &svc_status)) {
+                *logfile << Debug() << L"could not query service " << unit_name << std::endl;
+                break;
+            }
+            if (svc_status.dwCurrentState == SERVICE_STOPPED) {
+                *logfile << Debug() << L"service " << unit_name << L" status == " << svc_status.dwCurrentState << std::endl;
+                since_service_inactive_millis = GetTickCount64();
+                if (on_unit_inactive_millis > 0) {
+                    next_deadline = since_service_inactive_millis+on_unit_inactive_millis;
+                    *logfile << Debug() << L"service " << unit_name << L" on_unit_inactive_timeout sleep time " 
+                                        << (next_deadline-since_service_inactive_millis) << std::endl;
+                    done = false;
+                }
+                break;
+            }
+        }
+        while (GetTickCount64() < next_deadline) {
+            if (on_unit_inactive_millis > 0) {
+                *logfile << Debug() << L"service " << unit_name << L" on_unit_inactive_timeout sleep" << std::endl;
+            }
+            Sleep(accuracy_millis);
+        }
+
+        *logfile << Debug() << L"service " << unit_name << L" timeout complete" << std::endl;
+      
+    } while (!done);
+
+    self->SetServiceStatus(SERVICE_STOP_PENDING);
+    CloseServiceHandle(hsvc);
+    CloseServiceHandle(hsc);
+    self->SetServiceStatus(SERVICE_STOP);
+    return S_OK;
+}
 
 DWORD WINAPI CWrapperService::ServiceThread(LPVOID param)
 
@@ -767,7 +1035,6 @@ DWORD WINAPI CWrapperService::ServiceThread(LPVOID param)
                 }
                 wifs.close();
             }
-
 
             for (auto after : self->m_ServicesAfter) {
                 *logfile << Debug() << L"after service" << after << std::endl;
@@ -846,7 +1113,7 @@ DWORD WINAPI CWrapperService::ServiceThread(LPVOID param)
         
             if (!self->m_ExecStartCmdLine.empty()) {
                 self->StartProcess(self->m_ExecStartCmdLine.c_str(), CREATE_NEW_PROCESS_GROUP, self->m_ExecStartProcInfo, false);
-        self->RegisterMainPID();  // We register the pid in the registry so we can kill it later if we wish from systemctl
+                self->RegisterMainPID();  // We register the pid in the registry so we can kill it later if we wish from systemctl
         
                 *logfile << Verbose() << "waitfor main process " << std::endl;
                 ::WaitForSingleObject(self->m_ExecStartProcInfo.hProcess, INFINITE);
@@ -855,8 +1122,7 @@ DWORD WINAPI CWrapperService::ServiceThread(LPVOID param)
                 ::CloseHandle(self->m_ExecStartProcInfo.hProcess);
                 self->DeregisterMainPID();
         
-                if (!result || exitCode)
-                {
+                if (!result || exitCode) {
                     wostringstream os;
                     if (!result) {
                         *logfile << Error() << L"GetExitCodeProcess failed" << std::endl;
@@ -869,8 +1135,7 @@ DWORD WINAPI CWrapperService::ServiceThread(LPVOID param)
                 }
             }
         
-            if (!self->m_ExecStartPostCmdLine.empty())
-            {
+            if (!self->m_ExecStartPostCmdLine.empty()) {
                 wostringstream os;
 
                 for( int i = 0;  i < self->m_ExecStartPostCmdLine.size(); i++ ) {
@@ -890,7 +1155,7 @@ DWORD WINAPI CWrapperService::ServiceThread(LPVOID param)
             }
 
             // We should stay active until all of the depends are finished
-        self->WaitForDependents(self->m_Dependencies);
+            self->WaitForDependents(self->m_Dependencies);
             *logfile << Verbose() << "process success " << self->m_ExecStartCmdLine << std::endl;
             throw RestartException(0, "success");
     }
@@ -1007,78 +1272,88 @@ void CWrapperService::OnStop()
     WriteEventLogEntry(m_name, L"Stopping service", EVENTLOG_INFORMATION_TYPE);
 
     m_IsStopping = TRUE;
-    *logfile << Verbose() << L"stopping service " << m_ServiceName.c_str() << std::endl;
-    if (!m_ExecStopCmdLine.empty())
-    {
-        wostringstream os;
-        os << L"Running ExecStop command: " << m_ExecStopCmdLine.c_str();
-        *logfile << Verbose() << os.str() << std::endl;
-        WriteEventLogEntry(m_name, os.str().c_str(), EVENTLOG_INFORMATION_TYPE);
-        StartProcess(m_ExecStopCmdLine.c_str(), 0, m_ExecStopProcInfo, true);
-    }
-
-    *logfile << Debug() << L"kill stopping service " << m_ServiceName.c_str() << std::endl;
-    // KillProcessTree(m_dwProcessId);
-
-    // Stop dependent services
-    // this->StopServiceDependencies(); We don't do this .....
-
-    // *logfile << Debug() << L"send  ctrl-break and wait for stop" << std::endl;
-    *logfile << Error() << L"send  ctrl-break to process id " << m_ExecStartProcInfo.dwProcessId << " and wait for stop" << std::endl;
-
-    // First, ask nicely. 
-    // The CTRL_C_EVENT should go to all of the subprocesses since that all share a console.
-    // We do this because some processes need warning before they terminate to perform cleanup. 
-    DWORD wait_result = WAIT_FAILED;
-    if (AttachConsole( m_ExecStartProcInfo.dwProcessId)) {
-        SetConsoleCtrlHandler(NULL, true);
-        if (!GenerateConsoleCtrlEvent(CTRL_BREAK_EVENT, m_ExecStartProcInfo.dwProcessId)) {
-            *logfile << Error() << L"send  ctrl-break to process id " << m_ExecStartProcInfo.dwProcessId << " failed error code " << ::GetLastError() << std::endl;
-        }
-        else {
-
-            // Wait for them to stop (fixed 20 sec timeout)
-            wait_result = ::WaitForSingleObject(m_ExecStartProcInfo.hProcess, 20000);
-        }
-        FreeConsole();
-        SetConsoleCtrlHandler(NULL, false);
+    if (m_IsTimer) {
+        ::TerminateThread(m_hServiceThread, ERROR_PROCESS_ABORTED);
+        *logfile << Verbose() << L"service thread wait for terminate " << m_ServiceName.c_str() << std::endl;
+        ::WaitForSingleObject(m_hServiceThread, INFINITE);
+        *logfile << Verbose() << L"service thread terminated " << m_ServiceName.c_str() << std::endl;
+        ::CloseHandle(m_hServiceThread);
+        this->SetServiceStatus(SERVICE_STOPPED);
     }
     else {
-        *logfile << Error() << L"could not attach console " << m_ExecStartProcInfo.dwProcessId << " failed error code " << ::GetLastError() << std::endl;
-    }
-
-    if (wait_result == WAIT_TIMEOUT || wait_result == WAIT_FAILED) {
-        *logfile << Info() << L"ctrl-c has no effect. forcibly terminate process " << m_ExecStartProcInfo.dwProcessId << "and wait for stop" << std::endl; 
-    }    
-
-    // Kill main process anyway. Worst case nothing happens because the process is gone.
-    // ::TerminateProcess( m_ExecStartProcInfo.hProcess, ERROR_PROCESS_ABORTED);
-    KillProcessTree( m_ExecStartProcInfo.dwProcessId);
-
-    ::WaitForSingleObject(m_ExecStartProcInfo.hProcess, INFINITE);
-    ::TerminateThread(m_hServiceThread, ERROR_PROCESS_ABORTED);
-    *logfile << Verbose() << L"service thread wait for terminate " << m_ServiceName.c_str() << std::endl;
-    ::WaitForSingleObject(m_hServiceThread, INFINITE);
-    *logfile << Verbose() << L"service thread terminated " << m_ServiceName.c_str() << std::endl;
-    ::CloseHandle(m_hServiceThread);
-
-    m_hServiceThread = INVALID_HANDLE_VALUE;
-
-    if (!m_ExecStopPostCmdLine.empty())
-    {
-        wostringstream os;
-
-        int i = 0;
-        for( auto ws: m_ExecStopPostCmdLine) {
-            os << L"Running ExecStopPost command: " << ws.c_str();
+        *logfile << Verbose() << L"stopping service " << m_ServiceName.c_str() << std::endl;
+        if (!m_ExecStopCmdLine.empty())
+        {
+            wostringstream os;
+            os << L"Running ExecStop command: " << m_ExecStopCmdLine.c_str();
             *logfile << Verbose() << os.str() << std::endl;
-            StartProcess(ws.c_str(), 0, m_ExecStopPostProcInfo[i], true);
-        i++;
+            WriteEventLogEntry(m_name, os.str().c_str(), EVENTLOG_INFORMATION_TYPE);
+            StartProcess(m_ExecStopCmdLine.c_str(), 0, m_ExecStopProcInfo, true);
         }
+    
+        *logfile << Debug() << L"kill stopping service " << m_ServiceName.c_str() << std::endl;
+        // KillProcessTree(m_dwProcessId);
+    
+        // Stop dependent services
+        // this->StopServiceDependencies(); We don't do this .....
+    
+        // *logfile << Debug() << L"send  ctrl-break and wait for stop" << std::endl;
+        *logfile << Error() << L"send  ctrl-break to process id " << m_ExecStartProcInfo.dwProcessId << " and wait for stop" << std::endl;
+    
+        // First, ask nicely. 
+        // The CTRL_C_EVENT should go to all of the subprocesses since that all share a console.
+        // We do this because some processes need warning before they terminate to perform cleanup. 
+        DWORD wait_result = WAIT_FAILED;
+        if (AttachConsole( m_ExecStartProcInfo.dwProcessId)) {
+            SetConsoleCtrlHandler(NULL, true);
+            if (!GenerateConsoleCtrlEvent(CTRL_BREAK_EVENT, m_ExecStartProcInfo.dwProcessId)) {
+                *logfile << Error() << L"send  ctrl-break to process id " << m_ExecStartProcInfo.dwProcessId << " failed error code " << ::GetLastError() << std::endl;
+            }
+            else {
+    
+                // Wait for them to stop (fixed 20 sec timeout)
+                wait_result = ::WaitForSingleObject(m_ExecStartProcInfo.hProcess, 20000);
+            }
+            FreeConsole();
+            SetConsoleCtrlHandler(NULL, false);
+        }
+        else {
+            *logfile << Error() << L"could not attach console " << m_ExecStartProcInfo.dwProcessId << " failed error code " << ::GetLastError() << std::endl;
+        }
+    
+        if (wait_result == WAIT_TIMEOUT || wait_result == WAIT_FAILED) {
+            *logfile << Info() << L"ctrl-c has no effect. forcibly terminate process " << m_ExecStartProcInfo.dwProcessId << "and wait for stop" << std::endl; 
+        }    
+    
+        // Kill main process anyway. Worst case nothing happens because the process is gone.
+        // ::TerminateProcess( m_ExecStartProcInfo.hProcess, ERROR_PROCESS_ABORTED);
+        KillProcessTree( m_ExecStartProcInfo.dwProcessId);
+    
+        ::WaitForSingleObject(m_ExecStartProcInfo.hProcess, INFINITE);
+        ::TerminateThread(m_hServiceThread, ERROR_PROCESS_ABORTED);
+        *logfile << Verbose() << L"service thread wait for terminate " << m_ServiceName.c_str() << std::endl;
+        ::WaitForSingleObject(m_hServiceThread, INFINITE);
+        *logfile << Verbose() << L"service thread terminated " << m_ServiceName.c_str() << std::endl;
+        ::CloseHandle(m_hServiceThread);
+    
+        m_hServiceThread = INVALID_HANDLE_VALUE;
+    
+        if (!m_ExecStopPostCmdLine.empty())
+        {
+            wostringstream os;
+    
+            int i = 0;
+            for( auto ws: m_ExecStopPostCmdLine) {
+                os << L"Running ExecStopPost command: " << ws.c_str();
+                *logfile << Verbose() << os.str() << std::endl;
+                StartProcess(ws.c_str(), 0, m_ExecStopPostProcInfo[i], true);
+            i++;
+            }
+        }
+    
+        ::CloseHandle(m_WaitForProcessThread);
+        m_WaitForProcessThread = NULL;
     }
-
-    ::CloseHandle(m_WaitForProcessThread);
-    m_WaitForProcessThread = NULL;
 }
 
 
@@ -1455,7 +1730,7 @@ CWrapperService::WaitForDependents(std::vector<std::wstring> &serviceList)
             SERVICE_STATUS service_status = {0};
             SC_HANDLE hsvc = OpenServiceW(hsc, service.c_str(), GENERIC_READ);
             if (!hsvc) {
-                *logfile << Error() << L"WaitForDependents OpeService failed " << GetLastError() << std::endl;
+                *logfile << Error() << L"WaitForDependents OpenService failed " << GetLastError() << std::endl;
                 CloseServiceHandle(hsc);
                 return true;  // If it doesn't exist we cant wait for it
             }

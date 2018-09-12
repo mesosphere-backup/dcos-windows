@@ -197,7 +197,7 @@ SystemDUnit::AddUserServiceLogonPrivilege()
         if (pprivs && pprivs[i].Buffer) {
             if (se_service_logon.compare(0, pprivs[i].Length, pprivs[i].Buffer) == 0) {
                 SystemCtlLog::msg << L"Service Logon right already present";
-                SystemCtlLog::Warning();
+                SystemCtlLog::Debug();
                 LsaFreeMemory(pprivs);
                 LsaClose(policy_h);
                 return;
@@ -355,7 +355,7 @@ boolean SystemDUnit::IsEnabled()
         if (last_err == ERROR_SERVICE_DOES_NOT_EXIST ||
             last_err == ERROR_SERVICE_DISABLED ) {
             SystemCtlLog::msg << L"service " << this->name << " is not enabled ";
-            SystemCtlLog::Warning();
+            SystemCtlLog::Debug();
         }
         else {
             SystemCtlLog::msg << L" In IsEnabled error from OpenService " << last_err;
@@ -482,7 +482,7 @@ SystemDUnit::RegisterServiceProperties()
 }
 
 boolean 
-SystemDUnit::RegisterService()
+SystemDUnit::RegisterService(std::wstring unit )
 
 {
     // We point at an absolute path based on the location of systemctl.exe.
@@ -507,17 +507,22 @@ SystemDUnit::RegisterService()
 
     AddUserServiceLogonPrivilege(); // Make sure the user can actually use the thing.
 
-   // wcmdline << wspath;
+    if (unit.empty()) {
+        unit = wservice_name;
+    }
+
+    // wcmdline << wspath;
+    // 
     wcmdline << SystemDUnitPool::SERVICE_WRAPPER_PATH.c_str();
     wcmdline << SERVICE_WRAPPER.c_str();
     wcmdline << L" ";
     wcmdline << L" --service-name ";
-    wcmdline << wservice_name.c_str();
+    wcmdline << unit.c_str();
     wcmdline << L" ";
     wcmdline << L" --service-unit ";
     wcmdline << SystemDUnitPool::ACTIVE_UNIT_DIRECTORY_PATH;
     wcmdline << "\\";
-    wcmdline << wservice_name.c_str();
+    wcmdline << unit.c_str();
 
     int wchar_needed = 0;
     for (auto dependent : this->start_dependencies) {
@@ -606,10 +611,162 @@ SystemDUnit::RegisterService()
     CloseServiceHandle(hsvc); 
     CloseServiceHandle(hsc);
 
-
     return true;
 }
 
+
+
+
+//
+boolean SystemDTimer::RegisterService( std::wstring unit )
+
+{
+    SystemDUnit::RegisterService();
+
+    // Now reLgister the timer key and values
+
+    HKEY hRunKey = NULL;
+    LSTATUS status = ERROR_SUCCESS;
+
+    std::wstring subkey(L"SYSTEM\\CurrentControlSet\\Services\\");
+    subkey.append(this->name);
+    subkey.append(L"\\timer");
+
+    SystemCtlLog::msg << L"create registry key \\HKLM\\" << subkey;
+    SystemCtlLog::Debug();
+
+    status = RegCreateKeyW(HKEY_LOCAL_MACHINE, subkey.c_str(),  &hRunKey);
+    if (status != ERROR_SUCCESS) {
+        SystemCtlLog::msg << L"could not create registry key \\HKLM\\" << subkey << "status = " << status;
+        SystemCtlLog::Error();
+        return false;
+    }
+
+    SystemCtlLog::msg << L"set registry value \\HKLM\\" << subkey << "\\unit";
+    SystemCtlLog::Debug();
+
+    status = RegSetValueExW( hRunKey, L"unit", 0, REG_SZ, (const BYTE*) this->unit.c_str(), this->unit.length()*sizeof(wchar_t));
+    if (status != ERROR_SUCCESS) {
+        SystemCtlLog::msg << L"RegisterTimerService: could not create registry value \\HKLM\\" << subkey << "\\unit status = " << status;
+        SystemCtlLog::Error();
+        RegCloseKey(hRunKey);
+        return false;
+    }
+
+    if ( !isnan(on_active_sec)) {
+        DWORD millis = (DWORD)(on_active_sec*1000.0);
+
+        SystemCtlLog::msg << L"set registry value \\HKLM\\" << subkey << "\\on_active_millis";
+        SystemCtlLog::Debug();
+
+        status = RegSetValueExW( hRunKey, L"on_active_millis", 0, REG_DWORD, (const BYTE*) &millis, sizeof(DWORD));
+        if (status != ERROR_SUCCESS) {
+            SystemCtlLog::msg << L"RegisterTimerService: could not create registry value \\HKLM\\" << subkey << "\\on_active_millis status = " << status;
+            SystemCtlLog::Error();
+            RegCloseKey(hRunKey);
+            return false;
+        }
+    }
+
+    if ( !isnan(on_boot_sec)) {
+        DWORD millis = (DWORD)(on_boot_sec*1000.0);
+
+        SystemCtlLog::msg << L"set registry value \\HKLM\\" << subkey << "\\on_boot_millis";
+        SystemCtlLog::Debug();
+
+        status = RegSetValueExW( hRunKey, L"on_boot_millis", 0, REG_DWORD, (const BYTE*) &millis, sizeof(DWORD));
+        if (status != ERROR_SUCCESS) {
+            SystemCtlLog::msg << L"RegisterMainPID: could not create registry value \\HKLM\\" << subkey << "\\on_boot_millis status = " << status;
+            SystemCtlLog::Error();
+            RegCloseKey(hRunKey);
+            return false;
+        }
+    }
+
+    if ( !isnan(on_startup_sec)) {
+        DWORD millis = (DWORD)(on_startup_sec*1000.0);
+
+        SystemCtlLog::msg << L"set registry value \\HKLM\\" << subkey << "\\on_startup_millis";
+        SystemCtlLog::Debug();
+
+        status = RegSetValueExW( hRunKey, L"on_startup_millis", 0, REG_DWORD, (const BYTE*) &millis, sizeof(DWORD));
+        if (status != ERROR_SUCCESS) {
+            SystemCtlLog::msg << L"RegisterMainPID: could not create registry value \\HKLM\\" << subkey << "\\on_startup_millis status = " << status;
+            SystemCtlLog::Error();
+            RegCloseKey(hRunKey);
+            return false;
+        }
+    }
+
+    if ( !isnan(on_unit_active_sec)) {
+        DWORD millis = (DWORD)(on_unit_active_sec*1000.0);
+
+        SystemCtlLog::msg << L"set registry value \\HKLM\\" << subkey << "\\on_unit_active_millis";
+        SystemCtlLog::Debug();
+
+        status = RegSetValueExW( hRunKey, L"on_unit_active_millis", 0, REG_DWORD, (const BYTE*) &millis, sizeof(DWORD));
+        if (status != ERROR_SUCCESS) {
+            SystemCtlLog::msg << L"RegisterMainPID: could not create registry value \\HKLM\\" << subkey << "\\on_unit_active_millis status = " << status;
+            SystemCtlLog::Error();
+            RegCloseKey(hRunKey);
+            return false;
+        }
+    }
+
+    if ( !isnan(on_unit_inactive_sec)) {
+        DWORD millis = (DWORD)on_unit_inactive_sec;
+
+        SystemCtlLog::msg << L"set registry value \\HKLM\\" << subkey << "\\on_unit_inactive_millis";
+        SystemCtlLog::Debug();
+
+        status = RegSetValueExW( hRunKey, L"on_unit_inactive_millis", 0, REG_DWORD, (const BYTE*) &millis, sizeof(DWORD));
+        if (status != ERROR_SUCCESS) {
+            SystemCtlLog::msg << L"RegisterMainPID: could not create registry value \\HKLM\\" << subkey << "\\on_unit_inactive_millis status = " << status;
+            SystemCtlLog::Error();
+            RegCloseKey(hRunKey);
+            return false;
+        }
+    }
+
+    if ( !isnan(accuracy_sec)) {
+        DWORD millis = (DWORD)(accuracy_sec*1000.0);
+
+        SystemCtlLog::msg << L"set registry value \\HKLM\\" << subkey << "\\accuracy_millis";
+        SystemCtlLog::Debug();
+
+        status = RegSetValueExW( hRunKey, L"accuracy_millis", 0, REG_DWORD, (const BYTE*) &millis, sizeof(DWORD));
+        if (status != ERROR_SUCCESS) {
+            SystemCtlLog::msg << L"RegisterMainPID: could not create registry value \\HKLM\\" << subkey << "\\accuracy_millis status = " << status;
+            SystemCtlLog::Error();
+            RegCloseKey(hRunKey);
+            return false;
+        }
+    }
+
+    if ( !isnan(randomized_delay_sec)) {
+        DWORD millis = (DWORD)(randomized_delay_sec*1000.0);
+
+        SystemCtlLog::msg << L"set registry value \\HKLM\\" << subkey << "\\randomized_delay_millis";
+        SystemCtlLog::Debug();
+
+        status = RegSetValueExW( hRunKey, L"randomized_delay_millis", 0, REG_DWORD, (const BYTE*) &millis, sizeof(DWORD));
+        if (status != ERROR_SUCCESS) {
+            SystemCtlLog::msg << L"RegisterMainPID: could not create registry value \\HKLM\\" << subkey << "\\randomized_delay_millis status = " << status;
+            SystemCtlLog::Error();
+            RegCloseKey(hRunKey);
+            return false;
+        }
+    }
+
+    status = RegCloseKey(hRunKey);
+    if (status != ERROR_SUCCESS) {
+        SystemCtlLog::msg << L"RegisterMainPID: could not close registry key \\HKLM\\" << subkey << " status = " << status << std::endl;
+        SystemCtlLog::Error();
+        return false;
+    }
+
+    return true;
+}
 
 boolean SystemDUnit::UnregisterService()
 {

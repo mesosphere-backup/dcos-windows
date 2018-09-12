@@ -237,8 +237,13 @@ SystemDUnitPool::ReadServiceUnit(std::wstring name, std::wstring service_unit_pa
      wstring servicename = name;
      class SystemDUnit *punit = NULL;
 
-     // Find the unit in the unit directory
+     // Timers are read elsewhere
 
+     if (name.rfind(L".timer") != string::npos) {
+         return ReadTimerUnit(name, service_unit_path);
+     }
+
+     // Find the unit in the unit directory
      wifstream fs;
      try {
          fs.open(service_unit_path, std::fstream::in);
@@ -289,28 +294,28 @@ class SystemDUnit *SystemDUnit::ParseSystemDServiceUnit(wstring servicename, wst
             (void)fs.getline(BUFFER, MAX_BUFFER_SIZE);
             continue;
         }
-        else if (line.compare(L"[Unit]") != wstring::npos) {
+        else if (line.compare(L"[Unit]") == 0) {
              // Then we need to parse the unit section
              SystemCtlLog::msg << L"parse unit section";
              SystemCtlLog::Debug();
 
              line = punit->ParseUnitSection(fs);
         }
-        else if (line.compare(L"[Service]") != wstring::npos) {
+        else if (line.compare(L"[Service]") == 0) {
              // Then we need to parse the service section
              SystemCtlLog::msg << L"parse service section";
              SystemCtlLog::Debug();
 
              line = punit->ParseServiceSection(fs);
         }
-        else if (line.compare(L"[Install]") != wstring::npos) {
+        else if (line.compare(L"[Install]") == 0) {
              // Then we need to parse the install section
              SystemCtlLog::msg << L"parse install section";
              SystemCtlLog::Debug();
 
              line = punit->ParseInstallSection(fs);
         }
-        else if (line.compare(L"[Timer]") != wstring::npos) {
+        else if (line.compare(L"[Timer]") == 0) {
              // Then we need to parse the unit section
              SystemCtlLog::msg << L"parse timer section";
              SystemCtlLog::Debug();

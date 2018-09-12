@@ -16,7 +16,6 @@ binaries, scripts and executable command lines to be retained with minimum modif
 
 * The service control manager, which is part of the windows system.
 
-
 Both systemctl-win and systemd operate using systemd-style unit files.  The freedesktop.org systemd documentation documents the
 contents of those files. Generally, the largest difference is that environment files contain either bash or powershell syntax, and executable 
 lines (ExecStart, etc) must be in a windows-natural syntax (more or less compatible with cmd.exe).  Systemctl registers services with the 
@@ -25,8 +24,7 @@ However, only systemctl-win services are visible to systemctl.
 
 Overall, there are some permanent limitations dictated by the system:
 * Dbus is not supported by systemctl-win, so dbus type services and dbus based attributes cannot be supported. 
-* Socket units probably cannot be supporterd in systemctl-win
-* Timer Units are not currently supported in systemctl-win
+* Socket units are not currently supporterd in systemctl-win. 
 
 ## Differences in systemctl vss systemctl-win by Command
 
@@ -39,9 +37,9 @@ This is not feasible in windows. Socket units are not supported in systemctl-win
 structural differences between windows are not expected to be supported in the future.
 
 #### list-timers [PATTERN...]  (List timer units currently in memory, ordered by next elapse)
-This is not feasible in windows. Timer units are not supported in systemctl-win.
+This is has not been implementented.
 
-#### start NAME...  (Start (activate) one or more units)
+#### start .NAME...  (Start (activate) one or more units)
 This works as expected.
 
 #### stop NAME...   (Stop (deactivate) one or more units)

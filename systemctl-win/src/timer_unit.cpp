@@ -145,21 +145,21 @@ class SystemDTimer *SystemDTimer::ParseSystemDTimerUnit(wstring servicename, wst
             (void)fs.getline(BUFFER, MAX_BUFFER_SIZE);
             continue;
         }
-        else if (line.compare(L"[Unit]") != wstring::npos) {
+        else if (line.compare(L"[Unit]") == 0) {
              // Then we need to parse the unit section
              SystemCtlLog::msg << L"parse unit section";
              SystemCtlLog::Debug();
 
              line = punit->ParseUnitSection(fs);
         }
-        else if (line.compare(L"[Install]") != wstring::npos) {
+        else if (line.compare(L"[Install]") == 0) {
              // Then we need to parse the install section
              SystemCtlLog::msg << L"parse install section";
              SystemCtlLog::Debug();
 
              line = punit->ParseInstallSection(fs);
         }
-        else if (line.compare(L"[Timer]") != wstring::npos) {
+        else if (line.compare(L"[Timer]") == 0) {
              // Then we need to parse the unit section
              SystemCtlLog::msg << L"parse timer section";
              SystemCtlLog::Debug();
@@ -212,6 +212,7 @@ SystemDTimer::Enable(boolean block)
     SystemCtlLog::msg << L"SystemDTimer::Enable" << this->name;
     SystemCtlLog::Debug();
 
+
     wstring service_unit_path = SystemDUnitPool::UNIT_DIRECTORY_PATH+L"\\"+unitname; // We only look for service
                                                                             //  unit files in the top level directory
     class SystemDUnit *unit = SystemDUnitPool::FindUnit(unitname);
@@ -224,6 +225,8 @@ SystemDTimer::Enable(boolean block)
             return -1;       
         }
     }
+    unit->Enable(block);
+
     SystemDUnit::Enable(block);
 
     return true;
