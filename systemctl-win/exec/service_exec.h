@@ -196,8 +196,8 @@ private:
     static DWORD WINAPI ServiceThread(LPVOID param); // Pass this pointer
 
     void GetCurrentEnv();
-    void LoadEnvVarsFromFile(const std::wstring& path);
-    void LoadPShellEnvVarsFromFile(const std::wstring& path);
+    boolean LoadEnvVarsFromFile(const std::wstring& path);
+    boolean LoadPShellEnvVarsFromFile(const std::wstring& path);
 
     void GetServiceDependencies(); // I know that the dependent info is in the unit file (wants and requires). 
                                  // But if the policy changes for some reason, getting the dependents is 
