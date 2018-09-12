@@ -35,9 +35,9 @@ under the License.
 using namespace std;
 using namespace boost::program_options;
 
-
 struct CLIArgs
 {
+    int unitType;
     wstring unitPath;
     vector<wstring> environmentFiles;
     vector<wstring> environmentFilesPShell;

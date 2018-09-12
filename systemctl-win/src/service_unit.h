@@ -451,8 +451,9 @@ public:
     virtual boolean RestartService(boolean blocking);
     virtual void ShowService();
 
-    virtual boolean RegisterService();
+    virtual boolean RegisterService( std::wstring servicename = L"");
     virtual boolean UnregisterService();
+
     virtual boolean CheckForRequisites();
     virtual boolean WaitForAfters();
     virtual boolean Kill(int action, int killtarget, boolean block);
@@ -648,7 +649,6 @@ public:
         this->randomized_delay_sec = NAN;
     };
 
-
     virtual SystemDUnitPool::UnitType UnitType() { return SystemDUnitPool::UNIT_TYPE_TIMER; }
     static class SystemDTimer *ParseSystemDTimerUnit(wstring servicename, wstring unit_path, wifstream &fs);
 
@@ -660,6 +660,7 @@ public:
     virtual boolean SystemDTimer::Mask(boolean block);
     virtual boolean SystemDTimer::Unmask(boolean block);
     virtual void SystemDTimer::ShowService();
+    virtual boolean RegisterService( std::wstring servicename = L"");
 
 protected:
 

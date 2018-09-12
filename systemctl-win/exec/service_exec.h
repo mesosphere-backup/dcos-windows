@@ -194,6 +194,7 @@ private:
     static const unsigned EXECFLAG_AMBIENT_PRIVELEGE = 0x000000008; // !!
 
     static DWORD WINAPI ServiceThread(LPVOID param); // Pass this pointer
+    static DWORD WINAPI TimerThread(LPVOID param); // Pass this pointer
 
     void GetCurrentEnv();
     boolean LoadEnvVarsFromFile(const std::wstring& path);
@@ -242,6 +243,7 @@ private:
     boolean EvalConditionControlGroupController(std::wstring arg);
 
     std::wstring m_ServiceName;
+    boolean m_IsTimer;
 
     std::vector<std::wstring> m_ExecStartPreCmdLine;
     std::vector<unsigned>     m_ExecStartPreFlags;

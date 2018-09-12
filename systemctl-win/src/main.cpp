@@ -9,6 +9,7 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <iomanip>
 #if VC_SUPPORTS_STD_FILESYSTEM
 #include <filesystem> Not yet supported in vc
 #endif
@@ -19,11 +20,167 @@
 #include <boost/algorithm/string/trim.hpp>
 #include <boost/algorithm/string/join.hpp>
 
-char usage[] = "usage: "\
-               "  systemctl start <servicename>\n" \
-               "  systemctl start <servicename>\n";
 
 using namespace std;
+
+namespace SystemCtlHelp {
+    enum CMD_TYPE {
+        UNIT_CMD = 1,
+        UNIT_FILE_CMD,
+        MACHINE_CMD,
+        JOB_CMD,
+        ENV_CMD,
+        LIFECYCLE_CMD,
+        SYSTEM_CMD,
+    };
+
+    std::map< std::wstring , std::tuple<std::wstring, int, std::wstring>> Help_Map =  {
+        { L"list-units",     { L"list-units [PATTERN...] ",      UNIT_CMD, L"List units currently in memory" } },
+        { L"list-sockets",   { L"list-sockets [PATTERN...] ",    UNIT_CMD, L"List socket units currently in memory, ordered by address" } },
+        { L"list-timers",    { L"list-timers [PATTERN...] ",     UNIT_CMD, L"List timer units currently in memory, ordered by next elapse" } },
+        { L"start",          { L"start NAME... ",                UNIT_CMD, L"Start (activate) one or more units" } },
+        { L"stop",           { L"stop NAME... ",                 UNIT_CMD, L"Stop (deactivate) one or more units" } },
+        { L"reload",         { L"reload NAME... ",               UNIT_CMD, L"Reload one or more units" } },
+        { L"restart",        { L"restart NAME... ",              UNIT_CMD, L"Start or restart one or more units" } },
+        { L"try-restart",    { L"try-restart NAME... ",          UNIT_CMD, L"Restart one or more units if active" } },
+        { L"reload-or-restart", { L"reload-or-restart NAME... ", UNIT_CMD, L"Reload one or more units if possible, otherwise start or restart" } },
+        { L"try-reload-or-restart",    { L"try-reload-or-restart NAME... ", UNIT_CMD, L"If active, reload one or more units, if supported, otherwise restart" } },
+        { L"isolate",        { L"isolate NAME ",                 UNIT_CMD, L"Start one unit and stop all others" } },
+        { L"kill",           { L"kill NAME... ",                 UNIT_CMD, L"Send signal to processes of a unit" } },
+        { L"is-active",      { L"is-active PATTERN... ",         UNIT_CMD, L"Check whether units are active" } },
+        { L"is-failed",      { L"is-failed PATTERN... ",         UNIT_CMD, L"Check whether units are failed" } },
+        { L"status",         { L"status [PATTERN... UNIT|PID...] ", UNIT_CMD, L"Show runtime status of one or more units" } },
+        { L"show",           { L"show [PATTERN... UNIT...] ",    UNIT_CMD, L"Show properties of one or more units/jobs or the manager" } },
+        { L"cat",            { L"cat PATTERN... ",               UNIT_CMD, L"Show files and drop-ins of one or more units" } },
+        { L"set-property",   { L"set-property NAME ASSIGNMENT... ", UNIT_CMD, L"Sets one or more properties of a unit" } },
+        { L"help",           { L"help PATTERN... UNIT|PID... ",  UNIT_CMD, L"Show manual for one or more units" } },
+        { L"reset-failed",   { L"reset-failed [PATTERN...] ", UNIT_CMD, L"Reset failed state for all, one, or more units" } },
+        { L"list-dependencies",  { L"list-dependencies [NAME] ", UNIT_CMD, L"Recursively show units which are required or wanted by this unit or by which this unit is required or wanted" } },
+        { L"list-unit-files", { L"list-unit-files [PATTERN...] ",UNIT_FILE_CMD, L"List installed unit files"} },
+        { L"enable",         { L"enable [NAME...| PATH...] ",    UNIT_FILE_CMD, L"Enable one or more unit files"} },
+        { L"disable",        { L"disable NAME... ",              UNIT_FILE_CMD, L"Disable one or more unit files"} },
+        { L"reenable",       { L"reenable NAME... ",             UNIT_FILE_CMD, L"Reenable one or more unit files"} },
+        { L"preset",         { L"preset NAME... ",               UNIT_FILE_CMD, L"Enable/disable one or more unit files based on preset configuration"} },
+        { L"preset-all",     { L"preset-all ",                   UNIT_FILE_CMD, L"Enable/disable all unit files based on preset configuration"} },
+        { L"is-enabled",     { L"is-enabled NAME... ",           UNIT_FILE_CMD, L"Check whether unit files are enabled"} },
+        { L"mask",           { L"mask NAME... ",                 UNIT_FILE_CMD, L"Mask one or more units"} },
+        { L"unmask",         { L"unmask NAME... ",               UNIT_FILE_CMD, L"Unmask one or more units"} },
+        { L"link",           { L"link PATH... ",                 UNIT_FILE_CMD, L"Link one or more units files into the search path"} },
+        { L"revert",         { L"revert NAME... ",               UNIT_FILE_CMD, L"Revert one or more unit files to vendor version" } },
+        { L"add-wants",      { L"add-wants TARGET NAME... ",     UNIT_FILE_CMD, L"Add 'Wants' dependency for the target on specified one or more units" } },
+        { L"add-requires",   { L"add-requires TARGET NAME... ",  UNIT_FILE_CMD, L"Add 'Requires' dependency for the target on specified one or more units" } },
+        { L"edit",           { L"edit NAME... ",                 UNIT_FILE_CMD, L"Edit one or more unit files" } },
+        { L"get-default",    { L"get-default ",                  UNIT_FILE_CMD, L"Get the name of the default target" } },
+        { L"set-default",    { L"set-default NAME ",             UNIT_FILE_CMD, L"Set the default target" } },
+        { L"list-machines",  { L"list-machines [PATTERN...] ",   MACHINE_CMD,   L"List local containers and host" } },
+        { L"list-jobs",      { L"list-jobs [PATTERN...] ",       JOB_CMD,       L"List jobs" } },
+        { L"cancel",         { L"cancel [JOB...] ",              JOB_CMD,       L"Cancel all, one, or more jobs" } },
+        { L"show-environment",{ L"show-environment ",            ENV_CMD,       L"Dump environment" } },
+        { L"set-environment", { L"set-environment NAME=VALUE... ",ENV_CMD,      L"Set one or more environment variables" } },
+        { L"unset-environment",{ L"unset-environment NAME... ",  ENV_CMD,       L"Unset one or more environment variables" } },
+        { L"import-environment",{ L"import-environment [NAME...] ", ENV_CMD,    L"Import all or some environment variables" } },
+        { L"daemon-reload",  { L"daemon-reload ",                LIFECYCLE_CMD, L"Reload systemd manager configuration" } },
+        { L"daemon-reexec",  { L"daemon-reexec ",                LIFECYCLE_CMD, L"Reexecute systemd manager" } },
+        { L"is-system-running", { L"is-system-running ",         SYSTEM_CMD,    L"Check whether system is fully running" } },
+        { L"default",        { L"default ",                      SYSTEM_CMD,    L"Enter system default mode" } },
+        { L"rescue",         { L"rescue ",                       SYSTEM_CMD,    L"Enter system rescue mode" } },
+        { L"emergency",      { L"emergency ",                    SYSTEM_CMD,    L"Enter system emergency mode" } },
+        { L"halt",           { L"halt ",                         SYSTEM_CMD,    L"Shut down and halt the system" } },
+        { L"poweroff",       { L"poweroff ",                     SYSTEM_CMD,    L"Shut down and power-off the system" } },
+        { L"reboot",         { L"reboot [ARG] ",                 SYSTEM_CMD,    L"Shut down and reboot the system" } },
+        { L"kexec",          { L"kexec ",                        SYSTEM_CMD,    L"Shut down and reboot the system with kexec" } },
+        { L"exit",           { L"exit [EXIT_CODE] ",             SYSTEM_CMD,    L"Request user instance or container exit" } },
+        { L"switch-root",    { L"switch-root ROOT [INIT] ",      SYSTEM_CMD,    L"Change to a different root file system" } },
+        { L"suspend",        { L"suspend ",                      SYSTEM_CMD,    L" Suspend the system" } },
+        { L"hibernate",      { L"hibernate ",                    SYSTEM_CMD,    L" Hibernate the system" } },
+        { L"hybrid-sleep",   { L"hybrid-sleep ",                 SYSTEM_CMD,    L" Hibernate and suspend the system" } },
+        { L"suspend-then-hibernate", { L"suspend-then-hibernate ", SYSTEM_CMD,  L" Suspend the system, wake after a period of time and put it into hibernate" } },
+    };
+};
+
+void PrintCommandUsage(const wstring &cmd, const wstring &local_msg = L"")
+{
+    if (!local_msg.empty()) {
+        wcerr << local_msg << std::endl;
+    }
+    auto help_entry = SystemCtlHelp::Help_Map[cmd];
+    std::wstring  cmdname = std::get<0>(help_entry);
+    std::wstring  cmddesc = std::get<2>(help_entry);
+    wcerr << L"Usage:" << std::endl;
+    wcerr << L"    systemctl " << cmdname << std::endl;
+    wcerr << L"        " << cmddesc << std::endl;
+}
+
+void PrintMasterUsage(std::wstring binary_name, boost::program_options::options_description &desc )
+
+{
+    // show master usage message
+    wcout << "Usage: " << binary_name << " command [options] " << std::endl;
+    wcout << L"Unit commands:" << std::endl;
+    for (auto const &this_entry: SystemCtlHelp::Help_Map) {
+        auto help_entry = this_entry.second;
+        int cmdtype = std::get<1>(help_entry);
+        if (cmdtype == SystemCtlHelp::UNIT_CMD) {
+            std::wstring  cmdname = std::get<0>(help_entry);
+            std::wstring  cmddesc = std::get<2>(help_entry);
+            wcout << std::setw(30) << cmdname;
+            wcout << L" ";
+            wcout << std::setw(-100) << cmddesc;
+            wcout << std::endl;
+        }
+    }
+    wcout << std::endl;
+
+    wcout << L"Unit File commands:" << std::endl;
+    for (auto const &this_entry: SystemCtlHelp::Help_Map) {
+        auto help_entry = this_entry.second;
+        int cmdtype = std::get<1>(help_entry);
+        if (cmdtype == SystemCtlHelp::UNIT_FILE_CMD) {
+            std::wstring  cmdname = std::get<0>(help_entry);
+            std::wstring  cmddesc = std::get<2>(help_entry);
+            wcout << std::setw(30) << cmdname;
+            wcout << L" ";
+            wcout << std::setw(-100) << cmddesc;
+            wcout << std::endl;
+        }
+    }
+    wcout << std::endl;
+
+    wcout << L"Environment commands:" << std::endl;
+    for (auto const &this_entry: SystemCtlHelp::Help_Map) {
+        auto help_entry = this_entry.second;
+        int cmdtype = std::get<1>(help_entry);
+        if (cmdtype == SystemCtlHelp::ENV_CMD) {
+            std::wstring  cmdname = std::get<0>(help_entry);
+            std::wstring  cmddesc = std::get<2>(help_entry);
+            wcout << std::setw(30) << cmdname;
+            wcout << L" ";
+            wcout << std::setw(-100) << cmddesc;
+            wcout << std::endl;
+        }
+    }
+    wcout << std::endl;
+    wcout << L"Manager Lifecycle commands:" << std::endl;
+    for (auto const &this_entry: SystemCtlHelp::Help_Map) {
+        auto help_entry = this_entry.second;
+        int cmdtype = std::get<1>(help_entry);
+        if (cmdtype == SystemCtlHelp::ENV_CMD) {
+            std::wstring  cmdname = std::get<0>(help_entry);
+            std::wstring  cmddesc = std::get<2>(help_entry);
+            wcout << std::setw(30) << cmdname;
+            wcout << L" ";
+            wcout << std::setw(-100) << cmddesc;
+            wcout << std::endl;
+        }
+    }
+    wcout << std::endl;
+    wcout << "Options:" << std::endl;
+
+    cout << desc;
+}
+
+
+static const int NOT_IMPLEMENTED = -1;
 
 wstring SystemDUnitPool::UNIT_DIRECTORY_PATH = L""; // Quasi constant
 wstring SystemDUnitPool::ACTIVE_UNIT_DIRECTORY_PATH = L""; // Quasi constant
@@ -118,17 +275,17 @@ int SystemCtrl_Cmd_List_Timers( boost::program_options::variables_map &vm )
     return -1;
 }
 
-
 int SystemCtrl_Cmd_Start( boost::program_options::variables_map &vm )
 {
-   wstring usage = L"usage: Systemctl start <unitname>[ unitname .. unitname]";
-
-    vector<wstring> units = vm["system_units"].as<vector<wstring>>();
-    if (units.empty()) {
+    vector<wstring> units;
+    if (vm.count("system_units")) {
+        units = vm["system_units"].as<vector<wstring>>();
+    } 
+    else {
         // Complain and exit
 
         SystemCtlLog::msg << L"No unit specified"; SystemCtlLog::Error();
-        SystemCtlLog::msg << usage.c_str(); SystemCtlLog::Error();
+        PrintCommandUsage(vm["command"].as<wstring>(), L"no unit specified");
         exit(1);
     }
 
@@ -144,8 +301,9 @@ int SystemCtrl_Cmd_Start( boost::program_options::variables_map &vm )
         class SystemDUnit *unit = SystemDUnitPool::FindUnit(unitname);
         if (!unit) {
             // Complain and exit
-            SystemCtlLog::msg << L"Failed to enable unit: Unit file " << unitname.c_str() << L"does not exist"; SystemCtlLog::Error();
-            SystemCtlLog::msg << usage.c_str(); SystemCtlLog::Error();
+            SystemCtlLog::msg << L"Failed to enable unit: Unit file " << unitname.c_str() << L"does not exist";
+            PrintCommandUsage(vm["command"].as<wstring>(), SystemCtlLog::msg.str());
+            SystemCtlLog::Error();
             exit(1);
         }
         unit->StartService(false); // We will add non-blocking later
@@ -157,13 +315,16 @@ int SystemCtrl_Cmd_Start( boost::program_options::variables_map &vm )
 
 int SystemCtrl_Cmd_Stop( boost::program_options::variables_map &vm )
 {
-   wstring usage = L"usage: Systemctl stop <unitname>\n";
 
-    vector<wstring> units = vm["system_units"].as<vector<wstring>>();
-    if (units.empty()) {
+    vector<wstring> units;
+    if (vm.count("system_units")) {
+        units = vm["system_units"].as<vector<wstring>>();
+    } 
+    else {
         // Complain and exit
+
         SystemCtlLog::msg << L"No unit specified"; SystemCtlLog::Error();
-        SystemCtlLog::msg << usage.c_str(); SystemCtlLog::Error();
+        PrintCommandUsage(vm["command"].as<wstring>(), L"no unit specified");
         exit(1);
     }
 
@@ -179,8 +340,9 @@ int SystemCtrl_Cmd_Stop( boost::program_options::variables_map &vm )
         class SystemDUnit *unit = SystemDUnitPool::FindUnit(unitname);
         if (!unit) {
             // Complain and exit
-            SystemCtlLog::msg << "Failed to stop service: Unit file " << unitname.c_str() << "does not exist\n";
-            SystemCtlLog::msg << usage.c_str(); SystemCtlLog::Error();
+            SystemCtlLog::msg << "Failed to stop service: Unit file " << unitname.c_str() << " does not exist\n";
+            PrintCommandUsage(vm["command"].as<wstring>(), SystemCtlLog::msg.str());
+            SystemCtlLog::Error();
             exit(1);
         }
         unit->StopService(false); // We will add non-blocking later
@@ -228,7 +390,6 @@ int SystemCtrl_Cmd_Isolate( boost::program_options::variables_map &vm )
 int SystemCtrl_Cmd_Kill( boost::program_options::variables_map &vm )
 
 {
-    wstring usage = L"usage: Systemctl kill unitname1 [unitname2 ...]\n";
     static std::map<std::wstring, int>kill_who_dict = {
               { L"main",    SystemCtl::KILL_ACTION_MAIN},
               { L"control", SystemCtl::KILL_ACTION_CONTROL},
@@ -303,11 +464,15 @@ int SystemCtrl_Cmd_Kill( boost::program_options::variables_map &vm )
             { L"31", 31}
          };
 
-    vector<wstring> units = vm["system_units"].as<vector<wstring>>();
-    if (units.empty()) {
+    vector<wstring> units;
+    if (vm.count("system_units")) {
+        units = vm["system_units"].as<vector<wstring>>();
+    } 
+    else {
         // Complain and exit
+
         SystemCtlLog::msg << L"No unit specified"; SystemCtlLog::Error();
-        SystemCtlLog::msg << usage.c_str(); SystemCtlLog::Error();
+        PrintCommandUsage(vm["command"].as<wstring>(), L"no unit specified");
         exit(1);
     }
 
@@ -316,35 +481,35 @@ int SystemCtrl_Cmd_Kill( boost::program_options::variables_map &vm )
               unitname.append(L".service");
         }
 
-	    int kill_action = SystemCtl::KILL_ACTION_ALL;
+        int kill_action = SystemCtl::KILL_ACTION_ALL;
         if (vm.count("kill-who")) {
-	    std::wstring who = vm["kill-who"].as<wstring>();
-        kill_action = kill_who_dict[who];
-	    if (!kill_action) {
-	        // Illegal Value
-            SystemCtlLog::msg << L"Kill action " << vm["kill-who"].as<wstring>() << L"is unknown";
-		    SystemCtlLog::Error();
-		    return 1;
-	    }
+            std::wstring who = vm["kill-who"].as<wstring>();
+            kill_action = kill_who_dict[who];
+            if (!kill_action) {
+                // Illegal Value
+                 SystemCtlLog::msg << L"Kill action " << vm["kill-who"].as<wstring>() << L"is unknown";
+                 SystemCtlLog::Error();
+                 return 1;
+            }
         }
 
         int kill_signal;
         if (vm.count("signal")) {
             std::wstring signame = vm["signal"].as<wstring>();
             kill_signal = signal_dict[signame];
-	        if (!kill_signal) {
+                if (!kill_signal) {
                 SystemCtlLog::msg << L"Signal " << vm["signal"].as<wstring>() << L"is unknown";
                 SystemCtlLog::Error();
-		return 1;
-	    }
+                return 1;
+            }
         }
 
         class SystemDUnit *unit = SystemDUnitPool::FindUnit(unitname);
         if (!unit) {
             // Complain and exit
-            SystemCtlLog::msg << L"Failed to find unit to kill: Unit file " << unitname.c_str() << L"does not exist" << std::endl;
-            SystemCtlLog::msg << usage.c_str(); SystemCtlLog::Error();
-	    return 1;
+            SystemCtlLog::msg << L"Failed to find unit to kill: Unit file " << unitname.c_str() << L" does not exist" << std::endl;
+            SystemCtlLog::Error();
+            return 1;
         }
         unit->Kill(kill_signal, kill_action, false); // We will add non-blocking later
     }
@@ -418,13 +583,17 @@ int SystemCtrl_Cmd_Status( boost::program_options::variables_map &vm )
 
 int SystemCtrl_Cmd_Show( boost::program_options::variables_map &vm )
 {
-   wstring usage = L"usage: Systemctl show [ <unitname> ]\n";
 
-   if (vm["system_units"].empty()) {
+    vector<wstring> units;
+    if (vm.count("system_units")) {
+        units = vm["system_units"].as<vector<wstring>>();
+    } 
+    else {
+
         g_pool->ShowGlobal();
         return 0;
-   }
-   vector<wstring> units = vm["system_units"].as<vector<wstring>>();
+    }
+
     for (wstring unitname: units) {
         if (unitname.rfind(L".service") == string::npos &&
             unitname.rfind(L".target")  == string::npos &&
@@ -438,8 +607,9 @@ int SystemCtrl_Cmd_Show( boost::program_options::variables_map &vm )
         class SystemDUnit *unit = SystemDUnitPool::FindUnit(unitname);
         if (!unit) {
             // Complain and exit
-            SystemCtlLog::msg << L"Failed to show service: Unit file " << unitname.c_str() << L"does not exist"; SystemCtlLog::Error();
-            SystemCtlLog::msg << usage.c_str(); SystemCtlLog::Error();
+            SystemCtlLog::msg << L"Failed to show service: Unit file " << unitname.c_str() << L" does not exist";
+            PrintCommandUsage(vm["command"].as<wstring>(), SystemCtlLog::msg.str());
+            SystemCtlLog::Error();
             exit(1);
         }
         unit->ShowService(); // We will add non-blocking later
@@ -494,16 +664,19 @@ int SystemCtrl_Cmd_List_Unit_Files( boost::program_options::variables_map &vm )
 
 int SystemCtrl_Cmd_Enable( boost::program_options::variables_map &vm )
 {
-    wstring usage = L"usage: Systemctl enable <unitname>\n";
 
-    if (vm["system_units"].empty()) {
+    vector<wstring> units;
+    if (vm.count("system_units")) {
+        units = vm["system_units"].as<vector<wstring>>();
+    } 
+    else {
         // Complain and exit
+
         SystemCtlLog::msg << L"No unit specified"; SystemCtlLog::Error();
-        SystemCtlLog::msg << usage.c_str(); SystemCtlLog::Error();
+        PrintCommandUsage(vm["command"].as<wstring>(), L"no unit specified");
         exit(1);
     }
 
-    vector<wstring> units = vm["system_units"].as<vector<wstring>>();
     for (wstring unitname: units) {
         // We allow a shorthand reference via just the service name, but 
         // we recognise the valid file extensions if given.
@@ -511,7 +684,7 @@ int SystemCtrl_Cmd_Enable( boost::program_options::variables_map &vm )
             unitname.rfind(L".target")  == string::npos &&
             unitname.rfind(L".timer")   == string::npos &&
             unitname.rfind(L".socket")  == string::npos ) {
-              unitname.append(L".service");
+            unitname.append(L".service");
         }
     
         wstring service_unit_path = SystemDUnitPool::UNIT_DIRECTORY_PATH+L"\\"+unitname; // We only look for service unit files in the top level directory
@@ -521,7 +694,8 @@ int SystemCtrl_Cmd_Enable( boost::program_options::variables_map &vm )
             if (!unit) {
                 // Complain and exit
                 SystemCtlLog::msg << L"Failed to load unit: Unit file " << service_unit_path.c_str() << L"is invalid\n";
-	        SystemCtlLog::Error();
+                PrintCommandUsage(vm["command"].as<wstring>(), SystemCtlLog::msg.str());
+                SystemCtlLog::Error();
                 return -1;       
            }
         }
@@ -536,16 +710,18 @@ int SystemCtrl_Cmd_Enable( boost::program_options::variables_map &vm )
 
 int SystemCtrl_Cmd_Disable( boost::program_options::variables_map &vm )
 {
-    wstring usage = L"usage: Systemctl disable <unitname>\n";
-
-    if (vm["system_units"].empty()) {
+    vector<wstring> units;
+    if (vm.count("system_units")) {
+        units = vm["system_units"].as<vector<wstring>>();
+    } 
+    else {
         // Complain and exit
+
         SystemCtlLog::msg << L"No unit specified"; SystemCtlLog::Error();
-        SystemCtlLog::msg << usage.c_str(); SystemCtlLog::Error();
+        PrintCommandUsage(vm["command"].as<wstring>(), L"no unit specified");
         exit(1);
     }
 
-    vector<wstring> units = vm["system_units"].as<vector<wstring>>();
     for (wstring unitname: units) {
         if (unitname.rfind(L".service") == string::npos) {
               unitname.append(L".service");
@@ -554,9 +730,8 @@ int SystemCtrl_Cmd_Disable( boost::program_options::variables_map &vm )
         class SystemDUnit *unit = SystemDUnitPool::FindUnit(unitname);
         if (!unit) {
             // Complain and exit
-            SystemCtlLog::msg << L"Failed to enable unit: Unit file " << unitname.c_str() << L"does not exist";
-            SystemCtlLog::Error();
-            SystemCtlLog::msg << usage.c_str();
+            SystemCtlLog::msg << L"Failed to enable unit: Unit file " << unitname.c_str() << L" does not exist";
+            PrintCommandUsage(vm["command"].as<wstring>(), SystemCtlLog::msg.str());
             SystemCtlLog::Error();
             exit(1);
         }
@@ -598,7 +773,7 @@ int SystemCtrl_Cmd_Is_Enabled( boost::program_options::variables_map &vm )
         if (!unit) {
             // Complain and exit
             SystemCtlLog::msg << L"Failed to get unit file state for " << unitname.c_str() << L": No such file or directory";
-	    SystemCtlLog::Error();
+            SystemCtlLog::Error();
             exit(1);
         }
         if (unit->IsEnabled() ) {
@@ -634,13 +809,13 @@ int SystemCtrl_Cmd_Mask( boost::program_options::variables_map &vm )
         }
 
         SystemCtlLog::msg << L"Mask unit " << unitname << std::endl;
-	SystemCtlLog::Info();
+        SystemCtlLog::Info();
 
         class SystemDUnit *unit = SystemDUnitPool::FindUnit(unitname);
         if (!unit) {
             // Complain and exit
-            SystemCtlLog::msg << L"Failed to enable unit: Unit file " << unitname.c_str() << L"does not exist\n" << usage.c_str();
-	    SystemCtlLog::Error();
+            SystemCtlLog::msg << L"Failed to enable unit: Unit file " << unitname.c_str() << L" does not exist\n" << usage.c_str();
+            SystemCtlLog::Error();
             exit(1);
         }
         unit->Mask(false); // We will add non-blocking later
@@ -670,7 +845,7 @@ int SystemCtrl_Cmd_Unmask( boost::program_options::variables_map &vm )
         if (!unit) {
             // Complain and exit
             SystemCtlLog::msg << L"Failed to unmask unit: Unit file " << unitname.c_str() << L"does not exist\n" << usage.c_str();
-	    SystemCtlLog::Error();
+            SystemCtlLog::Error();
             exit(1);
         }
         unit->Unmask(false); // We will add non-blocking later
@@ -920,6 +1095,7 @@ std::map< std::wstring , cmdfunc> Command_Map =  {
 };
 
 
+
 void ParseArgs(int argc, wchar_t *argv[])
 
 {
@@ -927,7 +1103,6 @@ void ParseArgs(int argc, wchar_t *argv[])
     boost::program_options::positional_options_description pd;
     pd.add("command", 1);
     pd.add("system_units", -1);
-
 
     boost::program_options::options_description desc{ "Options" };
     desc.add_options()
@@ -992,7 +1167,13 @@ void ParseArgs(int argc, wchar_t *argv[])
         cmd = vm["command"].as<wstring>();
     }
     else {
-        // show usage message
+        cmd = L"help";
+    }
+
+    if (cmd.compare(L"help") == 0) {
+
+        PrintMasterUsage(argv[0], desc );
+        exit(0);
     }
 
     if (vm.count("systemd-execpath")) {
@@ -1002,13 +1183,13 @@ void ParseArgs(int argc, wchar_t *argv[])
         // show usage message
     }
 
-
     cmdfunc func = Command_Map[cmd];
     if (!func) {
         std::wstringstream msg;
         msg << "Invalid command " << cmd;
         std::wstring ws = msg.str();
         std::string msgstr = std::string(ws.begin(), ws.end());
+        PrintMasterUsage(argv[0], desc);
 
         throw std::exception(msgstr.c_str());
     }
@@ -1017,7 +1198,12 @@ void ParseArgs(int argc, wchar_t *argv[])
 
         if (result) {
             std::wstringstream msg;
-            msg << "the command " << cmd << " failed. code = " << result;
+            if (result == NOT_IMPLEMENTED) {
+                 msg << L"the command " << cmd << " has not been implemented" ;
+            }
+            else {
+                 msg << "the command " << cmd << " failed. code = " << result;
+            }
             std::wstring ws = msg.str();
             std::string msgstr = std::string(ws.begin(), ws.end());
 
@@ -1036,10 +1222,9 @@ int wmain(int argc, wchar_t *argv[])
     }
     catch(std::exception &e) {
         SystemCtlLog::msg << e.what();
-	    SystemCtlLog::Error();
+            SystemCtlLog::Error();
         exit(1);
     }
     exit(0);
 }
-
 
