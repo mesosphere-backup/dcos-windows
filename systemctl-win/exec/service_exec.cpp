@@ -442,8 +442,6 @@ void CWrapperService::GetCurrentEnv()
     LPCWSTR envPair = (LPCWSTR)tmpEnv;
     while (envPair[0])
     {
-
-
         wregex rgx(L"^([^=]*)=(.*)$");
         wsmatch matches;
         wstring envPairStr = envPair;
@@ -467,20 +465,38 @@ void CWrapperService::GetCurrentEnv()
  * The rule is that if the env file passed in ends with .ps1, we will go ahead and read it as powershell
  * any other extension, including none, we treat as bash syntax
  */
-void CWrapperService::LoadEnvVarsFromFile(const wstring& path)
+boolean CWrapperService::LoadEnvVarsFromFile(const wstring& file_path)
 {
+    boolean failure_ok = false;
+    wstring path;
+
+    path = file_path;
+    if (file_path[0] == '-') {
+        failure_ok = true;
+        path.erase(0,1);
+    }
 
     size_t ext_idx = path.find_last_of(L'.');
     wstring file_ext = ext_idx != std::string::npos? path.substr(ext_idx) : L"";
 
+*logfile << Debug() << L"envfile path = " << path << std::endl;
+
     if (file_ext.compare(L".ps1") == 0) {
-        LoadPShellEnvVarsFromFile(path);
-        return;
+        if (!LoadPShellEnvVarsFromFile(path)) {
+            return failure_ok;
+        }
+        else {
+            return true;
+        }
     }
     else {
         wifstream inputFile(path);
         wstring line;
     
+        if (inputFile.fail()) {
+            return failure_ok;
+        }
+
         while (getline(inputFile, line))
         {
             wregex rgx(L"^([^#][^=]*)=(.*)$");
@@ -494,13 +510,26 @@ void CWrapperService::LoadEnvVarsFromFile(const wstring& path)
             }
         }
     }
+    return true;
 }
 
-void CWrapperService::LoadPShellEnvVarsFromFile(const wstring& path)
+boolean CWrapperService::LoadPShellEnvVarsFromFile(const wstring& file_path)
 {
+    boolean failure_ok = false;
+    wstring path;
+
+    path = file_path;
+    if (file_path[0] == '-') {
+        failure_ok = true;
+        path.erase(0,1);
+    }
+
     wifstream inputFile(path);
     wstring line;
 
+    if (inputFile.fail()) {
+        return failure_ok;
+    }
     while (getline(inputFile, line))
     {
         wregex rgx(L"^\\s*\\$env:([^#=]*)=['\"](.*)['\"]$");
@@ -543,11 +572,9 @@ void CWrapperService::LoadPShellEnvVarsFromFile(const wstring& path)
 
             m_Env[name] = value;
             *logfile << L"PS environment file key = " << name << " val " << value << std::endl;
-
-            
         }
     }
-
+    return true;
 }
 
 
@@ -762,13 +789,19 @@ DWORD WINAPI CWrapperService::ServiceThread(LPVOID param)
             for (auto envFile : self->m_EnvironmentFiles)
             {
                 *logfile << Debug() << L"Set up environment file " << envFile << std::endl;
-                self->LoadEnvVarsFromFile(envFile);
+                if (!self->LoadEnvVarsFromFile(envFile)) {
+                    *logfile << Error() << L"could not find required environment file " << envFile << std::endl;
+                    throw RestartException(2, "environment file not found");
+                }
             }
 
             for (auto envFile : self->m_EnvironmentFilesPS)
             {
                 *logfile << Debug() << L"Set up pwsh environment file " << envFile << std::endl;
-                self->LoadPShellEnvVarsFromFile(envFile);
+                if (!self->LoadPShellEnvVarsFromFile(envFile)) {
+                    *logfile << Error() << L"could not find required environment file " << envFile << std::endl;
+                    throw RestartException(2, "Powershell environment file not found");
+                }
             }
 
             // Now we have the map, we can populate the buffer

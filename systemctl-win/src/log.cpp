@@ -12,6 +12,7 @@ namespace SystemCtlLog {
     {
         wcerr << L"ERROR: " << msg.str() << std::endl;
         msg.flush();
+        msg.str(L"");
     }
     
     void Warning() 
@@ -20,6 +21,7 @@ namespace SystemCtlLog {
             wcerr << L"WARNING: " << msg.str() << std::endl;
         }    
         msg.flush();
+        msg.str(L"");
     }
     
     void Info() 
@@ -28,6 +30,7 @@ namespace SystemCtlLog {
             wcerr << L"INFO: " << msg.str() << std::endl;
         }    
         msg.flush();
+        msg.str(L"");
     }
     
     void Verbose() 
@@ -36,6 +39,7 @@ namespace SystemCtlLog {
             wcerr << L"VERBOSE: " << msg.str() << std::endl;
         }    
         msg.flush();
+        msg.str(L"");
     }
     
     void Debug() 
@@ -44,5 +48,6 @@ namespace SystemCtlLog {
             wcerr << L"DEBUG: " << msg.str() << std::endl;
         }    
         msg.flush();
+        msg.str(L"");
     }
 }
