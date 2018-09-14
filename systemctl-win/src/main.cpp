@@ -359,7 +359,39 @@ int SystemCtrl_Cmd_Reload( boost::program_options::variables_map &vm )
 
 int SystemCtrl_Cmd_Restart( boost::program_options::variables_map &vm )
 {
-    return -1;
+    vector<wstring> units;
+    if (vm.count("system_units")) {
+        units = vm["system_units"].as<vector<wstring>>();
+    } 
+    else {
+        // Complain and exit
+
+        SystemCtlLog::msg << L"No unit specified"; SystemCtlLog::Error();
+        PrintCommandUsage(vm["command"].as<wstring>(), L"no unit specified");
+        exit(1);
+    }
+
+    for (wstring unitname: units) {
+    
+        if (unitname.rfind(L".service") == string::npos &&
+            unitname.rfind(L".target")  == string::npos &&
+            unitname.rfind(L".timer")   == string::npos &&
+            unitname.rfind(L".socket")  == string::npos ) {
+              unitname.append(L".service");
+        }
+
+        class SystemDUnit *unit = SystemDUnitPool::FindUnit(unitname);
+        if (!unit) {
+            // Complain and exit
+            SystemCtlLog::msg << L"Failed to enable unit: Unit file " << unitname.c_str() << L"does not exist";
+            PrintCommandUsage(vm["command"].as<wstring>(), SystemCtlLog::msg.str());
+            SystemCtlLog::Error();
+            exit(1);
+        }
+        unit->RestartService(false); // We will add non-blocking later
+    }
+
+    return 0;
 }
 
 
@@ -583,13 +615,11 @@ int SystemCtrl_Cmd_Status( boost::program_options::variables_map &vm )
 
 int SystemCtrl_Cmd_Show( boost::program_options::variables_map &vm )
 {
-
     vector<wstring> units;
     if (vm.count("system_units")) {
         units = vm["system_units"].as<vector<wstring>>();
     } 
     else {
-
         g_pool->ShowGlobal();
         return 0;
     }
@@ -620,7 +650,34 @@ int SystemCtrl_Cmd_Show( boost::program_options::variables_map &vm )
 
 int SystemCtrl_Cmd_Cat( boost::program_options::variables_map &vm )
 {
-    return -1;
+    vector<wstring> units;
+    if (!vm.count("system_units")) {
+        SystemCtlLog::msg << L"No unit specified"; SystemCtlLog::Error();
+        exit(1);
+
+    }
+    units = vm["system_units"].as<vector<wstring>>();
+    for (wstring unitname: units) {
+        if (unitname.rfind(L".service") == string::npos &&
+            unitname.rfind(L".target")  == string::npos &&
+            unitname.rfind(L".timer")   == string::npos &&
+            unitname.rfind(L".socket")  == string::npos ) {
+            unitname.append(L".service");
+        }
+    
+        class SystemDUnit *unit = SystemDUnitPool::FindUnit(unitname);
+        if (!unit) {
+            // Complain and exit
+            SystemCtlLog::msg << L"Failed to cat service: Unit file " << unitname.c_str() << L" does not exist";
+            PrintCommandUsage(vm["command"].as<wstring>(), SystemCtlLog::msg.str());
+            SystemCtlLog::Error();
+            exit(1);
+        }
+
+        // Cat service unit to stdout
+        unit->CatUnit(wcout);
+    }
+    return 0;
 }
 
 
