@@ -373,6 +373,8 @@ CWrapperService::GetServiceDependencies()
 }
 
 
+static wchar_t g_EnvVarChars[] = L"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890_";
+
 std::wstring CWrapperService::ResolveEnvVars(std::wstring arg)
 
 {
@@ -480,7 +482,7 @@ boolean CWrapperService::LoadEnvVarsFromFile(const wstring& file_path)
     size_t ext_idx = path.find_last_of(L'.');
     wstring file_ext = ext_idx != std::string::npos? path.substr(ext_idx) : L"";
 
-*logfile << Debug() << L"envfile path = " << path << std::endl;
+    *logfile << Debug() << L"envfile path = " << path << std::endl;
 
     if (file_ext.compare(L".ps1") == 0) {
         if (!LoadPShellEnvVarsFromFile(path)) {
@@ -506,8 +508,46 @@ boolean CWrapperService::LoadEnvVarsFromFile(const wstring& file_path)
             {
                 auto name = boost::algorithm::trim_copy(matches[1].str());
                 auto value = boost::algorithm::trim_copy(matches[2].str());
+                if (value[0] == L'\"' || value[0] == L'\'') {
+                    value.erase(value.length()-1, 1);
+                    value.erase(0, 1);
+                }
                 m_Env[name] = value;
-               *logfile << Debug() << L"environment file key = " << name << " val " << value << std::endl;
+
+                // Now we need to look for powershell syntax environment variables embedded in the string
+                size_t pos = 0;
+                while (pos != std::string::npos) {
+                    size_t env_var_idx = value.find(L"$", pos);
+                    if (env_var_idx != std::string::npos) {
+                        wstring env_var;
+                        size_t var_start = env_var_idx+1; // length of $env:
+                        size_t var_end = std::string::npos;
+                        var_end = value.find_first_not_of(g_EnvVarChars, var_start);
+                        if (var_end != std::string::npos) {
+                            
+                           env_var = value.substr(var_start, var_end-var_start);
+                        }
+                        else {
+                           env_var = value.substr(var_start);
+                        }
+                        // We uppercase all env var names because they are case insensitive in powershell
+                        std::transform(env_var.begin(), env_var.end(), env_var.begin(), ::toupper);
+    
+                        *logfile << Debug() << L"expand m_env[" << env_var << L"] = "  << m_Env[env_var] << std::endl;
+    
+                        value.replace(env_var_idx, env_var.length()+1, m_Env[env_var]);
+                        pos = env_var_idx; // We dont have an env there any more, but the env_var could 
+                                           // contain more env_var so we rescan
+    
+                        *logfile << Debug() << L"env_var = " << env_var << L" expanded value = " << value << std::endl;
+                    }
+                    else {
+                        break;
+                    }     
+                }
+    
+                m_Env[name] = value;
+                *logfile << Debug() << L"bash environment file key : " << name << " val \'" << value << L"\'" << std::endl;
             }
         }
     }
@@ -540,7 +580,7 @@ boolean CWrapperService::LoadPShellEnvVarsFromFile(const wstring& file_path)
             auto name = boost::algorithm::trim_copy(matches[1].str());
             auto value = boost::algorithm::trim_copy(matches[2].str());
 
-            // Now we need to look for powershell environment variables embedded in the screen
+            // Now we need to look for powershell syntax environment variables embedded in the string
             size_t pos = 0;
             while (pos != std::string::npos) {
                 size_t env_var_idx = value.find(L"$env:", pos);
@@ -548,9 +588,10 @@ boolean CWrapperService::LoadPShellEnvVarsFromFile(const wstring& file_path)
                     wstring env_var;
                     size_t var_start = env_var_idx+5; // length of $env:
                     size_t var_end = std::string::npos;
-                    var_end = value.find_first_of(L";", var_start);
+                    var_end = value.find_first_not_of(g_EnvVarChars, var_start);
                     if (var_end != std::string::npos) {
-                       env_var = value.substr(var_start, pos-var_end);
+                        
+                       env_var = value.substr(var_start, var_end-var_start);
                     }
                     else {
                        env_var = value.substr(var_start);
@@ -945,34 +986,41 @@ DWORD WINAPI CWrapperService::TimerThread(LPVOID param)
                 break;
             }
         }
+        SERVICE_STATUS_PROCESS svc_status = {0};
+        DWORD size_needed = sizeof(SERVICE_STATUS_PROCESS);
+        while (!QueryServiceStatusEx(hsvc, SC_STATUS_PROCESS_INFO, (BYTE*)&svc_status, sizeof(SERVICE_STATUS_PROCESS), &size_needed)) {
+           ::SleepEx(1000, true);
+           *logfile << Debug() << L"service " << unit_name << L" not started. wait for 1000 millis" << std::endl;
+        }
+        HANDLE hSvcProc = OpenProcess( PROCESS_QUERY_INFORMATION | SYNCHRONIZE, FALSE, svc_status.dwProcessId);
+        if (hSvcProc == INVALID_HANDLE_VALUE) {
+           *logfile << Error() << L"service " << unit_name << L" Could not get process handle" << std::endl;
+        }
+
         *logfile << Debug() << L"service " << unit_name << L" started wait for " << (next_deadline-GetTickCount64()) << L" millis" << std::endl;
 
         // Wait for service inactive
-        since_service_inactive_millis = -1;
-        while (GetTickCount64() < next_deadline) {
-            Sleep(accuracy_millis);
-            SERVICE_STATUS svc_status = {0};
-            if (!QueryServiceStatus(hsvc, &svc_status)) {
-                *logfile << Debug() << L"could not query service " << unit_name << std::endl;
-                break;
-            }
-            if (svc_status.dwCurrentState == SERVICE_STOPPED) {
-                *logfile << Debug() << L"service " << unit_name << L" status == " << svc_status.dwCurrentState << std::endl;
-                since_service_inactive_millis = GetTickCount64();
-                if (on_unit_inactive_millis > 0) {
-                    next_deadline = since_service_inactive_millis+on_unit_inactive_millis;
-                    *logfile << Debug() << L"service " << unit_name << L" on_unit_inactive_timeout sleep time " 
-                                        << (next_deadline-since_service_inactive_millis) << std::endl;
-                    done = false;
-                }
-                break;
+        DWORD timeout = on_unit_active_millis? on_unit_active_millis : INFINITE;
+        WaitForSingleObject(hSvcProc, timeout );
+
+        *logfile << Debug() << L"service " << unit_name << L" started wait for " << (next_deadline-GetTickCount64()) << L" millis" << std::endl;
+
+        if (svc_status.dwCurrentState == SERVICE_STOPPED) {
+            *logfile << Debug() << L"service " << unit_name << L" status == " << svc_status.dwCurrentState << std::endl;
+            since_service_inactive_millis = GetTickCount64();
+            if (on_unit_inactive_millis > 0) {
+                next_deadline = since_service_inactive_millis+on_unit_inactive_millis;
+                *logfile << Debug() << L"service " << unit_name << L" on_unit_inactive_timeout sleep time " 
+                                    << (next_deadline-since_service_inactive_millis) << std::endl;
+                done = false;
             }
         }
+
         while (GetTickCount64() < next_deadline) {
             if (on_unit_inactive_millis > 0) {
                 *logfile << Debug() << L"service " << unit_name << L" on_unit_inactive_timeout sleep" << std::endl;
             }
-            Sleep(accuracy_millis);
+            ::SleepEx(accuracy_millis, true);
         }
 
         *logfile << Debug() << L"service " << unit_name << L" timeout complete" << std::endl;

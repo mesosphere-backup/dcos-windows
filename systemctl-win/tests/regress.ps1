@@ -230,6 +230,80 @@ try {
          TestSuccess "Test EnableStartStopRunningService Success"
     } 
 }
+
+
+#
+# Enable test-hello.timer. This will run test-hello.service
+#
+
+try {
+    copy-item "$PWD/isthere.ps1" "c:/tmp"
+    copy-item "$PWD/therealso.ps1" "c:/tmp"
+    invoke-expression " $bindir/systemctl.exe enable test-hello.service"
+    if ($LASTEXITCODE -ne 0) {
+        throw "enable Service test-hello failed"
+    }
+
+    invoke-expression " $bindir/systemctl.exe enable test-hello.timer"
+    if ($LASTEXITCODE -ne 0) {
+        throw "enable timer test-hello failed"
+    }
+        
+    $check = (get-service | where { $_.name -eq "test-hello.service" })
+    if ($check.count -eq 0) {
+        throw "enable test-hello service failed to enable service"
+    }
+
+         invoke-expression " $bindir/systemctl.exe start test-hello.service"
+	 $rslt = ( & $bindir/systemctl.exe is-enabled test-hello.service 2>$NULL )
+	 if ($LASTEXITCODE -ne 0) {
+            throw "enable test-hello service when test-hello is-enable failed rslt = $rslt"
+	 }
+
+	 $rslt = ( & $bindir/systemctl.exe is-active test-hello.service 2>$NULL )
+	 if ($LASTEXITCODE -eq 0) {
+            throw "enable test-hello service when test-hello is-active failed rslt = $rslt"
+	 }
+
+         $check.WaitForStatus("Running", "00:05:00")
+
+         if ($check.Status -ne "Running") {
+             throw "start test-hello service timedout"
+         }
+
+         invoke-expression " $bindir/systemctl.exe stop test-hello.service"
+         $check.WaitForStatus("Stopped", "00:05:00")
+
+         if ($check.Status -ne "Stopped") {
+             throw "stop test-hello service timedout"
+         }
+
+         invoke-expression " $bindir/systemctl.exe mask test-hello.service"
+
+         $check = (get-service | where { $_.name -eq "test-hello.service" })
+         if ($check.count -ne 0) {
+            throw "mask test-hello service did not clear service"
+         }
+         if (Test-Path -Path "$activedir/test-hello.service") {
+            throw "mask test-hello service did not clear service unit"
+         }
+
+	 $rslt = ( & $bindir/systemctl.exe is-enabled test-hello.service 2>$NULL )
+	 if ($LASTEXITCODE -ne 1) {
+            throw "enable test-hello service when test-hello is-enable failed on masked service rslt = $rslt"
+	 }
+
+	 $rslt = ( & $bindir/systemctl.exe is-active test-hello.service 2>$NULL )
+	 if ($LASTEXITCODE -ne 1) {
+            throw "enable test-hello service when test-hello is-active failed on masked service rslt = $rslt"
+	 }
+
+         TestSuccess "Test EnableStartStopTimer Success"
+    } 
+}
+
+
+
 catch {
    TestFailed "Test EnableStartStopRunningService failed: $Error"
 }

@@ -1,0 +1,7 @@
+[Unit]
+Description=Generate Hello Timer: periodically invokes the hello service
+# Note that if the unit is not specified, the service is defined by the file named "hello.service" where this
+# is the file "hello.timer"
+[Timer]
+OnBootSec=5sec
+OnUnitActiveSec=10sec
