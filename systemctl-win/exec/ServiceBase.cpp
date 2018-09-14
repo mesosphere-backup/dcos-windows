@@ -129,7 +129,9 @@ WriteEventLogEntry(L"SystemD-Service-Exec", L"Service startng *4.", EVENTLOG_ERR
         ::WaitForSingleObject(hSvcStopEvent, 20000); // In debug, just let it run for 20 sec to verify it is running
     }
     else {
-        ::WaitForSingleObject(hSvcStopEvent, INFINITE);
+        DWORD status = ::WaitForSingleObject(hSvcStopEvent, INFINITE);
+        *logfile << L"stop event signalled. status = " << hSvcStopEvent << std::endl;
+  
     }
 *logfile << L"  stop event " << std::endl;
 WriteEventLogEntry(L"SystemD-Service-Exec", L"Service exit.", EVENTLOG_ERROR_TYPE);
