@@ -457,6 +457,7 @@ public:
     virtual boolean CheckForRequisites();
     virtual boolean WaitForAfters();
     virtual boolean Kill(int action, int killtarget, boolean block);
+    virtual boolean CatUnit(wostream &out);
 
    static void AddUserServiceLogonPrivilege();
 

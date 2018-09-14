@@ -215,7 +215,7 @@ SystemDUnitPool::CopyUnitFileToActive(wstring servicename)
         fs.seekg (0, fs.end);
         int length = fs.tellg();
         SystemCtlLog::msg << L"length " << length;
-    SystemCtlLog::Debug();
+        SystemCtlLog::Debug();
 
         fs.seekg (0, fs.beg);
         wchar_t *buffer = new wchar_t [length];

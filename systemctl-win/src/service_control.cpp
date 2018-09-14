@@ -333,8 +333,50 @@ boolean SystemDUnit::RestartService(boolean blocking)
 {
     StopService(blocking);
     // WaitForStop
-    StartService(blocking);
-    return true;
+    SC_HANDLE hsc = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
+    if (!hsc) {
+        int last_error = GetLastError();
+        SystemCtlLog::msg << "failed to open service manager, err = " << last_error;
+        SystemCtlLog::Error();
+        return false;
+    }
+
+    SC_HANDLE hsvc = OpenServiceW(hsc, this->name.c_str(), SERVICE_QUERY_STATUS);
+    if (!hsvc)
+    {   DWORD last_err = GetLastError();
+
+        if (last_err == ERROR_SERVICE_DOES_NOT_EXIST ||
+            last_err == ERROR_SERVICE_DISABLED ) {
+            SystemCtlLog::msg << L"service " << this->name << " is not enabled ";
+            SystemCtlLog::Error();
+        }
+        else {
+            SystemCtlLog::msg << L" In IsEnabled error from OpenService " << last_err;
+            SystemCtlLog::Error();
+        }
+        CloseServiceHandle(hsc);
+        return false;
+    }
+    
+    SERVICE_STATUS svc_stat = {0};
+    do {
+        for (int retries = 0; retries < 5; retries++ ) {
+            if (QueryServiceStatus(hsvc, &svc_stat)) {
+                SystemCtlLog::msg << L"Restart::QueryServiceStatus succeed status = " << svc_stat.dwCurrentState  ;
+                SystemCtlLog::Debug();
+                break;
+            }
+            SystemCtlLog::msg << L"QueryServiceStatus failed " << GetLastError();
+            SystemCtlLog::Warning();
+        }
+        ::Sleep(500);
+    } 
+    while (svc_stat.dwCurrentState == SERVICE_RUNNING);
+
+    CloseServiceHandle(hsvc); 
+    CloseServiceHandle(hsc);
+
+    return StartService(blocking);
 }
 
 
@@ -472,6 +514,32 @@ boolean SystemDUnit::IsFailed()
     return false;
 }
 
+boolean SystemDUnit::CatUnit(wostream &wostr)
+
+{
+    wstring service_unit_path = SystemDUnitPool::ACTIVE_UNIT_DIRECTORY_PATH+L"\\"+this->name;
+    
+    // Find the unit in the unit library
+    wifstream fs(service_unit_path, std::fstream::in | std::fstream::binary);
+    if (!fs.is_open()) {
+         SystemCtlLog::msg << L"No service unit " << this->name.c_str() << L"Found in unit library";
+         SystemCtlLog::Error();
+         return false;
+    }
+    fs.seekg (0, fs.end);
+    int length = fs.tellg();
+    SystemCtlLog::msg << L"length " << length;
+    SystemCtlLog::Debug();
+
+    fs.seekg (0, fs.beg);
+    wchar_t *buffer = new wchar_t [length];
+    fs.read (buffer, length);
+    fs.close();
+
+    wostr.write (buffer,length);
+
+    return true;
+}
 
 void
 SystemDUnit::RegisterServiceProperties()
