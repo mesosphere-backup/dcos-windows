@@ -1,0 +1,8 @@
+[Unit]
+Description=Hello World
+
+[Service]
+EnvironmentFile=-c:/tmp/nothere.ps1
+EnvironmentFile=-c:/tmp/isthere.ps1
+EnvironmentFile=c:/tmp/therealso.ps1
+ExecStart= cmd /c echo "Hello World"
