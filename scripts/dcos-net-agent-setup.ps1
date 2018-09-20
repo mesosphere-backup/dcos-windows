@@ -57,7 +57,7 @@ function New-Environment {
     New-Directory -RemoveExisting "$DCOS_NET_DIR\lashup"
     New-Directory -RemoveExisting "$DCOS_NET_DIR\mnesia"
     New-Directory -RemoveExisting "$DCOS_NET_DIR\config.d"
-    $binDir = "${DCOS_NET_DIR}\erts-9.2\bin" -replace '\\', '\\'
+    $binDir = "${DCOS_NET_DIR}\erts-10.0.1\bin" -replace '\\', '\\'
     $rootDir = "${DCOS_NET_DIR}" -replace '\\', '\\'
     $context = @{
         'bin_dir' = $binDir
@@ -126,7 +126,7 @@ function Get-UpstreamDNSResolvers {
 }
 
 function New-DCOSNetWindowsAgent {
-    $erlBinary = Join-Path $DCOS_NET_DIR "erts-9.2\bin\erl.exe"
+    $erlBinary = Join-Path $DCOS_NET_DIR "erts-10.0.1\bin\erl.exe"
     if(!(Test-Path $erlBinary)) {
         Throw "The erl binary $erlBinary doesn't exist. Cannot configure the dcos-net Windows agent"
     }
