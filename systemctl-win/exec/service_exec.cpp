@@ -669,10 +669,9 @@ void CWrapperService::StartProcess(LPCWSTR cmdLine, DWORD processFlags, PROCESS_
                   // free the storafge at the end of the function. 
     wchar_t *pWorkingDirectory = NULL;
     if (!m_WorkingDirectory.empty()) {
-        cwd = ResolveEnvVars(m_WorkingDirectory);
-        if (!cwd.empty()) {
-            pWorkingDirectory = (wchar_t*)cwd.c_str();
-        }
+            // TODO: Look up if this string needs to be expanded in an environment variable via ResolveEnvVars
+            // For now assume that the user gave us a valid location.
+            pWorkingDirectory = (wchar_t*)m_WorkingDirectory.c_str();
     }
 
     DWORD tempCmdLineCount = lstrlen(cmdLine) + 1;
