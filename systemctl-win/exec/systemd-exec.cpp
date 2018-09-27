@@ -497,7 +497,7 @@ CLIArgs ParseArgs(int argc, wchar_t *argv[])
     }
 
     if (service_unit_options.count("Service.WorkingDirectory")) {
-        args.workingDirectory = service_unit_options["Service.Restart"].as<std::wstring>();
+        args.workingDirectory = service_unit_options["Service.WorkingDirectory"].as<std::wstring>();
     }
 
     args.restartMillis = 100; // From systemd.service default 100ms
