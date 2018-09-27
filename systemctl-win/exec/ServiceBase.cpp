@@ -106,13 +106,13 @@ void WINAPI CServiceBase::ServiceMain(DWORD dwArgc, PWSTR *pszArgv)
     }
 
 
-WriteEventLogEntry(L"SystemD-Service-Exec", L"Service startng *2.", EVENTLOG_ERROR_TYPE);
+    WriteEventLogEntry(L"SystemD-Service-Exec", L"Service startng *2.", EVENTLOG_ERROR_TYPE);
     // Start the service.
     s_service->Start(dwArgc, pszArgv);
 
-WriteEventLogEntry(L"SystemD-Service-Exec", L"Service startng *3.", EVENTLOG_ERROR_TYPE);
+    WriteEventLogEntry(L"SystemD-Service-Exec", L"Service startng *3.", EVENTLOG_ERROR_TYPE);
 
-*logfile << L" create event" << std::endl;
+    *logfile << L" create event" << std::endl;
     hSvcStopEvent = CreateEvent(
                          NULL,    // default security attributes
                          TRUE,    // manual reset event
@@ -120,21 +120,22 @@ WriteEventLogEntry(L"SystemD-Service-Exec", L"Service startng *3.", EVENTLOG_ERR
                          NULL);   // no name
 
     if ( hSvcStopEvent == NULL) {
-WriteEventLogEntry(L"SystemD-Service-Exec", L"Service abnormal exit.", EVENTLOG_ERROR_TYPE);
+        WriteEventLogEntry(L"SystemD-Service-Exec", L"Service abnormal exit.", EVENTLOG_ERROR_TYPE);
         return;
     }
-WriteEventLogEntry(L"SystemD-Service-Exec", L"Service startng *4.", EVENTLOG_ERROR_TYPE);
-*logfile << L" wait for stop event " << std::endl;
+
+    WriteEventLogEntry(L"SystemD-Service-Exec", L"Service startng *4.", EVENTLOG_ERROR_TYPE);
+    *logfile << L" wait for stop event " << std::endl;
     if (bDebug) {
         ::WaitForSingleObject(hSvcStopEvent, 20000); // In debug, just let it run for 20 sec to verify it is running
-    }
-    else {
+    } else {
         DWORD status = ::WaitForSingleObject(hSvcStopEvent, INFINITE);
-        *logfile << L"stop event signalled. status = " << hSvcStopEvent << std::endl;
+        *logfile << L"stop event signaled. status = " << hSvcStopEvent << std::endl;
   
     }
-*logfile << L"  stop event " << std::endl;
-WriteEventLogEntry(L"SystemD-Service-Exec", L"Service exit.", EVENTLOG_ERROR_TYPE);
+
+    *logfile << L"  stop event " << std::endl;
+    WriteEventLogEntry(L"SystemD-Service-Exec", L"Service exit.", EVENTLOG_ERROR_TYPE);
 }
 
 //
