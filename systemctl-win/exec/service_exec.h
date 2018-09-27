@@ -60,9 +60,9 @@ public:
 
     enum NotifyAction {
         NOTIFY_ACTION_NONE,
-    NOTIFY_ACTION_MAIN,
-    NOTIFY_ACTION_EXEC,
-    NOTIFY_ACTION_ALL
+        NOTIFY_ACTION_MAIN,
+        NOTIFY_ACTION_EXEC,
+        NOTIFY_ACTION_ALL
     };
 
     // The parameter list has gotten very long. This way we have a packet of params
