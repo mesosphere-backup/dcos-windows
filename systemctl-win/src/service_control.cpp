@@ -503,10 +503,9 @@ boolean SystemDUnit::IsFailed()
         SystemCtlLog::Warning();
     }
 
-    if (svc_stat.dwCurrentState == SERVICE_STOPPED) {
-        if (svc_stat.dwWin32ExitCode != 0) {
+    if (svc_stat.dwCurrentState == SERVICE_STOPPED &&
+        svc_stat.dwWin32ExitCode != 0) {
             return true;
-        }
     }
 
     CloseServiceHandle(hsvc); 
