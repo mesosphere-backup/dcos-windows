@@ -71,7 +71,7 @@ BOOL CServiceBase::Run(CServiceBase &service)
     // stopped. The process should simply terminate when the call returns.
     if (bDebug) {
         ServiceMain(0, NULL);
-    return true;
+        return true;
     }
     else {
         return StartServiceCtrlDispatcher(serviceTable);
