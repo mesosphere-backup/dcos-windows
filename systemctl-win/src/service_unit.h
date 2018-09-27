@@ -306,10 +306,10 @@ public:
             g_pool->GetPool().insert(std::make_pair(name, this));
             this->m_retry = 0;
 
-	    this->service_type   = SERVICE_TYPE_SIMPLE;
-	    this->restart_action = RESTART_ACTION_ALWAYS;
-	    this->notify_access  = NOTIFY_ACTION_NONE;
-	    this->restart_sec     = g_pool->globals.DefaultRestartUSec.count()/1000000.0;
+        this->service_type   = SERVICE_TYPE_SIMPLE;
+        this->restart_action = RESTART_ACTION_ALWAYS;
+        this->notify_access  = NOTIFY_ACTION_NONE;
+        this->restart_sec     = g_pool->globals.DefaultRestartUSec.count()/1000000.0;
             this->limitCPU        = g_pool->globals.DefaultLimitCPU;
             this->limitCPUSoft    = g_pool->globals.DefaultLimitCPUSoft;
             this->limitFSIZE      = g_pool->globals.DefaultLimitFSIZE;
