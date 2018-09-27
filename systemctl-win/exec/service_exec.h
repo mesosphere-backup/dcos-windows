@@ -60,9 +60,9 @@ public:
 
     enum NotifyAction {
         NOTIFY_ACTION_NONE,
-	NOTIFY_ACTION_MAIN,
-	NOTIFY_ACTION_EXEC,
-	NOTIFY_ACTION_ALL
+    NOTIFY_ACTION_MAIN,
+    NOTIFY_ACTION_EXEC,
+    NOTIFY_ACTION_ALL
     };
 
     // The parameter list has gotten very long. This way we have a packet of params
@@ -151,11 +151,11 @@ private:
             exitCode = err;
         }
 
-	const char * what () const throw ()
+    const char * what () const throw ()
         {
             std::stringstream ss;
             ss << msg << "exit code: " << exitCode ;
-       	    return ss.str().c_str();
+            return ss.str().c_str();
         }
     };
 
@@ -169,11 +169,11 @@ private:
             exitCode = err;
         }
 
-	const char * what () const throw ()
+    const char * what () const throw ()
         {
             std::stringstream ss;
             ss << msg << "service manager excpetion exit code: " << exitCode ;
-       	    return ss.str().c_str();
+            return ss.str().c_str();
         }
     };
 
@@ -202,7 +202,7 @@ private:
 
     void GetServiceDependencies(); // I know that the dependent info is in the unit file (wants and requires). 
                                  // But if the policy changes for some reason, getting the dependents is 
-                 		    // more robust than assuming that I know what is there
+                            // more robust than assuming that I know what is there
    // void StopServiceDependencies();
 
     static DWORD WINAPI WaitForProcessThread(LPVOID lpParam);
