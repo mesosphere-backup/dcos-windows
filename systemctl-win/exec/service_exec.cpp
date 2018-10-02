@@ -667,7 +667,7 @@ void CWrapperService::StartProcess(LPCWSTR cmdLine, DWORD processFlags, PROCESS_
     // Setup the working directory. Expand any environment variables referenced
 
     wstring cwd;  // This variable manages the storage for the wchar_t * and is easy to work with. It 
-                  // free the storafge at the end of the function. 
+                  // free the storage at the end of the function.
     wchar_t *pWorkingDirectory = NULL;
     if (!m_WorkingDirectory.empty()) {
             // TODO: Look up if this string needs to be expanded in an environment variable via ResolveEnvVars
