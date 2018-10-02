@@ -34,7 +34,7 @@ HANDLE CServiceBase::hSvcStopEvent = NULL;
 
 wojournalstream *CServiceBase::logfile = NULL;
 
-wojournalstream minlog(L"file:", L"c:/var/log/service.log");
+wojournalstream minlog(L"file:", L"c:/var/log/services.log");
 
 // Initialize the singleton service instance.
 CServiceBase *CServiceBase::s_service = NULL;
@@ -233,7 +233,7 @@ CServiceBase::CServiceBase(LPCWSTR pszServiceName,
         *this->logfile << Debug() << L"got log file" << std::endl;
     }
     else {
-        this->logfile = new wojournalstream(L"file:", L"c:\\tmp\\openstackservice.default.log");
+        this->logfile = new wojournalstream(L"file:", L"c:\\var\\log\\systemd.log");
         *this->logfile << Debug() << L"opened log file" << std::endl;
     }
 }

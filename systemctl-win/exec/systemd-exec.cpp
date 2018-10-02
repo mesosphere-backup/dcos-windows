@@ -791,7 +791,7 @@ int wmain(int argc, wchar_t *argv[])
     {
         EnvMap env;
 
-        unit_log.open(L"file:", L"c:\\var\\log\\openstackservice.log");
+        unit_log.open(L"file:", L"c:\\var\\log\\systemd.log");
 
         unit_log.setlogginglevel(journalstreams::LOGGING_LEVEL_WARNING);
         unit_log.set_default_msglevel(journalstreams::LOGGING_LEVEL_INFO);
