@@ -360,8 +360,8 @@ CLIArgs ParseArgs(int argc, wchar_t *argv[])
     if (service_unit_options.count("Service.StandardOutput")) {
         args.stdoutOutputType = service_unit_options["Service.StandardOutput"].as<wstring>();
  
-        if (args.stdoutOutputType.compare(0, 5, L"file:", 5)) {
-            args.stdoutFilePath = args.stdoutOutputType.substr(0, args.stdoutOutputType.find_first_of(':')+1);
+        if (args.stdoutOutputType.compare(0, 5, L"file:") == 0) {
+            args.stdoutFilePath = args.stdoutOutputType.substr(5, args.stdoutOutputType.length());
         }
     }
     else {
@@ -384,8 +384,8 @@ CLIArgs ParseArgs(int argc, wchar_t *argv[])
     if ( service_unit_options.count("Service.StandardError")) {
         args.stderrOutputType = service_unit_options["Service.StandardError"].as<wstring>();
  
-        if (args.stderrOutputType.compare(0, 5, L"file:", 5)) {
-            args.stderrFilePath = args.stderrOutputType.substr(0, args.stderrOutputType.find_first_of(':')+1);
+        if (args.stderrOutputType.compare(0, 5, L"file:") == 0) {
+            args.stderrFilePath = args.stderrOutputType.substr(5, args.stderrOutputType.length());
         }
     }
     else {
