@@ -830,7 +830,7 @@ DWORD WINAPI CWrapperService::TimerThread(LPVOID param)
     DWORD on_startup_millis       = 0;
     DWORD on_unit_active_millis   = 0;
     DWORD on_unit_inactive_millis = 0;
-    DWORD accuracy_millis         = 0;
+    DWORD accuracy_millis         = 60000; //Default accuracy for timer
     DWORD randomized_delay_millis = 0;
 
     wchar_t unit_name[256] = { 0 };
