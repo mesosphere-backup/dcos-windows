@@ -971,10 +971,10 @@ DWORD WINAPI CWrapperService::TimerThread(LPVOID param)
             case ERROR_ACCESS_DENIED:
             case ERROR_SERVICE_LOGON_FAILED:
     
-                // The user lacks the necessary privelege. Add it and retry once
+                // The user lacks the necessary privilege. Add it and retry once
     
                 *logfile << Warning() << L"In StartService(" << unit_name  << "): StartService failed to logon erno = " 
-                                      << GetLastError() << " account lacks privelege" << std::endl;
+                                      << GetLastError() << " account lacks privilege" << std::endl;
 
                 break;
     
