@@ -100,17 +100,17 @@ void WINAPI CServiceBase::ServiceMain(DWORD dwArgc, PWSTR *pszArgv)
             s_service->m_name, ServiceCtrlHandler);
         if (s_service->m_statusHandle == NULL)
         {
-            WriteEventLogEntry(L"SystemD-Service-Exec", L"Service startng *1.", EVENTLOG_ERROR_TYPE);
+            WriteEventLogEntry(L"SystemD-Service-Exec", L"Service starting *1.", EVENTLOG_ERROR_TYPE);
             throw GetLastError();
         }
     }
 
 
-    WriteEventLogEntry(L"SystemD-Service-Exec", L"Service startng *2.", EVENTLOG_ERROR_TYPE);
+    WriteEventLogEntry(L"SystemD-Service-Exec", L"Service starting *2.", EVENTLOG_ERROR_TYPE);
     // Start the service.
     s_service->Start(dwArgc, pszArgv);
 
-    WriteEventLogEntry(L"SystemD-Service-Exec", L"Service startng *3.", EVENTLOG_ERROR_TYPE);
+    WriteEventLogEntry(L"SystemD-Service-Exec", L"Service starting *3.", EVENTLOG_ERROR_TYPE);
 
     *logfile << L" create event" << std::endl;
     hSvcStopEvent = CreateEvent(
@@ -124,7 +124,7 @@ void WINAPI CServiceBase::ServiceMain(DWORD dwArgc, PWSTR *pszArgv)
         return;
     }
 
-    WriteEventLogEntry(L"SystemD-Service-Exec", L"Service startng *4.", EVENTLOG_ERROR_TYPE);
+    WriteEventLogEntry(L"SystemD-Service-Exec", L"Service starting *4.", EVENTLOG_ERROR_TYPE);
     *logfile << L" wait for stop event " << std::endl;
     if (bDebug) {
         ::WaitForSingleObject(hSvcStopEvent, 20000); // In debug, just let it run for 20 sec to verify it is running
