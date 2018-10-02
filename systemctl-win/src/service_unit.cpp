@@ -123,7 +123,7 @@ SystemDUnit::ParseDuration(std::wstring str, double &millis)
     millis = 0.0;
     do {
         double numval = NAN;
-        double scale  = NAN;
+        double scale  = 1000.0;
         size_t toklen = 0;
 
         while (isspace(*ptok) && ptok < plimit) ptok++; // Skip white space
@@ -145,9 +145,6 @@ SystemDUnit::ParseDuration(std::wstring str, double &millis)
             while (isalpha(*ptok) && ptok < plimit) ptok++; // Skip white space
             wstring token(tokstart, ptok-tokstart);
             scale = TimeScales[token];
-        }
-        else {
-            return false;
         }
 
         if (!isnan(scale) && !isnan(numval)) {
