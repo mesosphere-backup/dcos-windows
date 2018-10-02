@@ -652,7 +652,7 @@ SystemDUnit::RegisterService(std::wstring unit )
             dep_buffer.data(),  // dependencies 
             username.c_str(), //pcred? username.c_str(): NULL,  // LocalSystem account 
             user_password.c_str()); // pcred ? user_password.c_str() : NULL);   // no password 
- 
+
     if (hsvc == NULL) 
     {
         SystemCtlLog::msg << L"CreateService failed " << GetLastError();
@@ -660,7 +660,16 @@ SystemDUnit::RegisterService(std::wstring unit )
         CloseServiceHandle(hsc);
         return false;
     }
-    
+
+    if (this->description.length() > 0) {
+        SERVICE_DESCRIPTIONW sd = { 0 };
+        sd.lpDescription = (wchar_t *)this->description.c_str();
+        if (!ChangeServiceConfig2W(hsvc, SERVICE_CONFIG_DESCRIPTION, &sd)) {
+            SystemCtlLog::msg << L"ChangeServiceConfig2W failed " << GetLastError();
+            SystemCtlLog::Debug();
+        }
+    }
+
     // We query the status to ensure that the service has actually been created.
 
     SERVICE_STATUS svc_stat = {0};
