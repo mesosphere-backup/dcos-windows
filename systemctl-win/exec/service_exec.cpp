@@ -1160,7 +1160,7 @@ DWORD WINAPI CWrapperService::ServiceThread(LPVOID param)
                 self->StartProcess(self->m_ExecStartCmdLine.c_str(), CREATE_NEW_PROCESS_GROUP, self->m_ExecStartProcInfo, false);
                 self->RegisterMainPID();  // We register the pid in the registry so we can kill it later if we wish from systemctl
         
-                *logfile << Verbose() << "waitfor main process " << std::endl;
+                *logfile << Verbose() << "wait for main process " << std::endl;
                 ::WaitForSingleObject(self->m_ExecStartProcInfo.hProcess, INFINITE);
         
                 BOOL result = ::GetExitCodeProcess(self->m_ExecStartProcInfo.hProcess, &exitCode);
