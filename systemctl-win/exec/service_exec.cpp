@@ -1222,9 +1222,10 @@ DWORD WINAPI CWrapperService::ServiceThread(LPVOID param)
     
             case RESTART_ACTION_ON_SUCCESS:
                 if (ex.exitCode != S_OK) {
-                   done = true;
+                    done = true;
                 }
                 else {
+                    done = false;
                     *logfile << Verbose() << L"Restart on success in " << self->m_RestartMillis << L" milliseconds" << std::endl;
                     ::SleepEx(self->m_RestartMillis, TRUE); // But we respect restartSec.
                 }
@@ -1232,11 +1233,12 @@ DWORD WINAPI CWrapperService::ServiceThread(LPVOID param)
     
             case RESTART_ACTION_ON_FAILURE:
                 if (ex.exitCode != S_OK) {
-                   done = true;
+                   done = false;
+                   *logfile << Verbose() << L"Restart on success in " << self->m_RestartMillis << L" milliseconds" << std::endl;
+                   ::SleepEx(self->m_RestartMillis, TRUE); // But we respect restartSec.
                 }
                 else {
-                    *logfile << Verbose() << L"Restart on success in " << self->m_RestartMillis << L" milliseconds" << std::endl;
-                    ::SleepEx(self->m_RestartMillis, TRUE); // But we respect restartSec.
+                    done = true;
                 }
                 break;
     
@@ -1244,6 +1246,7 @@ DWORD WINAPI CWrapperService::ServiceThread(LPVOID param)
             case RESTART_ACTION_ON_ABORT:
             case RESTART_ACTION_ON_WATCHDOG:
                 // 2do: check the exit code
+                done = false;
                 *logfile << Verbose() << "Restart in " << self->m_RestartMillis << " milliseconds" << std::endl;
                 ::SleepEx(self->m_RestartMillis, TRUE); // But we respect restartSec.
                 break;
