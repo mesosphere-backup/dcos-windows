@@ -1392,7 +1392,7 @@ void CWrapperService::OnStop()
                 os << L"Running ExecStopPost command: " << ws.c_str();
                 *logfile << Verbose() << os.str() << std::endl;
                 StartProcess(ws.c_str(), 0, m_ExecStopPostProcInfo[i], true);
-            i++;
+                i++;
             }
         }
     
