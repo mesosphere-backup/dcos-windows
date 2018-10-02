@@ -407,7 +407,7 @@ void CServiceBase::Pause()
     {
         // Log the error.
         WriteErrorLogEntry(L"Service Pause", dwError);
-        *logfile << Error() << L"Service Pause " << m_name << " failed errocode = " << dwError << std::endl;
+        *logfile << Error() << L"Service Pause " << m_name << " failed error code = " << dwError << std::endl;
 
         // Tell SCM that the service is still running.
         SetServiceStatus(SERVICE_RUNNING);
