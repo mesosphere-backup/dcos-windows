@@ -165,7 +165,7 @@ static boolean string_duration_to_millis(std::wstring str, double &millis)
     millis = 0.0;
     do {
         double numval = NAN;
-        double scale  = NAN;
+        double scale  = 1000.0;
         size_t toklen = 0;
 
         while (isspace(*ptok) && ptok < plimit) ptok++; // Skip white space
@@ -188,10 +188,6 @@ static boolean string_duration_to_millis(std::wstring str, double &millis)
             while (isalpha(*ptok) && ptok < plimit) ptok++; // Skip white space
             wstring token(tokstart, ptok-tokstart);
             scale = TimeScales[token];
-        }
-        else {
-            *logfile << Warning() << L"string_duration_to_millis: malformed string: " << str << std::endl;
-            return false;
         }
 
         if (!isnan(scale) && !isnan(numval)) {
