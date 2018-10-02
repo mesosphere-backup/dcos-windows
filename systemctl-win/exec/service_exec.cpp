@@ -1305,7 +1305,6 @@ void WINAPI CWrapperService::KillProcessTree(DWORD dwProcId)
         HANDLE hProc = ::OpenProcess(PROCESS_ALL_ACCESS, FALSE, dwProcId);
         if (hProc)
         {
-            SetConsoleCtrlHandler(NULL, true); // Disable Ctrl processing from here
             *logfile << Debug() << L"terminate subprocess " << dwProcId << "for service " << m_ServiceName  << std::endl;
             ::TerminateProcess(hProc, ERROR_PROCESS_ABORTED);
             ::CloseHandle(hProc);
