@@ -275,7 +275,7 @@ void CServiceBase::Start(DWORD dwArgc, PWSTR *pszArgv)
         OnStart(dwArgc, pszArgv);
 
         // Tell SCM that the service is started.
-        // SetServiceStatus(SERVICE_RUNNING);
+        SetServiceStatus(SERVICE_RUNNING);
     }
     catch (DWORD dwError)
     {
