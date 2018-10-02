@@ -351,9 +351,9 @@ void CServiceBase::Stop()
     {
         // Log the error.
         WriteErrorLogEntry(L"Service Stop", dwError);
-        *logfile << Error() << L"Service Stop " << m_name << " failed errocode = " << dwError << std::endl;
+        *logfile << Error() << L"Service Stop " << m_name << " failed error code = " << dwError << std::endl;
 
-        // Set the orginal service status.
+        // Set the original service status.
         SetServiceStatus(dwOriginalState);
     }
     catch (const std::exception &e)
@@ -362,7 +362,7 @@ void CServiceBase::Stop()
         WriteEventLogEntry(m_name, L"Service failed to stop.", EVENTLOG_ERROR_TYPE);
         *logfile << Error() << L"Service Stop " << m_name << " failed: " << e.what() << std::endl;
 
-        // Set the orginal service status.
+        // Set the original service status.
         SetServiceStatus(dwOriginalState);
     }
 }
