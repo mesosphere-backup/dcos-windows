@@ -1791,8 +1791,7 @@ CWrapperService::WaitForDependents(std::vector<std::wstring> &serviceList)
             }
 
             *logfile << Verbose() << L"status for service " << service << service_status.dwCurrentState << std::endl;
-            if (service_status.dwCurrentState != SERVICE_STOP_PENDING &&
-                service_status.dwCurrentState != SERVICE_STOPPED ) {
+            if (service_status.dwCurrentState == SERVICE_RUNNING) {
                 *logfile << Debug() << L"done" << std::endl;
                 done = false;
                 break; // If someone is running we must wait. No need to keep looking
