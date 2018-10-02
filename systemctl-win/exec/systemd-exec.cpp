@@ -854,7 +854,7 @@ int wmain(int argc, wchar_t *argv[])
         if (!CServiceBase::Run(service))
         {
             char msg[100];
-            sprintf_s(msg, "Service failed to run w/err 0x%08lx", GetLastError());
+            sprintf_s(msg, "Service failed to run w/err GetLastError: 0x%08lx", GetLastError());
             throw exception(msg);
         }
         if (CWrapperService::bDebug) {
