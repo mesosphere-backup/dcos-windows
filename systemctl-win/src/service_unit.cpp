@@ -427,13 +427,13 @@ static inline enum SystemDUnit::OUTPUT_TYPE String_To_OutputType(const wchar_t *
     else if (val.compare(L"kmsg+console") == 0) {
         return SystemDUnit::OUTPUT_TYPE_KMSG_PLUS_CONSOLE;
     }
-    else if (val.compare(0, 5, L"file:path") == 0) {
+    else if (val.compare(0, 5, L"file:") == 0) {
         return SystemDUnit::OUTPUT_TYPE_FILE;
     }
     else if (val.compare(L"socket") == 0) {
         return SystemDUnit::OUTPUT_TYPE_SOCKET;
     }
-    else if (val.compare(0, 3, L"fd:name. ") == 0) {
+    else if (val.compare(0, 3, L"fd:") == 0) {
         return SystemDUnit::OUTPUT_TYPE_FD;
     }
     else {
