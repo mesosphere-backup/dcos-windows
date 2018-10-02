@@ -386,7 +386,7 @@ CLIArgs ParseArgs(int argc, wchar_t *argv[])
 
     args.stderrOutputType = L"journal";
     if ( service_unit_options.count("Service.StandardError")) {
-        args.stderrOutputType = service_unit_options["Service.StandardOutput"].as<wstring>();
+        args.stderrOutputType = service_unit_options["Service.StandardError"].as<wstring>();
  
         if (args.stderrOutputType.compare(0, 5, L"file:", 5)) {
             args.stderrFilePath = args.stderrOutputType.substr(0, args.stderrOutputType.find_first_of(':')+1);
