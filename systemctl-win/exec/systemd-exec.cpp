@@ -104,8 +104,6 @@ EnvMap GetCurrentEnv();
 std::wstring DEFAULT_LOG_DIRECTORY         = L"C:\\var\\log\\";
 std::wstring DEFAULT_LOG_PATH      = L"c:\\var\\log\\system.log";
 
-//wofstream g_logfile("c:\\var\\log\\openstackservice.log", std::ios_base::out | std::ios_base::app);
-
 class wojournalstream unit_stderr;
 class wojournalstream unit_stdout;
 class wojournalstream unit_log;
