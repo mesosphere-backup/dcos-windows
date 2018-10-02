@@ -240,37 +240,37 @@ CLIArgs ParseArgs(int argc, wchar_t *argv[])
     options_description config{ "service-unit-options" };
     config.add_options()
         ("Unit.Description", value<string>(), "Description") 
-        ("Unit.Requisite", wvalue<vector<wstring>>(), "Prereuqisites. If not present, stop service") 
-        ("Unit.Wants", wvalue<vector<wstring>>(), "Prereuqisites. If not present, stop service") 
-        ("Unit.Requires", wvalue<vector<wstring>>(), "Prereuqisites. If not present, stop service") 
+        ("Unit.Requisite", wvalue<vector<wstring>>(), "Prerequisites. If not present, stop service")
+        ("Unit.Wants", wvalue<vector<wstring>>(), "Prerequisites. If not present, stop service")
+        ("Unit.Requires", wvalue<vector<wstring>>(), "Prerequisites. If not present, stop service")
         ("Unit.Before",    wvalue<vector<wstring>>(), "Do not run service if these things exist") 
         ("Unit.After",     wvalue<vector<wstring>>(), "Do not run service until these things exist") 
-        ("Unit.ConditionArchitecture", wvalue<vector<wstring>>(), "Evaluatate the condition and run if true") 
-        ("Unit.ConditionVirtualization", wvalue<vector<wstring>>(), "Evaluatate the condition and run if true") 
-        ("Unit.ConditionHost", wvalue<vector<wstring>>(), "Evaluatate the condition and run if true") 
-        ("Unit.ConditionKernelCommandLine", wvalue<vector<wstring>>(), "Evaluatate the condition and run if true") 
-        ("Unit.ConditionKernelVersion", wvalue<vector<wstring>>(), "Evaluatate the condition and run if true") 
-        ("Unit.ConditionSecurity", wvalue<vector<wstring>>(), "Evaluatate the condition and run if true") 
-        ("Unit.ConditionCapability", wvalue<vector<wstring>>(), "Evaluatate the condition and run if true") 
-        ("Unit.ConditionACPower", wvalue<vector<wstring>>(), "Evaluatate the condition and run if true") 
-        ("Unit.ConditionNeedsUpdate", wvalue<vector<wstring>>(), "Evaluatate the condition and run if true") 
-        ("Unit.ConditionFirstBoot", wvalue<vector<wstring>>(), "Evaluatate the condition and run if true") 
-        ("Unit.ConditionPathExists", wvalue<vector<wstring>>(), "Evaluatate the condition and run if true") 
-        ("Unit.ConditionPathExistsGlob", wvalue<vector<wstring>>(), "Evaluatate the condition and run if true") 
-        ("Unit.ConditionPathIsDirectory", wvalue<vector<wstring>>(), "Evaluatate the condition and run if true") 
-        ("Unit.ConditionPathIsSymbolicLink", wvalue<vector<wstring>>(), "Evaluatate the condition and run if true") 
-        ("Unit.ConditionPathIsMountPoint", wvalue<vector<wstring>>(), "Evaluatate the condition and run if true") 
-        ("Unit.ConditionPathIsReadWrite", wvalue<vector<wstring>>(), "Evaluatate the condition and run if true") 
-        ("Unit.ConditionDirectoryNotEmpty", wvalue<vector<wstring>>(), "Evaluatate the condition and run if true") 
-        ("Unit.ConditionFileNotEmpty", wvalue<vector<wstring>>(), "Evaluatate the condition and run if true") 
-        ("Unit.ConditionFileIsExecutable", wvalue<vector<wstring>>(), "Evaluatate the condition and run if true") 
-        ("Unit.ConditionUser", wvalue<vector<wstring>>(), "Evaluatate the condition and run if true") 
-        ("Unit.ConditionGroup", wvalue<vector<wstring>>(), "Evaluatate the condition and run if true") 
-        ("Unit.ConditionControlGroupController", wvalue<vector<wstring>>(), "Evaluatate the condition and run if true") 
-        ("Service.Type", wvalue<wstring>(), "Systemd service type") 
-        ("Service.Shell", wvalue<wstring>(), "Windows Extension. Shell to use for exec actions. Default is Powershell") 
-        ("Service.EnvironmentFile", wvalue<vector<wstring>>(), "Environment files" )
-        ("Service.EnvironmentFile-PS", wvalue<vector<wstring>>(), "Environment files in powershell format" )
+        ("Unit.ConditionArchitecture", wvalue<vector<wstring>>(), "Evaluate the condition and run if true")
+        ("Unit.ConditionVirtualization", wvalue<vector<wstring>>(), "Evaluate the condition and run if true")
+        ("Unit.ConditionHost", wvalue<vector<wstring>>(), "Evaluate the condition and run if true")
+        ("Unit.ConditionKernelCommandLine", wvalue<vector<wstring>>(), "Evaluate the condition and run if true")
+        ("Unit.ConditionKernelVersion", wvalue<vector<wstring>>(), "Evaluate the condition and run if true")
+        ("Unit.ConditionSecurity", wvalue<vector<wstring>>(), "Evaluate the condition and run if true")
+        ("Unit.ConditionCapability", wvalue<vector<wstring>>(), "Evaluate the condition and run if true")
+        ("Unit.ConditionACPower", wvalue<vector<wstring>>(), "Evaluate the condition and run if true")
+        ("Unit.ConditionNeedsUpdate", wvalue<vector<wstring>>(), "Evaluate the condition and run if true")
+        ("Unit.ConditionFirstBoot", wvalue<vector<wstring>>(), "Evaluate the condition and run if true")
+        ("Unit.ConditionPathExists", wvalue<vector<wstring>>(), "Evaluate the condition and run if true")
+        ("Unit.ConditionPathExistsGlob", wvalue<vector<wstring>>(), "Evaluate the condition and run if true")
+        ("Unit.ConditionPathIsDirectory", wvalue<vector<wstring>>(), "Evaluate the condition and run if true")
+        ("Unit.ConditionPathIsSymbolicLink", wvalue<vector<wstring>>(), "Evaluate the condition and run if true")
+        ("Unit.ConditionPathIsMountPoint", wvalue<vector<wstring>>(), "Evaluate the condition and run if true")
+        ("Unit.ConditionPathIsReadWrite", wvalue<vector<wstring>>(), "Evaluate the condition and run if true")
+        ("Unit.ConditionDirectoryNotEmpty", wvalue<vector<wstring>>(), "Evaluate the condition and run if true")
+        ("Unit.ConditionFileNotEmpty", wvalue<vector<wstring>>(), "Evaluate the condition and run if true")
+        ("Unit.ConditionFileIsExecutable", wvalue<vector<wstring>>(), "Evaluate the condition and run if true")
+        ("Unit.ConditionUser", wvalue<vector<wstring>>(), "Evaluate the condition and run if true")
+        ("Unit.ConditionGroup", wvalue<vector<wstring>>(), "Evaluate the condition and run if true")
+        ("Unit.ConditionControlGroupController", wvalue<vector<wstring>>(), "Evaluate the condition and run if true")
+        ("Service.Type", wvalue<wstring>(), "SystemD service type")
+        ("Service.Shell", wvalue<wstring>(), "Windows Extension. Shell to use for exec actions. Default is Powershell")
+        ("Service.EnvironmentFile", wvalue<vector<wstring>>(), "Environment files")
+        ("Service.EnvironmentFile-PS", wvalue<vector<wstring>>(), "Environment files in Powershell format")
         ("Service.Environment", wvalue<vector<wstring>>(), "Environment Variable settings" )
         ("Service.ExecStartPre", wvalue<vector<wstring>>(), "Execute before starting service")
         ("Service.ExecStart", wvalue<wstring>(), "Execute commands at when starting service")
@@ -279,7 +279,7 @@ CLIArgs ParseArgs(int argc, wchar_t *argv[])
         ("Service.ExecStopPost", wvalue<vector<wstring>>(), "Execute multiple commands  after stopping service")
         ("Service.StandardOutput", wvalue<wstring>(), "standard out")
         ("Service.StandardError", wvalue<wstring>(), "standard error")
-        ("Service.BusName", wvalue<wstring>(), "Systemd dbus name. Used only for resolving service type")
+        ("Service.BusName", wvalue<wstring>(), "SystemD dbus name. Used only for resolving service type")
         ("Service.Restart", wvalue<wstring>(), "restart policy for the service")
         ("Service.RestartSec", wvalue<wstring>(), "time between restarts in seconds")
         ("Service.TimeoutStartSec",  wvalue<wstring>(), "timeout for start")
@@ -296,7 +296,7 @@ CLIArgs ParseArgs(int argc, wchar_t *argv[])
         ("Service.User",       wvalue<wstring>(), "not implemented")
         ("Service.LogLevelMax",    wvalue<wstring>(), "filters log output from chatty services")
         ("Service.SysLogLevel",    wvalue<wstring>(), "default log message priority")
-        ("Service.LimitNOFILE", wvalue<wstring>(), "maximum number of file handles allowed for this service Not implmenented");
+        ("Service.LimitNOFILE", wvalue<wstring>(), "maximum number of file handles allowed for this service is not implemented");
 
     options_description desc{ "Options" };
     desc.add_options()
@@ -327,7 +327,7 @@ CLIArgs ParseArgs(int argc, wchar_t *argv[])
             
             service_unit_file.open(unit_path.c_str(), ios::in);
             if (!service_unit_file.is_open()) {
-                *logfile << Error() << L"couldnt open " << unit_path.c_str() << std::endl;
+                *logfile << Error() << L"couldn't open " << unit_path.c_str() << std::endl;
             }
 
             //service_unit_contents = std::string((std::istreambuf_iterator<char>()), std::istreambuf_iterator<char>());
@@ -378,7 +378,7 @@ CLIArgs ParseArgs(int argc, wchar_t *argv[])
         args.stdoutFilePath.append(L".stdout.log");
     }
 
-    *logfile << Verbose() << L"open stdoutFile outputtype = " << args.stdoutOutputType << std::endl;
+    *logfile << Verbose() << L"open stdoutFile output type = " << args.stdoutOutputType << std::endl;
     *logfile << Verbose() << L"open stdoutFile Path = " << args.stdoutFilePath << std::endl;
     unit_stdout.open(args.stdoutOutputType, args.stdoutFilePath);
     unit_stdout.setlogginglevel(journalstreams::LOGGING_LEVEL_INFO);
