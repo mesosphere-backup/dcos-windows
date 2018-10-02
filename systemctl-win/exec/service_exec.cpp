@@ -699,7 +699,7 @@ void CWrapperService::StartProcess(LPCWSTR cmdLine, DWORD processFlags, PROCESS_
 
     if(waitForProcess)
     {
-        *logfile << Verbose() << "waitfor process " << cmdLine << std::endl;
+        *logfile << Verbose() << "wait for process " << cmdLine << std::endl;
         ::WaitForSingleObject(procInfo.hProcess, INFINITE);
 
         DWORD exitCode = 0;
