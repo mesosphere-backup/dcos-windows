@@ -1339,12 +1339,7 @@ void CWrapperService::OnStop()
         }
     
         *logfile << Debug() << L"kill stopping service " << m_ServiceName.c_str() << std::endl;
-        // KillProcessTree(m_dwProcessId);
     
-        // Stop dependent services
-        // this->StopServiceDependencies(); We don't do this .....
-    
-        // *logfile << Debug() << L"send  ctrl-break and wait for stop" << std::endl;
         *logfile << Error() << L"send  ctrl-break to process id " << m_ExecStartProcInfo.dwProcessId << " and wait for stop" << std::endl;
     
         // First, ask nicely. 
