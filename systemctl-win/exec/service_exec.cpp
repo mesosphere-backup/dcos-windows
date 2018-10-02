@@ -285,6 +285,7 @@ CWrapperService::CWrapperService(struct CWrapperService::ServiceParams &params)
     m_ServiceType = params.serviceType;
     m_RestartAction = params.restartAction;
     m_RestartMillis = params.restartMillis;
+    m_TimeoutStopMillis = params.timeoutStopMillis;
     m_WorkingDirectory = params.workingDirectory;
 
     m_StdErr = params.stdErr;
@@ -1359,7 +1360,7 @@ void CWrapperService::OnStop()
             else {
     
                 // Wait for them to stop (fixed 20 sec timeout)
-                wait_result = ::WaitForSingleObject(m_ExecStartProcInfo.hProcess, 20000);
+                wait_result = ::WaitForSingleObject(m_ExecStartProcInfo.hProcess, this->m_TimeoutStopMillis);
             }
             FreeConsole();
             SetConsoleCtrlHandler(NULL, false);

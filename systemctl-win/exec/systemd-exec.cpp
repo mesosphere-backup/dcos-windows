@@ -864,6 +864,7 @@ int wmain(int argc, wchar_t *argv[])
         params.conditionControlGroupController = args.conditionControlGroupController;
         params.restartAction = args.restartAction;
         params.restartMillis = args.restartMillis;
+        params.timeoutStopMillis = args.timeoutStopMillis;
         params.workingDirectory = args.workingDirectory;
 
         CWrapperService service(params);

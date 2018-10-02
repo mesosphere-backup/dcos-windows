@@ -81,6 +81,7 @@ public:
         enum ServiceType serviceType;
         enum RestartAction   restartAction;
         int  restartMillis;
+        int  timeoutStopMillis;
         std::wstring workingDirectory;
         BOOL fCanStop;
         BOOL fCanShutdown;
@@ -312,6 +313,7 @@ private:
     enum ServiceType m_ServiceType;
     enum RestartAction m_RestartAction;
     int  m_RestartMillis;
+    int  m_TimeoutStopMillis;
     int  m_StartLimitIntervalMillis;
     std::wstring m_WorkingDirectory;
 
