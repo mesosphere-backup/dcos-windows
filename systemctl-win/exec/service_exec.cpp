@@ -898,9 +898,6 @@ DWORD WINAPI CWrapperService::TimerThread(LPVOID param)
     if (status != ERROR_SUCCESS) {
         *logfile << Debug() << L"\\HKLM\\" << subkey << "\\accuracy_millis not read status = " << status << std::endl;
     }
-    else {
-        accuracy_millis = 500; // Default accuracy for timer 
-    }
 
     *logfile << Debug() << L"get registry value \\HKLM\\" << subkey << "\\randomized_delay_millis" << std::endl;
     status = RegGetValueW( hRunKey, NULL, L"randomized_delay_millis", RRF_RT_ANY, NULL, &randomized_delay_millis, &parm_size );
