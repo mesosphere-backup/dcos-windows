@@ -281,7 +281,7 @@ void CServiceBase::Start(DWORD dwArgc, PWSTR *pszArgv)
     {
         // Log the error.
         WriteErrorLogEntry(L"Service Start", dwError);
-        *logfile << Error() << L"Service Start " << m_name << " failed errocode = " << dwError << std::endl;
+        *logfile << Error() << L"Service Start " << m_name << " failed error code = " << dwError << std::endl;
 
         // Set the service status to be stopped.
         SetServiceStatus(SERVICE_STOPPED, dwError);
