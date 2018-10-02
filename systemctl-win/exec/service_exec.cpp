@@ -417,7 +417,7 @@ enum OUTPUT_TYPE CWrapperService::StrToOutputType( std::wstring val, std::wstrin
     else if (val.compare(L"kmsg+console") == 0) {
         return OUTPUT_TYPE_KMSG_PLUS_CONSOLE;
     }
-    else if (val.compare(0, 5, L"file:path") == 0) {
+    else if (val.compare(0, 5, L"file:") == 0) {
         if (path != NULL ) {
             *path = val.substr(0, val.find_first_of(':')+1);
         }
@@ -426,7 +426,7 @@ enum OUTPUT_TYPE CWrapperService::StrToOutputType( std::wstring val, std::wstrin
     else if (val.compare(L"socket") == 0) {
         return OUTPUT_TYPE_SOCKET;
     }
-    else if (val.compare(0, 3, L"fd:name. ") == 0) {
+    else if (val.compare(0, 3, L"fd:") == 0) {
         if (path != NULL ) {
             *path = val.substr(0, val.find_first_of(':')+1);
         }
