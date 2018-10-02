@@ -411,17 +411,6 @@ CLIArgs ParseArgs(int argc, wchar_t *argv[])
         args.logFilePath.erase(remove( args.logFilePath.begin(), args.logFilePath.end(), '\"' ), args.logFilePath.end());
         args.logFilePath.erase(remove( args.logFilePath.begin(), args.logFilePath.end(), '\'' ), args.logFilePath.end());
     }
-    #if 0
-    else  {
-        args.logFilePath = DEFAULT_LOG_DIRECTORY;
-        args.stderrFilePath.append(args.serviceUnit);
-        args.stderrFilePath.append(L".log");
-    }
-
-    *logfile << Error() << "open log " << args.logFilePath << std::endl;
-    unit_log.open(L"file:", args.logFilePath);
-    logfile = &unit_log;
-    #endif
 
     if (vm.count("service-name")) {
         args.serviceName = vm["service-name"].as<wstring>();
