@@ -858,7 +858,7 @@ int wmain(int argc, wchar_t *argv[])
             throw exception(msg);
         }
         if (CWrapperService::bDebug) {
-            // For offline debug 
+            // For off-line debug
 
             ::Sleep(10000); // Let the service start
             service.Stop();
