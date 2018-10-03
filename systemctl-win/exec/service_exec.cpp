@@ -1191,7 +1191,8 @@ DWORD WINAPI CWrapperService::ServiceThread(LPVOID param)
                         self->StartProcess(ws.c_str(), 0, self->m_ExecStartPostProcInfo[i], true);
                     }
                     catch(RestartException &ex) {
-                        if (!(self->m_ExecStartPreFlags[i] & EXECFLAG_IGNORE_FAIL)) {
+                        if (!self->m_ExecStartPostFlags.empty() &&
+                            !(self->m_ExecStartPostFlags[i] & EXECFLAG_IGNORE_FAIL)) {
                             *logfile << Error() << L"Error in ExecStartPre command: " << ws.c_str() << "exiting" << std::endl;
                             throw ex;
                         }
