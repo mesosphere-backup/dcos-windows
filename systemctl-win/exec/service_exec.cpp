@@ -1771,7 +1771,7 @@ CWrapperService::WaitForDependents(std::vector<std::wstring> &serviceList)
         return false;
     }
 
-    boolean done = false;
+    boolean done;
     do {
         done = true;
         for (auto service : serviceList) {
@@ -1794,10 +1794,10 @@ CWrapperService::WaitForDependents(std::vector<std::wstring> &serviceList)
             }
 
             *logfile << Verbose() << L"status for service " << service << service_status.dwCurrentState << std::endl;
-            if (service_status.dwCurrentState == SERVICE_RUNNING) {
+            if (service_status.dwCurrentState != SERVICE_RUNNING) {
                 *logfile << Debug() << L"done" << std::endl;
                 done = false;
-                break; // If someone is running we must wait. No need to keep looking
+                break; // If someone is not running we must wait. No need to keep looking
             }
         }
 
