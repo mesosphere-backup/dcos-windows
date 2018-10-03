@@ -1371,9 +1371,13 @@ void CWrapperService::OnStop()
     
         // Kill main process anyway. Worst case nothing happens because the process is gone.
         // ::TerminateProcess( m_ExecStartProcInfo.hProcess, ERROR_PROCESS_ABORTED);
-        KillProcessTree( m_ExecStartProcInfo.dwProcessId);
+        if (m_ExecStartProcInfo.dwProcessId) {
+            KillProcessTree(m_ExecStartProcInfo.dwProcessId);
+        }
     
-        ::WaitForSingleObject(m_ExecStartProcInfo.hProcess, INFINITE);
+        if (m_ExecStartProcInfo.hProcess) {
+            ::WaitForSingleObject(m_ExecStartProcInfo.hProcess, INFINITE);
+        }
         ::TerminateThread(m_hServiceThread, ERROR_PROCESS_ABORTED);
         *logfile << Verbose() << L"service thread wait for terminate " << m_ServiceName.c_str() << std::endl;
         ::WaitForSingleObject(m_hServiceThread, INFINITE);
