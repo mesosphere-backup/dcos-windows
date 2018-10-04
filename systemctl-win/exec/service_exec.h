@@ -138,7 +138,7 @@ protected:
 
     virtual void OnStart(DWORD dwArgc, PWSTR *pszArgv);
     virtual void OnStop();
-    virtual boolean WaitForDependents(std::vector<std::wstring> &serviceList);
+    virtual boolean WaitForDependents(std::vector<std::wstring> &serviceList, boolean checkifstopped);
 
 private:
 

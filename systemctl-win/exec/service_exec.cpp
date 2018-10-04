@@ -90,6 +90,18 @@ void CWrapperService::DeregisterMainPID()
         RegCloseKey(hRunKey);
         return;
     }
+
+    FILETIME ft_now;
+    GetSystemTimeAsFileTime(&ft_now);
+    INT64 last_run = ((LONGLONG)ft_now.dwLowDateTime + ((LONGLONG)(ft_now.dwHighDateTime) << 32LL) / 10000) - GetTickCount64();
+
+
+    status = RegSetValueExW(hRunKey, L"LastRun", 0, REG_QWORD, (const BYTE*)&last_run, sizeof(INT64));
+    if (status != ERROR_SUCCESS) {
+        *logfile << Error() << L"DeregisterMainPID: could not create registry value \\HKLM\\" << subkey << "\\LastRun status = " << status << std::endl;
+        RegCloseKey(hRunKey);
+        return;
+    }
     
     status = RegCloseKey(hRunKey);
     if (status != ERROR_SUCCESS) {
@@ -1090,7 +1102,7 @@ DWORD WINAPI CWrapperService::ServiceThread(LPVOID param)
             self->SetServiceStatus(SERVICE_START_PENDING);
             // In this case we need to make the list self->m_ServicesAfter ran and stopped before we start
             // TODO also think about their return status?
-            if (!self->WaitForDependents(self->m_ServicesAfter)) {
+            if (!self->WaitForDependents(self->m_ServicesAfter, true)) {
                 *logfile << Warning() << L"Failure in WaitForDepenents" << std::endl;
                 throw RestartException(1068, "dependents failed");
             }
@@ -1204,7 +1216,7 @@ DWORD WINAPI CWrapperService::ServiceThread(LPVOID param)
             }
 
             // We should stay active until all of the depends are finished
-            self->WaitForDependents(self->m_Dependencies);
+            self->WaitForDependents(self->m_Dependencies, false);
             *logfile << Verbose() << "process success " << self->m_ExecStartCmdLine << std::endl;
             throw RestartException(0, "success");
     }
@@ -1762,7 +1774,7 @@ CWrapperService::EvalConditionControlGroupController(std::wstring arg)
 
 
 boolean
-CWrapperService::WaitForDependents(std::vector<std::wstring> &serviceList)
+CWrapperService::WaitForDependents(std::vector<std::wstring> &serviceList, boolean checkifstopped)
 
 {
     int count = 0;
@@ -1796,7 +1808,46 @@ CWrapperService::WaitForDependents(std::vector<std::wstring> &serviceList)
             }
 
             *logfile << Verbose() << L"status for service " << service << service_status.dwCurrentState << std::endl;
-            if (service_status.dwCurrentState != SERVICE_RUNNING) {
+            if (checkifstopped)
+            {
+                if (service_status.dwCurrentState != SERVICE_STOPPED) {
+                    done = false;
+                    break; // If someone is running we must wait. No need to keep looking
+                }
+                HKEY hRunKey = NULL;
+                LSTATUS status = ERROR_SUCCESS;
+
+                std::wstring subkey(L"SYSTEM\\CurrentControlSet\\Services\\");
+                subkey.append(service.c_str());
+                subkey.append(L"\\run");
+                RegOpenKeyW(HKEY_LOCAL_MACHINE, subkey.c_str(), &hRunKey);
+                if (status != ERROR_SUCCESS) {
+                    *logfile << Error() << L"WaitForDependents could not open registry key \\HKLM\\" << subkey << " status = " << status << std::endl;
+                }
+
+                FILETIME ft_now;
+                GetSystemTimeAsFileTime(&ft_now);
+                INT64 now = ((LONGLONG)ft_now.dwLowDateTime + ((LONGLONG)(ft_now.dwHighDateTime) << 32LL) / 10000) - GetTickCount64();
+                DWORD parm_size = sizeof(INT64);
+                INT64 last_run = 0;
+
+                status = RegGetValueW(hRunKey, NULL, L"LastRun", RRF_RT_QWORD, NULL, &last_run, &parm_size);
+                if (status != ERROR_SUCCESS) {
+                    *logfile << Error() << L"WaitForDependents: could not red registry value \\HKLM\\" << subkey << "\\LastRun status = " << status << std::endl;
+                    RegCloseKey(hRunKey);
+                }
+
+                status = RegCloseKey(hRunKey);
+                if (status != ERROR_SUCCESS) {
+                    *logfile << Error() << L"WaitForDependents could not close registry key \\HKLM\\" << subkey << " status = " << status << std::endl;
+                }
+
+                if (now < last_run) {
+                    done = false;
+                    break; // If someone is running we must wait. No need to keep looking
+                }
+            }
+            if (!checkifstopped && service_status.dwCurrentState != SERVICE_RUNNING) {
                 *logfile << Debug() << L"done" << std::endl;
                 done = false;
                 break; // If someone is not running we must wait. No need to keep looking
