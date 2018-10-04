@@ -232,7 +232,7 @@ public:
        SERVICE_TYPE_UNDEFINED,
        SERVICE_TYPE_SIMPLE,
        SERVICE_TYPE_FORKING,
-       SERVICE_TYPE_ONESHOT, 
+       SERVICE_TYPE_ONESHOT,
        SERVICE_TYPE_DBUS,
        SERVICE_TYPE_NOTIFY,
        SERVICE_TYPE_IDLE
@@ -514,10 +514,10 @@ private:
     vector<wstring> conflicts;    // Kept in order of definition
 
     vector<wstring> exec_start_pre;  // Kept in order of definition
-    vector<wstring> exec_start;      // Kept in order of definintion
+    vector<wstring> exec_start;      // Kept in order of definition
     vector<wstring> exec_start_post; // Kept in order of definition
-    vector<wstring> exec_reload;     // Kept in order of definintion
-    vector<wstring> exec_stop;       // Kept in order of definintion
+    vector<wstring> exec_reload;     // Kept in order of definition
+    vector<wstring> exec_stop;       // Kept in order of definition
     vector<wstring> exec_stop_post;  // Kept in order of definition
 
     vector<wstring> environment_file;  // Kept in order of definition
