@@ -78,7 +78,7 @@ void CWrapperService::DeregisterMainPID()
     std::wstring subkey(L"SYSTEM\\CurrentControlSet\\Services\\");
     subkey.append(m_name);
     subkey.append(L"\\run");
-    RegOpenKeyW(HKEY_CURRENT_CONFIG, subkey.c_str(),  &hRunKey);
+    RegOpenKeyW(HKEY_LOCAL_MACHINE, subkey.c_str(),  &hRunKey);
     if (status != ERROR_SUCCESS) {
         *logfile << Error() << L"DeregisterMainPID could not open registry key \\HKLM\\" << subkey << " status = " << status << std::endl;
         return;
