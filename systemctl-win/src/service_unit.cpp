@@ -19,6 +19,7 @@
 #include <cstddef>
 #include <cstdlib>
 #include <assert.h>
+#include <tlhelp32.h>
 #include "service_unit.h"
 
 using namespace std;
@@ -1453,39 +1454,71 @@ boolean SystemDUnit::Disable(boolean block)
 DWORD SystemDUnit::GetMainPID()
 
 {
-    HKEY hRunKey = NULL;
-    LSTATUS status = ERROR_SUCCESS;
-    DWORD main_pid = 0;
-    DWORD pid_size = sizeof(main_pid);
-    DWORD pid_type = REG_DWORD;
-
-    std::wstring subkey(L"SYSTEM\\CurrentControlSet\\Services\\");
-    subkey.append(name);
-    subkey.append(L"\\run");
-    status = RegOpenKeyW(HKEY_LOCAL_MACHINE, subkey.c_str(),  &hRunKey);
-    if (status != ERROR_SUCCESS) {
-        SystemCtlLog::msg << L"DeregisterMainPID could not open registry key \\HKLM\\" << subkey << " status = " << status;
+    SC_HANDLE hsc = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
+    if (!hsc) {
+        int last_error = GetLastError();
+        SystemCtlLog::msg << L"GetMainPID could not open handle to service manager";
         SystemCtlLog::Error();
         return 0;
     }
 
-    status = RegGetValueW( hRunKey, NULL, L"ExecStartPID", RRF_RT_ANY, &pid_type, &main_pid, &pid_size );
-    if (status != ERROR_SUCCESS) {
-        SystemCtlLog::msg << L"DeregisterMainPID could not delete registry value \\HKLM\\" << subkey << "\\ExecStartPID status = " << status;
-        SystemCtlLog::Info(); // If there is no 
-        RegCloseKey(hRunKey);
-        return 0;
-    }
-    
-    status = RegCloseKey(hRunKey);
-    if (status != ERROR_SUCCESS) {
-        SystemCtlLog::msg << L"could not close registry key \\HKLM\\" << subkey << " status = " << status;
+    SC_HANDLE hsvc = OpenServiceW(hsc, this->name.c_str(), GENERIC_READ);
+    if (!hsvc) {
+        SystemCtlLog::msg << L"GetMainPID could not open handle to the service: " << this->name;
         SystemCtlLog::Error();
+        CloseServiceHandle(hsc);
         return 0;
     }
-    return main_pid;
+    SERVICE_STATUS_PROCESS svc_status = { 0 };
+    DWORD size_needed = sizeof(SERVICE_STATUS_PROCESS);
+    if (!QueryServiceStatusEx(hsvc, SC_STATUS_PROCESS_INFO, (BYTE*)&svc_status, sizeof(SERVICE_STATUS_PROCESS), &size_needed)) {
+        int last_error = GetLastError();
+        // TODO: handle MORE_DATA
+        SystemCtlLog::msg << L"GetMainPID could not open handle to the service: " << this->name;
+        SystemCtlLog::Error();
+        CloseServiceHandle(hsc);
+        CloseServiceHandle(hsvc);
+        return 0;
+    }
+
+    CloseServiceHandle(hsc);
+    CloseServiceHandle(hsvc);
+
+    SystemCtlLog::msg << L"GetMainPID service:" << this->name << " svc_status.dwProcessId: " << svc_status.dwProcessId << L" svc_status.dwCurrentState: " << svc_status.dwCurrentState;
+    SystemCtlLog::Debug();
+    return svc_status.dwProcessId;
 }
 
+void WINAPI SystemDUnit::KillProcessTree(DWORD dwProcId)
+{
+    PROCESSENTRY32 pe;
+    memset(&pe, 0, sizeof(PROCESSENTRY32));
+    pe.dwSize = sizeof(PROCESSENTRY32);
+
+    HANDLE hSnap = ::CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+
+    if (::Process32First(hSnap, &pe))
+    {
+        BOOL bContinue = TRUE;
+        while (bContinue)
+        {
+            if (pe.th32ParentProcessID == dwProcId)
+            {
+                KillProcessTree(pe.th32ProcessID);
+            }
+            bContinue = ::Process32Next(hSnap, &pe);
+        }
+
+        HANDLE hProc = ::OpenProcess(PROCESS_ALL_ACCESS, FALSE, dwProcId);
+        if (hProc)
+        {
+            ::TerminateProcess(hProc, ERROR_PROCESS_ABORTED);
+            ::CloseHandle(hProc);
+        }
+    }
+
+    ::CloseHandle(hSnap);
+}
 
 /*
  *   A complication of systemctl kill is that windows doesn't have signals.
@@ -1507,6 +1540,8 @@ boolean SystemDUnit::Kill(int action, int killtarget, boolean block)
         // control we look for the PID keys of the execstartpre and or ExecStop or ExecReload
         // all we do both...
         switch(killtarget) {
+        case SystemCtl::KILL_ACTION_CONTROL:
+        case SystemCtl::KILL_ACTION_ALL:
         case SystemCtl::KILL_ACTION_MAIN: {
                 DWORD pid = GetMainPID();
                 HANDLE hProc = INVALID_HANDLE_VALUE;
@@ -1522,6 +1557,7 @@ boolean SystemDUnit::Kill(int action, int killtarget, boolean block)
                     SystemCtlLog::msg << L"could not open process " << pid << " presumed no longer active. Operation skipped";
                     SystemCtlLog::Warning();
                 }
+                KillProcessTree(pid);
                 ::TerminateProcess(hProc, ERROR_PROCESS_ABORTED);
                 DWORD wait_rslt = 0;
                 do {
@@ -1534,12 +1570,6 @@ boolean SystemDUnit::Kill(int action, int killtarget, boolean block)
             
                 CloseHandle(hProc);
             }
-            break;
-    
-        case SystemCtl::KILL_ACTION_CONTROL:
-        case SystemCtl::KILL_ACTION_ALL:
-        default:
-            // 2Do.
             break;
         }
         break;

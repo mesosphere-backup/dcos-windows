@@ -471,6 +471,7 @@ protected:
     DWORD GetMainPID();
 
     boolean ParseDuration(std::wstring str, double &millis);
+    void WINAPI KillProcessTree(DWORD dwProcId);
 
     wstring name;
     wstring description;
