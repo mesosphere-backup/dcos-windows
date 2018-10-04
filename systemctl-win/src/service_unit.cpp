@@ -1231,7 +1231,7 @@ static boolean delete_unit(wstring file_path, void *context)
     // Delete the service
         class SystemDUnit *punit = SystemDUnitPool::FindUnit(servicename);
     if (punit) {
-        punit->Mask(true);
+        punit->Disable(true);
     }
     }
     return true;
