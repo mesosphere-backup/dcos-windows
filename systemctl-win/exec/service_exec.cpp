@@ -63,6 +63,13 @@ void CWrapperService::RegisterMainPID()
         return;
     }
 
+    RegDeleteValueW(hRunKey, L"last_run");
+    if (status != ERROR_SUCCESS) {
+        *logfile << Error() << L"RegisterMainPID could not delete registry value \\HKLM\\" << subkey << "\\last_run status = " << status << std::endl;
+        RegCloseKey(hRunKey);
+        return;
+    }
+
     status = RegCloseKey(hRunKey);
     if (status != ERROR_SUCCESS) {
         *logfile << Error() << L"RegisterMainPID: could not close registry key \\HKLM\\" << subkey << " status = " << status << std::endl;
@@ -92,8 +99,11 @@ void CWrapperService::DeregisterMainPID()
     }
 
     FILETIME ft_now;
-    GetSystemTimeAsFileTime(&ft_now);
-    INT64 last_run = ((LONGLONG)ft_now.dwLowDateTime + ((LONGLONG)(ft_now.dwHighDateTime) << 32LL) / 10000) - GetTickCount64();
+    GetSystemTimePreciseAsFileTime(&ft_now);
+    ULARGE_INTEGER now;
+    now.LowPart = ft_now.dwLowDateTime;
+    now.HighPart = ft_now.dwHighDateTime;
+    INT64 last_run = (now.QuadPart / 10000) - GetTickCount64();
 
 
     status = RegSetValueExW(hRunKey, L"LastRun", 0, REG_QWORD, (const BYTE*)&last_run, sizeof(INT64));
@@ -1825,11 +1835,14 @@ CWrapperService::WaitForDependents(std::vector<std::wstring> &serviceList, boole
                     *logfile << Error() << L"WaitForDependents could not open registry key \\HKLM\\" << subkey << " status = " << status << std::endl;
                 }
 
-                FILETIME ft_now;
-                GetSystemTimeAsFileTime(&ft_now);
-                INT64 now = ((LONGLONG)ft_now.dwLowDateTime + ((LONGLONG)(ft_now.dwHighDateTime) << 32LL) / 10000) - GetTickCount64();
                 DWORD parm_size = sizeof(INT64);
                 INT64 last_run = 0;
+                FILETIME ft_now;
+                GetSystemTimePreciseAsFileTime(&ft_now);
+                ULARGE_INTEGER ct;
+                ct.LowPart = ft_now.dwLowDateTime;
+                ct.HighPart = ft_now.dwHighDateTime;
+                INT64 now = (ct.QuadPart / 10000) - GetTickCount64();
 
                 status = RegGetValueW(hRunKey, NULL, L"LastRun", RRF_RT_QWORD, NULL, &last_run, &parm_size);
                 if (status != ERROR_SUCCESS) {
@@ -1843,6 +1856,7 @@ CWrapperService::WaitForDependents(std::vector<std::wstring> &serviceList, boole
                 }
 
                 if (now < last_run) {
+                    *logfile << Error() << L"WaitForDependents now: " << now << " is less than last_run: " << last_run << std::endl;
                     done = false;
                     break; // If someone is running we must wait. No need to keep looking
                 }
