@@ -353,7 +353,41 @@ int SystemCtrl_Cmd_Stop( boost::program_options::variables_map &vm )
 
 int SystemCtrl_Cmd_Reload( boost::program_options::variables_map &vm )
 {
-    return -1;
+    vector<wstring> units;
+    if (vm.count("system_units")) {
+        units = vm["system_units"].as<vector<wstring>>();
+    }
+    else {
+        // Complain and exit
+
+        SystemCtlLog::msg << L"No unit specified"; SystemCtlLog::Error();
+        PrintCommandUsage(vm["command"].as<wstring>(), L"no unit specified");
+        exit(1);
+    }
+
+    for (wstring unitname : units) {
+        if (unitname.rfind(L".service") == string::npos &&
+            unitname.rfind(L".target") == string::npos &&
+            unitname.rfind(L".timer") == string::npos &&
+            unitname.rfind(L".socket") == string::npos) {
+            unitname.append(L".service");
+        }
+
+        wcerr << L"Stop service " << unitname << std::endl;
+        class SystemDUnit *unit = SystemDUnitPool::FindUnit(unitname);
+        if (!unit) {
+            // Complain and exit
+            SystemCtlLog::msg << "Failed to stop service: Unit file " << unitname.c_str() << " does not exist\n";
+            PrintCommandUsage(vm["command"].as<wstring>(), SystemCtlLog::msg.str());
+            SystemCtlLog::Error();
+            exit(1);
+        }
+        unit->StopService(false); // We will add non-blocking later
+        unit->Disable(false); // We will add non-blocking later
+        unit->Enable(false);
+    }
+
+    return 0;
 }
 
 
