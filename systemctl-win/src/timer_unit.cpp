@@ -177,9 +177,8 @@ class SystemDTimer *SystemDTimer::ParseSystemDTimerUnit(wstring servicename, wst
             if (line.length() == 0) {
                 break;
             }
-            SystemCtlLog::msg << L"invalid section heading " << line.c_str();
-            SystemCtlLog::Debug();
-            break;
+            SystemCtlLog::msg << L"Invalid section heading " << line.c_str();
+            SystemCtlLog::Warning();
         }
     }
    
