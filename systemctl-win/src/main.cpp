@@ -826,6 +826,8 @@ int SystemCtrl_Cmd_Disable( boost::program_options::variables_map &vm )
             SystemCtlLog::Error();
             exit(1);
         }
+        unit->StopService(false); // Ask nice
+        unit->Kill(9, 1, false); // Force terminate the service
         unit->Disable(false); // We will add non-blocking later
     }
     return 0;
