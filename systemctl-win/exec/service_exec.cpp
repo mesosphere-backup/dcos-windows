@@ -1088,6 +1088,8 @@ DWORD WINAPI CWrapperService::ServiceThread(LPVOID param)
             *logfile << Debug() << L"WaitForDependents = " << std::endl;
 
             self->SetServiceStatus(SERVICE_START_PENDING);
+            // In this case we need to make the list self->m_ServicesAfter ran and stopped before we start
+            // TODO also think about their return status?
             if (!self->WaitForDependents(self->m_ServicesAfter)) {
                 *logfile << Warning() << L"Failure in WaitForDepenents" << std::endl;
                 throw RestartException(1068, "dependents failed");
