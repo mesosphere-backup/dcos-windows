@@ -129,6 +129,7 @@ SystemDUnit::AddUserServiceLogonPrivilege()
     wstring username;
     wstring password; // ignored 
 
+    //TODO remove this make .service user managed
     GetUserCreds(username, password);
  
     // SystemCtlLog::msg << L"username = " << username << " password = " << password << std::endl; 
@@ -258,25 +259,33 @@ boolean SystemDUnit::StartService(boolean blocking)
             SystemCtlLog::msg << L"In StartService(" << this->name  << "): StartService failed " << GetLastError();
             SystemCtlLog::Info();
             CloseServiceHandle(hsvc);
+            CloseServiceHandle(hsc);
             return false;
 
         case ERROR_ACCESS_DENIED:
         case ERROR_SERVICE_LOGON_FAILED:
 
-            // The user lacks the necessary privelege. Add it and retry once
+            // The user lacks the necessary privilege. Add it and retry once
 
             SystemCtlLog::msg << L"In StartService(" << this->name  << "): StartService failed to logon erno = " << GetLastError();
             SystemCtlLog::Info();
             CloseServiceHandle(hsvc); 
+            CloseServiceHandle(hsc);
             AddUserServiceLogonPrivilege();  // We do this unconditionally 
             if (!this->m_retry++ ) {
-               return  StartService(blocking);
+                CloseServiceHandle(hsvc);
+                CloseServiceHandle(hsc);
+                return  StartService(blocking);
             }
+            CloseServiceHandle(hsvc);
+            CloseServiceHandle(hsc);
             return false;
 
         default:
             SystemCtlLog::msg << L"In StartService(" << this->name  << "): StartService error =  " << errcode;
             SystemCtlLog::Warning();
+            CloseServiceHandle(hsvc);
+            CloseServiceHandle(hsc);
             return false;
             break;
         }
@@ -292,7 +301,7 @@ boolean SystemDUnit::StartService(boolean blocking)
 
 boolean SystemDUnit::StopService(boolean blocking)
 {
-    SC_HANDLE hsc = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
+    SC_HANDLE hsc = OpenSCManagerW(NULL, NULL, SC_MANAGER_ALL_ACCESS);
     if (!hsc) {
         int last_error = GetLastError();
         SystemCtlLog::msg << "failed to open service manager, err = " << last_error;
@@ -300,7 +309,7 @@ boolean SystemDUnit::StopService(boolean blocking)
         return false;
     }
 
-    SC_HANDLE hsvc = OpenServiceW(hsc, this->name.c_str(), SERVICE_ALL_ACCESS);
+    SC_HANDLE hsvc = OpenServiceW(hsc, this->name.c_str(), SERVICE_STOP);
     if (!hsvc) {
         SystemCtlLog::msg << L"In Stop service(" << this->name << "): OpenService failed " << GetLastError();
         SystemCtlLog::Error();
@@ -313,6 +322,7 @@ boolean SystemDUnit::StopService(boolean blocking)
         SystemCtlLog::msg << L"StopService(" << this->name << ") failed " << GetLastError();
         SystemCtlLog::Error();
         CloseServiceHandle(hsvc);
+        CloseServiceHandle(hsc);
         return false;
     }
     
@@ -454,6 +464,8 @@ boolean SystemDUnit::IsActive()
     }
 
     if (svc_stat.dwCurrentState == SERVICE_RUNNING) {
+        CloseServiceHandle(hsvc);
+        CloseServiceHandle(hsc);
         return true;
     }
 
@@ -505,6 +517,8 @@ boolean SystemDUnit::IsFailed()
 
     if (svc_stat.dwCurrentState == SERVICE_STOPPED &&
         svc_stat.dwWin32ExitCode != 0) {
+            CloseServiceHandle(hsvc);
+            CloseServiceHandle(hsc);
             return true;
     }
 
@@ -846,6 +860,8 @@ boolean SystemDTimer::RegisterService( std::wstring unit )
 
 boolean SystemDUnit::UnregisterService()
 {
+    SystemCtlLog::msg << L"Trying to delete: " << this->name.c_str();
+    SystemCtlLog::Debug();
     SC_HANDLE hsc = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
     if (!hsc) {
         int last_error = GetLastError();
@@ -854,11 +870,11 @@ boolean SystemDUnit::UnregisterService()
         return false;
     }
 
-    SC_HANDLE hsvc = OpenServiceW(hsc, this->name.c_str(), DELETE);
+    SC_HANDLE hsvc = OpenServiceW(hsc, this->name.c_str(), SERVICE_ALL_ACCESS);
     if (!hsvc) {
         SystemCtlLog::msg << L"In unregister: OpenService " << this->name << L" failed " << GetLastError();
         SystemCtlLog::Error();
-        CloseServiceHandle(hsvc);
+        CloseServiceHandle(hsc);
         return false;
     }
 
@@ -866,9 +882,11 @@ boolean SystemDUnit::UnregisterService()
         SystemCtlLog::msg << L"In unregister: DeleteService " << this->name << " failed " << GetLastError();
         SystemCtlLog::Error();
         CloseServiceHandle(hsvc);
+        CloseServiceHandle(hsc);
         return false;
     }
-    
+    SystemCtlLog::msg << L"DeleteService was ok for: " << this->name.c_str();
+    SystemCtlLog::Debug();
     CloseServiceHandle(hsvc); 
     CloseServiceHandle(hsc);
     return true;

@@ -309,7 +309,7 @@ CWrapperService::CWrapperService(struct CWrapperService::ServiceParams &params)
     m_RestartMillis = params.restartMillis;
     m_TimeoutStopMillis = params.timeoutStopMillis;
     m_WorkingDirectory = params.workingDirectory;
-
+    m_Signal = params.signal;
     m_StdErr = params.stdErr;
     m_StdOut = params.stdOut;
 
@@ -350,7 +350,7 @@ CWrapperService::GetServiceDependencies()
         wostringstream os;
         int last_error = GetLastError();
         os << L"WaitForDependents could not open service manager win err = " << last_error << std::endl;
-    *logfile << Error() << os.str();
+        *logfile << Error() << os.str();
         throw ServiceManagerException(last_error, os.str().c_str());
     }
 
@@ -359,7 +359,7 @@ CWrapperService::GetServiceDependencies()
         wostringstream os;
         int last_error = GetLastError();
         os << L"WaitForDependents OpeService failed " << GetLastError() << std::endl;
-    *logfile << Error() << os.str();
+        *logfile << Error() << os.str();
         CloseServiceHandle(hsc);
         throw ServiceManagerException(last_error, os.str().c_str());
     }
@@ -375,8 +375,9 @@ CWrapperService::GetServiceDependencies()
         wostringstream os;
         int last_error = GetLastError();
         os << L"WaitForDependents could not get config err = " << last_error << std::endl;
-    *logfile << Error() << os.str();
+        *logfile << Error() << os.str();
         CloseServiceHandle(hsc);
+        CloseServiceHandle(hsvc);
         throw ServiceManagerException(last_error, os.str().c_str());
     }
 
@@ -1021,6 +1022,7 @@ DWORD WINAPI CWrapperService::TimerThread(LPVOID param)
         // Wait for service inactive
         DWORD timeout = on_unit_active_millis? on_unit_active_millis : INFINITE;
         WaitForSingleObject(hSvcProc, timeout );
+        CloseHandle(hSvcProc);
 
         *logfile << Debug() << L"service " << unit_name << L" started wait for " << (next_deadline-GetTickCount64()) << L" millis" << std::endl;
 
@@ -1111,7 +1113,7 @@ DWORD WINAPI CWrapperService::ServiceThread(LPVOID param)
 
             self->SetServiceStatus(SERVICE_START_PENDING);
             // In this case we need to make the list self->m_ServicesAfter ran and stopped before we start
-            // TODO also think about their return status?
+            // TODO also think about their return status? Do not start if they failed.
             if (!self->WaitForDependents(self->m_ServicesAfter, true)) {
                 *logfile << Warning() << L"Failure in WaitForDepenents" << std::endl;
                 throw RestartException(1068, "dependents failed");
@@ -1190,7 +1192,6 @@ DWORD WINAPI CWrapperService::ServiceThread(LPVOID param)
         
                 BOOL result = ::GetExitCodeProcess(self->m_ExecStartProcInfo.hProcess, &exitCode);
                 ::CloseHandle(self->m_ExecStartProcInfo.hProcess);
-                self->DeregisterMainPID();
         
                 if (!result || exitCode) {
                     wostringstream os;
@@ -1203,6 +1204,7 @@ DWORD WINAPI CWrapperService::ServiceThread(LPVOID param)
                         throw RestartException(exitCode, "start command failed");
                     }
                 }
+                self->DeregisterMainPID();
             }
         
             if (!self->m_ExecStartPostCmdLine.empty()) {
@@ -1372,26 +1374,28 @@ void CWrapperService::OnStop()
         // The CTRL_C_EVENT should go to all of the subprocesses since that all share a console.
         // We do this because some processes need warning before they terminate to perform cleanup. 
         DWORD wait_result = WAIT_FAILED;
-        if (AttachConsole( m_ExecStartProcInfo.dwProcessId)) {
-            SetConsoleCtrlHandler(NULL, true);
-            if (!GenerateConsoleCtrlEvent(CTRL_BREAK_EVENT, m_ExecStartProcInfo.dwProcessId)) {
-                *logfile << Error() << L"send  ctrl-break to process id " << m_ExecStartProcInfo.dwProcessId << " failed error code " << ::GetLastError() << std::endl;
+        if (m_Signal != 9) {
+            if (AttachConsole(m_ExecStartProcInfo.dwProcessId)) {
+                SetConsoleCtrlHandler(NULL, true);
+                if (!GenerateConsoleCtrlEvent(CTRL_BREAK_EVENT, m_ExecStartProcInfo.dwProcessId)) {
+                    *logfile << Error() << L"send  ctrl-break to process id " << m_ExecStartProcInfo.dwProcessId << " failed error code " << ::GetLastError() << std::endl;
+                }
+                else {
+
+                    // Wait for them to stop (fixed 20 sec timeout)
+                    wait_result = ::WaitForSingleObject(m_ExecStartProcInfo.hProcess, this->m_TimeoutStopMillis);
+                }
+                FreeConsole();
+                SetConsoleCtrlHandler(NULL, false);
             }
             else {
-    
-                // Wait for them to stop (fixed 20 sec timeout)
-                wait_result = ::WaitForSingleObject(m_ExecStartProcInfo.hProcess, this->m_TimeoutStopMillis);
+                *logfile << Error() << L"could not attach console " << m_ExecStartProcInfo.dwProcessId << " failed error code " << ::GetLastError() << std::endl;
             }
-            FreeConsole();
-            SetConsoleCtrlHandler(NULL, false);
+
+            if (wait_result == WAIT_TIMEOUT || wait_result == WAIT_FAILED) {
+                *logfile << Info() << L"ctrl-c has no effect. forcibly terminate process " << m_ExecStartProcInfo.dwProcessId << "and wait for stop" << std::endl;
+            }
         }
-        else {
-            *logfile << Error() << L"could not attach console " << m_ExecStartProcInfo.dwProcessId << " failed error code " << ::GetLastError() << std::endl;
-        }
-    
-        if (wait_result == WAIT_TIMEOUT || wait_result == WAIT_FAILED) {
-            *logfile << Info() << L"ctrl-c has no effect. forcibly terminate process " << m_ExecStartProcInfo.dwProcessId << "and wait for stop" << std::endl; 
-        }    
     
         // Kill main process anyway. Worst case nothing happens because the process is gone.
         // ::TerminateProcess( m_ExecStartProcInfo.hProcess, ERROR_PROCESS_ABORTED);
@@ -1814,8 +1818,10 @@ CWrapperService::WaitForDependents(std::vector<std::wstring> &serviceList, boole
                  // 2do: handle MORE_DATA
                 *logfile << Error() << L"WaitForDependents could not enum dependent services win err = " << last_error << std::endl;
                 CloseServiceHandle(hsc);
+                CloseServiceHandle(hsvc);
                 return false;
             }
+            CloseServiceHandle(hsvc);
 
             *logfile << Verbose() << L"status for service " << service << service_status.dwCurrentState << std::endl;
             if (checkifstopped)
@@ -1861,10 +1867,47 @@ CWrapperService::WaitForDependents(std::vector<std::wstring> &serviceList, boole
                     break; // If someone is running we must wait. No need to keep looking
                 }
             }
-            if (!checkifstopped && service_status.dwCurrentState != SERVICE_RUNNING) {
+            if (!checkifstopped) {
+                HKEY hRunKey = NULL;
+                LSTATUS status = ERROR_SUCCESS;
+
+                std::wstring subkey(L"SYSTEM\\CurrentControlSet\\Services\\");
+                subkey.append(service.c_str());
+                subkey.append(L"\\run");
+                RegOpenKeyW(HKEY_LOCAL_MACHINE, subkey.c_str(), &hRunKey);
+                if (status != ERROR_SUCCESS) {
+                    *logfile << Error() << L"WaitForDependents could not open registry key \\HKLM\\" << subkey << " status = " << status << std::endl;
+                }
+
+                DWORD parm_size = sizeof(INT64);
+                INT64 last_run = 0;
+                FILETIME ft_now;
+                GetSystemTimePreciseAsFileTime(&ft_now);
+                ULARGE_INTEGER ct;
+                ct.LowPart = ft_now.dwLowDateTime;
+                ct.HighPart = ft_now.dwHighDateTime;
+                INT64 now = (ct.QuadPart / 10000) - GetTickCount64();
+
+                status = RegGetValueW(hRunKey, NULL, L"LastRun", RRF_RT_QWORD, NULL, &last_run, &parm_size);
+                if (status != ERROR_SUCCESS) {
+                    *logfile << Error() << L"WaitForDependents: could not red registry value \\HKLM\\" << subkey << "\\LastRun status = " << status << std::endl;
+                    RegCloseKey(hRunKey);
+                }
+
+                status = RegCloseKey(hRunKey);
+                if (status != ERROR_SUCCESS) {
+                    *logfile << Error() << L"WaitForDependents could not close registry key \\HKLM\\" << subkey << " status = " << status << std::endl;
+                }
+
+                if (now < last_run && service_status.dwCurrentState != SERVICE_STOPPED) {
+                    *logfile << Error() << L"WaitForDependents now: " << now << " is less than last_run: " << last_run << std::endl;
+                    done = false;
+                    break; // If someone is running we must wait. No need to keep looking
+                }else if (service_status.dwCurrentState != SERVICE_RUNNING) {
+                    done = false;
+                    break; // If someone is running we must wait. No need to keep looking
+                }
                 *logfile << Debug() << L"done" << std::endl;
-                done = false;
-                break; // If someone is not running we must wait. No need to keep looking
             }
         }
 

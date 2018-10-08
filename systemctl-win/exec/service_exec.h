@@ -82,6 +82,7 @@ public:
         enum RestartAction   restartAction;
         int  restartMillis;
         int  timeoutStopMillis;
+        int  signal;
         std::wstring workingDirectory;
         BOOL fCanStop;
         BOOL fCanShutdown;
@@ -316,6 +317,7 @@ private:
     int  m_TimeoutStopMillis;
     int  m_StartLimitIntervalMillis;
     std::wstring m_WorkingDirectory;
+    int  m_Signal;
 
     wojournalstream *m_StdErr;
     wojournalstream *m_StdOut;

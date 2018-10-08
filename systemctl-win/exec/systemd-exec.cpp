@@ -93,6 +93,7 @@ struct CLIArgs
     int  runtimeMaxMillis;
     int  watchdogMillis;
     int  startLimitIntervalMillis;
+    int  signal;
     wstring workingDirectory;
     int verbosity;  
 };
@@ -771,6 +772,15 @@ CLIArgs ParseArgs(int argc, wchar_t *argv[])
         args.execStopPost = ws_vector;
     }
 
+    if (service_unit_options.count("Service.KillSignal")) {
+        if (service_unit_options["Service.KillSignal"].as<std::wstring>().compare(L"SIGKILL") == 0) {
+            args.signal = 9;
+        }
+        else {
+            args.signal = 0;
+        }
+    }
+
     *logfile << Debug() << L"service name " << args.serviceName << std::endl;
     for (auto arg: additionalArgs ) {
         *logfile << Debug() << L"additionalArgs " << arg << std::endl;
@@ -822,6 +832,7 @@ int wmain(int argc, wchar_t *argv[])
         params.fCanStop       = TRUE;
         params.fCanShutdown   = TRUE;
         params.fCanPauseContinue = TRUE;
+        params.signal = args.signal;
  
         params.conditionArchitecture = args.conditionArchitecture;
         params.conditionVirtualization = args.conditionVirtualization;

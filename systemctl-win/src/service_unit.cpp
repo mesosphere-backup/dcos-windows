@@ -1310,13 +1310,13 @@ SystemDUnit::Enable(boolean block)
     wstring active_dir_path = SystemDUnitPool::ACTIVE_UNIT_DIRECTORY_PATH;
     if (!SystemDUnitPool::DirExists(active_dir_path)) {
          if (!CreateDirectoryW(active_dir_path.c_str(), NULL)) {  // 2do: security attributes
-             SystemCtlLog::msg << L"Cold not create active directory";
+             SystemCtlLog::msg << L"Could not create active directory";
              SystemCtlLog::Error();
          }
     }
 
     if (!SystemDUnitPool::CopyUnitFileToActive(servicename)) {
-        SystemCtlLog::msg << L"Cold not copy activated service unit";
+        SystemCtlLog::msg << L"Could not copy activated service unit";
         SystemCtlLog::Error();
         return false;
     }
@@ -1549,6 +1549,7 @@ boolean SystemDUnit::Kill(int action, int killtarget, boolean block)
                 if (!pid) {
                     SystemCtlLog::msg << L"the process is not active, nothing to do. Operation skipped" ;
                     SystemCtlLog::Warning();
+                    return true;
                 }
             
                         // SIGKILL just kills the process unceremoniously. 
@@ -1556,6 +1557,7 @@ boolean SystemDUnit::Kill(int action, int killtarget, boolean block)
                 if (hProc == INVALID_HANDLE_VALUE) {
                     SystemCtlLog::msg << L"could not open process " << pid << " presumed no longer active. Operation skipped";
                     SystemCtlLog::Warning();
+                    return true;
                 }
                 KillProcessTree(pid);
                 ::TerminateProcess(hProc, ERROR_PROCESS_ABORTED);
