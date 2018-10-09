@@ -60,9 +60,9 @@ public:
 
     enum NotifyAction {
         NOTIFY_ACTION_NONE,
-	NOTIFY_ACTION_MAIN,
-	NOTIFY_ACTION_EXEC,
-	NOTIFY_ACTION_ALL
+        NOTIFY_ACTION_MAIN,
+        NOTIFY_ACTION_EXEC,
+        NOTIFY_ACTION_ALL
     };
 
     // The parameter list has gotten very long. This way we have a packet of params
@@ -81,6 +81,8 @@ public:
         enum ServiceType serviceType;
         enum RestartAction   restartAction;
         int  restartMillis;
+        int  timeoutStopMillis;
+        int  signal;
         std::wstring workingDirectory;
         BOOL fCanStop;
         BOOL fCanShutdown;
@@ -137,7 +139,7 @@ protected:
 
     virtual void OnStart(DWORD dwArgc, PWSTR *pszArgv);
     virtual void OnStop();
-    virtual boolean WaitForDependents(std::vector<std::wstring> &serviceList);
+    virtual boolean WaitForDependents(std::vector<std::wstring> &serviceList, boolean checkifstopped);
 
 private:
 
@@ -151,11 +153,11 @@ private:
             exitCode = err;
         }
 
-	const char * what () const throw ()
+    const char * what () const throw ()
         {
             std::stringstream ss;
             ss << msg << "exit code: " << exitCode ;
-       	    return ss.str().c_str();
+            return ss.str().c_str();
         }
     };
 
@@ -169,11 +171,11 @@ private:
             exitCode = err;
         }
 
-	const char * what () const throw ()
+    const char * what () const throw ()
         {
             std::stringstream ss;
             ss << msg << "service manager excpetion exit code: " << exitCode ;
-       	    return ss.str().c_str();
+            return ss.str().c_str();
         }
     };
 
@@ -202,7 +204,7 @@ private:
 
     void GetServiceDependencies(); // I know that the dependent info is in the unit file (wants and requires). 
                                  // But if the policy changes for some reason, getting the dependents is 
-                 		    // more robust than assuming that I know what is there
+                            // more robust than assuming that I know what is there
    // void StopServiceDependencies();
 
     static DWORD WINAPI WaitForProcessThread(LPVOID lpParam);
@@ -312,8 +314,10 @@ private:
     enum ServiceType m_ServiceType;
     enum RestartAction m_RestartAction;
     int  m_RestartMillis;
+    int  m_TimeoutStopMillis;
     int  m_StartLimitIntervalMillis;
     std::wstring m_WorkingDirectory;
+    int  m_Signal;
 
     wojournalstream *m_StdErr;
     wojournalstream *m_StdOut;

@@ -166,13 +166,19 @@ class SystemDTimer *SystemDTimer::ParseSystemDTimerUnit(wstring servicename, wst
 
              line = punit->ParseTimerSection(fs);
         }
+        else if (line.compare(L"[Service]") == 0) {
+            // Then we need to parse the service section
+            SystemCtlLog::msg << L"parse service section";
+            SystemCtlLog::Debug();
+
+            line = punit->ParseServiceSection(fs);
+        }
         else {
             if (line.length() == 0) {
                 break;
             }
-            SystemCtlLog::msg << L"invalid section heading " << line.c_str();
-            SystemCtlLog::Debug();
-            break;
+            SystemCtlLog::msg << L"Invalid section heading " << line.c_str();
+            SystemCtlLog::Warning();
         }
     }
    

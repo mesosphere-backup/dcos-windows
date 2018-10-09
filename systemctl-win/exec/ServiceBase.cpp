@@ -34,7 +34,7 @@ HANDLE CServiceBase::hSvcStopEvent = NULL;
 
 wojournalstream *CServiceBase::logfile = NULL;
 
-wojournalstream minlog(L"file:", L"c:/var/log/service.log");
+wojournalstream minlog(L"file:", L"c:/var/log/services.log");
 
 // Initialize the singleton service instance.
 CServiceBase *CServiceBase::s_service = NULL;
@@ -71,7 +71,7 @@ BOOL CServiceBase::Run(CServiceBase &service)
     // stopped. The process should simply terminate when the call returns.
     if (bDebug) {
         ServiceMain(0, NULL);
-	return true;
+        return true;
     }
     else {
         return StartServiceCtrlDispatcher(serviceTable);
@@ -100,19 +100,19 @@ void WINAPI CServiceBase::ServiceMain(DWORD dwArgc, PWSTR *pszArgv)
             s_service->m_name, ServiceCtrlHandler);
         if (s_service->m_statusHandle == NULL)
         {
-            WriteEventLogEntry(L"SystemD-Service-Exec", L"Service startng *1.", EVENTLOG_ERROR_TYPE);
+            WriteEventLogEntry(L"SystemD-Service-Exec", L"Service starting *1.", EVENTLOG_ERROR_TYPE);
             throw GetLastError();
         }
     }
 
 
-WriteEventLogEntry(L"SystemD-Service-Exec", L"Service startng *2.", EVENTLOG_ERROR_TYPE);
+    WriteEventLogEntry(L"SystemD-Service-Exec", L"Service starting *2.", EVENTLOG_ERROR_TYPE);
     // Start the service.
     s_service->Start(dwArgc, pszArgv);
 
-WriteEventLogEntry(L"SystemD-Service-Exec", L"Service startng *3.", EVENTLOG_ERROR_TYPE);
+    WriteEventLogEntry(L"SystemD-Service-Exec", L"Service starting *3.", EVENTLOG_ERROR_TYPE);
 
-*logfile << L" create event" << std::endl;
+    *logfile << L" create event" << std::endl;
     hSvcStopEvent = CreateEvent(
                          NULL,    // default security attributes
                          TRUE,    // manual reset event
@@ -120,21 +120,22 @@ WriteEventLogEntry(L"SystemD-Service-Exec", L"Service startng *3.", EVENTLOG_ERR
                          NULL);   // no name
 
     if ( hSvcStopEvent == NULL) {
-WriteEventLogEntry(L"SystemD-Service-Exec", L"Service abnormal exit.", EVENTLOG_ERROR_TYPE);
+        WriteEventLogEntry(L"SystemD-Service-Exec", L"Service abnormal exit.", EVENTLOG_ERROR_TYPE);
         return;
     }
-WriteEventLogEntry(L"SystemD-Service-Exec", L"Service startng *4.", EVENTLOG_ERROR_TYPE);
-*logfile << L" wait for stop event " << std::endl;
+
+    WriteEventLogEntry(L"SystemD-Service-Exec", L"Service starting *4.", EVENTLOG_ERROR_TYPE);
+    *logfile << L" wait for stop event " << std::endl;
     if (bDebug) {
         ::WaitForSingleObject(hSvcStopEvent, 20000); // In debug, just let it run for 20 sec to verify it is running
-    }
-    else {
+    } else {
         DWORD status = ::WaitForSingleObject(hSvcStopEvent, INFINITE);
-        *logfile << L"stop event signalled. status = " << hSvcStopEvent << std::endl;
+        *logfile << L"stop event signaled. status = " << hSvcStopEvent << std::endl;
   
     }
-*logfile << L"  stop event " << std::endl;
-WriteEventLogEntry(L"SystemD-Service-Exec", L"Service exit.", EVENTLOG_ERROR_TYPE);
+
+    *logfile << L"  stop event " << std::endl;
+    WriteEventLogEntry(L"SystemD-Service-Exec", L"Service exit.", EVENTLOG_ERROR_TYPE);
 }
 
 //
@@ -232,7 +233,7 @@ CServiceBase::CServiceBase(LPCWSTR pszServiceName,
         *this->logfile << Debug() << L"got log file" << std::endl;
     }
     else {
-        this->logfile = new wojournalstream(L"file:", L"c:\\tmp\\openstackservice.default.log");
+        this->logfile = new wojournalstream(L"file:", L"c:\\var\\log\\systemd.log");
         *this->logfile << Debug() << L"opened log file" << std::endl;
     }
 }
@@ -274,13 +275,13 @@ void CServiceBase::Start(DWORD dwArgc, PWSTR *pszArgv)
         OnStart(dwArgc, pszArgv);
 
         // Tell SCM that the service is started.
-        // SetServiceStatus(SERVICE_RUNNING);
+        SetServiceStatus(SERVICE_RUNNING);
     }
     catch (DWORD dwError)
     {
         // Log the error.
         WriteErrorLogEntry(L"Service Start", dwError);
-        *logfile << Error() << L"Service Start " << m_name << " failed errocode = " << dwError << std::endl;
+        *logfile << Error() << L"Service Start " << m_name << " failed error code = " << dwError << std::endl;
 
         // Set the service status to be stopped.
         SetServiceStatus(SERVICE_STOPPED, dwError);
@@ -350,9 +351,9 @@ void CServiceBase::Stop()
     {
         // Log the error.
         WriteErrorLogEntry(L"Service Stop", dwError);
-        *logfile << Error() << L"Service Stop " << m_name << " failed errocode = " << dwError << std::endl;
+        *logfile << Error() << L"Service Stop " << m_name << " failed error code = " << dwError << std::endl;
 
-        // Set the orginal service status.
+        // Set the original service status.
         SetServiceStatus(dwOriginalState);
     }
     catch (const std::exception &e)
@@ -361,7 +362,7 @@ void CServiceBase::Stop()
         WriteEventLogEntry(m_name, L"Service failed to stop.", EVENTLOG_ERROR_TYPE);
         *logfile << Error() << L"Service Stop " << m_name << " failed: " << e.what() << std::endl;
 
-        // Set the orginal service status.
+        // Set the original service status.
         SetServiceStatus(dwOriginalState);
     }
 }
@@ -406,7 +407,7 @@ void CServiceBase::Pause()
     {
         // Log the error.
         WriteErrorLogEntry(L"Service Pause", dwError);
-        *logfile << Error() << L"Service Pause " << m_name << " failed errocode = " << dwError << std::endl;
+        *logfile << Error() << L"Service Pause " << m_name << " failed error code = " << dwError << std::endl;
 
         // Tell SCM that the service is still running.
         SetServiceStatus(SERVICE_RUNNING);

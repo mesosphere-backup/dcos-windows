@@ -232,7 +232,7 @@ public:
        SERVICE_TYPE_UNDEFINED,
        SERVICE_TYPE_SIMPLE,
        SERVICE_TYPE_FORKING,
-       SERVICE_TYPE_ONESHOT, 
+       SERVICE_TYPE_ONESHOT,
        SERVICE_TYPE_DBUS,
        SERVICE_TYPE_NOTIFY,
        SERVICE_TYPE_IDLE
@@ -306,10 +306,10 @@ public:
             g_pool->GetPool().insert(std::make_pair(name, this));
             this->m_retry = 0;
 
-	    this->service_type   = SERVICE_TYPE_SIMPLE;
-	    this->restart_action = RESTART_ACTION_ALWAYS;
-	    this->notify_access  = NOTIFY_ACTION_NONE;
-	    this->restart_sec     = g_pool->globals.DefaultRestartUSec.count()/1000000.0;
+            this->service_type   = SERVICE_TYPE_SIMPLE;
+            this->restart_action = RESTART_ACTION_ALWAYS;
+            this->notify_access  = NOTIFY_ACTION_NONE;
+            this->restart_sec     = g_pool->globals.DefaultRestartUSec.count()/1000000.0;
             this->limitCPU        = g_pool->globals.DefaultLimitCPU;
             this->limitCPUSoft    = g_pool->globals.DefaultLimitCPUSoft;
             this->limitFSIZE      = g_pool->globals.DefaultLimitFSIZE;
@@ -471,6 +471,7 @@ protected:
     DWORD GetMainPID();
 
     boolean ParseDuration(std::wstring str, double &millis);
+    void WINAPI KillProcessTree(DWORD dwProcId);
 
     wstring name;
     wstring description;
@@ -514,10 +515,10 @@ private:
     vector<wstring> conflicts;    // Kept in order of definition
 
     vector<wstring> exec_start_pre;  // Kept in order of definition
-    vector<wstring> exec_start;      // Kept in order of definintion
+    vector<wstring> exec_start;      // Kept in order of definition
     vector<wstring> exec_start_post; // Kept in order of definition
-    vector<wstring> exec_reload;     // Kept in order of definintion
-    vector<wstring> exec_stop;       // Kept in order of definintion
+    vector<wstring> exec_reload;     // Kept in order of definition
+    vector<wstring> exec_stop;       // Kept in order of definition
     vector<wstring> exec_stop_post;  // Kept in order of definition
 
     vector<wstring> environment_file;  // Kept in order of definition

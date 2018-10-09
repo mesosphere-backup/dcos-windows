@@ -55,7 +55,7 @@ public:
     // Stop the service.
     void Stop();
 
-	static boolean bDebug;
+    static boolean bDebug;
 protected:
 
     // When implemented in a derived class, executes when a Start command is

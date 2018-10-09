@@ -133,7 +133,10 @@ EnvMap GetCurrentEnv()
         {
             auto name = matches[1].str();
             auto value = matches[2].str();
-            currentEnv[name] = value;
+            // Prevent empty variables
+            if (name.length() > 0 && value.length() > 0) {
+                currentEnv[name] = value;
+            }
         }
 
         envPair = envPair + envPairStr.length() + 1;
@@ -157,7 +160,10 @@ EnvMap LoadEnvVarsFromFile(const wstring& path)
         {
             auto name = boost::algorithm::trim_copy(matches[1].str());
             auto value = boost::algorithm::trim_copy(matches[2].str());
-            env[name] = value;
+            // Prevent empty variables
+            if (name.length() > 0 && value.length() > 0) {
+                env[name] = value;
+            }
         }
     }
 
@@ -178,7 +184,10 @@ EnvMap LoadPShellEnvVarsFromFile(const wstring& path)
         {
             auto name = boost::algorithm::trim_copy(matches[1].str());
             auto value = boost::algorithm::trim_copy(matches[2].str());
-            env[name] = value;
+            // Prevent empty variables
+            if (name.length() > 0 && value.length() > 0) {
+                env[name] = value;
+            }
         }
     }
 
