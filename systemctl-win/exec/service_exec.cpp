@@ -1069,7 +1069,7 @@ DWORD WINAPI CWrapperService::ServiceThread(LPVOID param)
             *logfile << Info() << L"start " << self->m_ServiceName << "service thread" << std::endl;
             if (!self->EvaluateConditions()) {
                 self->SetServiceStatus(SERVICE_STOPPED);
-                throw RestartException(1, "condition failed");
+                throw RestartException(0, "condition failed");
             }
 
             // If files before exist, bail.
