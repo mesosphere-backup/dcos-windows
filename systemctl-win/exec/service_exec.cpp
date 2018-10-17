@@ -1315,15 +1315,26 @@ void WINAPI CWrapperService::KillProcessTree(DWORD dwProcId)
     memset(&pe, 0, sizeof(PROCESSENTRY32));
     pe.dwSize = sizeof(PROCESSENTRY32);
 
-    *logfile << Verbose() << L"service kill process tree " << std::endl;
+    *logfile << Verbose() << L"service kill process tree with pid: " << dwProcId << std::endl;
     HANDLE hSnap = :: CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+    if (hSnap == INVALID_HANDLE_VALUE) {
+        *logfile << Error() << L"service kill process tree with pid: " << dwProcId << "failed with CreateToolhelp32Snapshot last error: " << GetLastError() <<  std::endl;
+        HANDLE hProc = ::OpenProcess(PROCESS_ALL_ACCESS, FALSE, dwProcId);
+        if (hProc)
+        {
+            *logfile << Error() << L"terminate subprocess forcibly on " << dwProcId << "for service " << m_ServiceName << std::endl;
+            ::TerminateProcess(hProc, ERROR_PROCESS_ABORTED);
+            ::CloseHandle(hProc);
+        }
+    }
 
     if (::Process32First(hSnap, &pe))
     {
         BOOL bContinue = TRUE;
         while (bContinue)
         {
-            if (pe.th32ParentProcessID == dwProcId)
+            if (pe.th32ParentProcessID == dwProcId &&
+                pe.th32ProcessID != 0)
             {
                 KillProcessTree(pe.th32ProcessID);
             }
@@ -1334,6 +1345,14 @@ void WINAPI CWrapperService::KillProcessTree(DWORD dwProcId)
         if (hProc)
         {
             *logfile << Debug() << L"terminate subprocess " << dwProcId << "for service " << m_ServiceName  << std::endl;
+            ::TerminateProcess(hProc, ERROR_PROCESS_ABORTED);
+            ::CloseHandle(hProc);
+        }
+    } else {
+        HANDLE hProc = ::OpenProcess(PROCESS_ALL_ACCESS, FALSE, dwProcId);
+        if (hProc)
+        {
+            *logfile << Error() << L"terminate subprocess forcibly on " << dwProcId << "for service " << m_ServiceName << std::endl;
             ::TerminateProcess(hProc, ERROR_PROCESS_ABORTED);
             ::CloseHandle(hProc);
         }
@@ -1368,13 +1387,12 @@ void CWrapperService::OnStop()
     
         *logfile << Debug() << L"kill stopping service " << m_ServiceName.c_str() << std::endl;
     
-        *logfile << Error() << L"send  ctrl-break to process id " << m_ExecStartProcInfo.dwProcessId << " and wait for stop" << std::endl;
-    
         // First, ask nicely. 
         // The CTRL_C_EVENT should go to all of the subprocesses since that all share a console.
         // We do this because some processes need warning before they terminate to perform cleanup. 
         DWORD wait_result = WAIT_FAILED;
         if (m_Signal != 9) {
+            *logfile << Error() << L"send  ctrl-break to process id " << m_ExecStartProcInfo.dwProcessId << " and wait for stop" << std::endl;
             if (AttachConsole(m_ExecStartProcInfo.dwProcessId)) {
                 SetConsoleCtrlHandler(NULL, true);
                 if (!GenerateConsoleCtrlEvent(CTRL_BREAK_EVENT, m_ExecStartProcInfo.dwProcessId)) {
