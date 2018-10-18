@@ -807,8 +807,6 @@ int wmain(int argc, wchar_t *argv[])
         unit_log.set_default_msglevel(journalstreams::LOGGING_LEVEL_INFO);
         auto args = ParseArgs(argc, argv);
 
-        *logfile << Error() << L"log file name " << args.logFilePath.c_str() << std::endl;
-
         params.szServiceName  = args.serviceName.c_str();
         params.szShellCmdPre  = L"";
         params.szShellCmdPost = L"";
