@@ -336,7 +336,7 @@ void CServiceBase::Stop()
     DWORD dwOriginalState = m_status.dwCurrentState;
     try
     {
-        *logfile << Info() << L"Start Service " << m_name << std::endl;
+        *logfile << Info() << L"Stop Service " << m_name << std::endl;
         // Tell SCM that the service is stopping.
         SetServiceStatus(SERVICE_STOP_PENDING);
 
