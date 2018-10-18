@@ -105,7 +105,7 @@ namespace journalstreams {
             m_console_output  = false;
             m_file_output     = false;
             m_eventlog_output = false;
-            m_console = std::wofstream("c:/var/log/services.log", std::ofstream::app);
+            m_console = std::wofstream("c:/var/log/systemd.log", std::ofstream::app);
             m_logginglevel    =  0;
             m_default_msglevel = 3; // INFO
             m_msglevel      = m_default_msglevel;
@@ -135,7 +135,7 @@ namespace journalstreams {
             this->m_logginglevel    =  from.m_logginglevel;
             this->m_default_msglevel = from.m_default_msglevel;
             this->m_msglevel      = from.m_msglevel;
-            m_console = std::wofstream("c:/var/log/services.log", std::ofstream::app);
+            m_console = std::wofstream("c:/var/log/systemd.log", std::ofstream::app);
             LOG_LEVEL_LABELS = labels;
         };
     
