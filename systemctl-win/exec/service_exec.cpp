@@ -710,6 +710,8 @@ void CWrapperService::StartProcess(LPCWSTR cmdLine, DWORD processFlags, PROCESS_
 
     delete[] tempCmdLine;
 
+    *logfile << Verbose() << "spawned process: " << procInfo.dwProcessId << std::endl;
+
     if (!result)
     {
         DWORD err = GetLastError();
@@ -722,12 +724,21 @@ void CWrapperService::StartProcess(LPCWSTR cmdLine, DWORD processFlags, PROCESS_
 
     if(waitForProcess)
     {
+        DWORD wait_result = WAIT_FAILED;
         *logfile << Verbose() << "wait for process " << cmdLine << std::endl;
-        ::WaitForSingleObject(procInfo.hProcess, INFINITE);
+        wait_result = ::WaitForSingleObject(procInfo.hProcess, INFINITE);
 
         DWORD exitCode = 0;
         BOOL result = ::GetExitCodeProcess(procInfo.hProcess, &exitCode);
+
+        if (wait_result == WAIT_TIMEOUT || wait_result == WAIT_FAILED) {
+            *logfile << Verbose() << L"wait failed in starting the process " << procInfo.dwProcessId << " trying to force terminate" << std::endl;
+            *logfile << Verbose() << L"GetExitCodeProcess result: " << result << " exitCode: " << exitCode << std::endl;
+            KillProcessTree(procInfo.dwProcessId);
+        }
+
         ::CloseHandle(procInfo.hProcess);
+        ::CloseHandle(procInfo.hThread);
 
         if (!result || exitCode)
         {
@@ -1156,16 +1167,15 @@ DWORD WINAPI CWrapperService::ServiceThread(LPVOID param)
             }
             self->m_envBuf.push_back(L'\0');
 
-            self->SetServiceStatus(SERVICE_RUNNING);
             if (!self->m_ExecStartPreCmdLine.empty())
             {
                 wostringstream os;
                 for( int i = 0;  i < self->m_ExecStartPreCmdLine.size(); i++ ) {
                     auto ws = self->m_ExecStartPreCmdLine[i];
-                    *logfile << Info() << L"Running ExecStartPre command: " << ws.c_str();
+                    *logfile << Verbose() << L"Running ExecStartPre command: " << ws.c_str();
                       // to do, add special char processing
                     try {
-                        self->StartProcess(ws.c_str(), 0, self->m_ExecStartPreProcInfo[i], true); 
+                        self->StartProcess(ws.c_str(), 0, self->m_ExecStartPreProcInfo[i], true);
                     }
                     catch(RestartException &ex) {
                          if (!self->m_ExecStartPreFlags.empty() &&
@@ -1192,6 +1202,7 @@ DWORD WINAPI CWrapperService::ServiceThread(LPVOID param)
         
                 BOOL result = ::GetExitCodeProcess(self->m_ExecStartProcInfo.hProcess, &exitCode);
                 ::CloseHandle(self->m_ExecStartProcInfo.hProcess);
+                ::CloseHandle(self->m_ExecStartProcInfo.hThread);
         
                 if (!result || exitCode) {
                     wostringstream os;
@@ -1311,54 +1322,12 @@ DWORD WINAPI CWrapperService::WaitForProcessThread(LPVOID lpParam)
 
 void WINAPI CWrapperService::KillProcessTree(DWORD dwProcId)
 {
-    PROCESSENTRY32 pe;
-    memset(&pe, 0, sizeof(PROCESSENTRY32));
-    pe.dwSize = sizeof(PROCESSENTRY32);
-
-    *logfile << Verbose() << L"service kill process tree with pid: " << dwProcId << std::endl;
-    HANDLE hSnap = :: CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-    if (hSnap == INVALID_HANDLE_VALUE) {
-        *logfile << Error() << L"service kill process tree with pid: " << dwProcId << "failed with CreateToolhelp32Snapshot last error: " << GetLastError() <<  std::endl;
-        HANDLE hProc = ::OpenProcess(PROCESS_ALL_ACCESS, FALSE, dwProcId);
-        if (hProc)
-        {
-            *logfile << Error() << L"terminate subprocess forcibly on " << dwProcId << "for service " << m_ServiceName << std::endl;
-            ::TerminateProcess(hProc, ERROR_PROCESS_ABORTED);
-            ::CloseHandle(hProc);
-        }
-    }
-
-    if (::Process32First(hSnap, &pe))
-    {
-        BOOL bContinue = TRUE;
-        while (bContinue)
-        {
-            if (pe.th32ParentProcessID == dwProcId &&
-                pe.th32ProcessID != 0)
-            {
-                KillProcessTree(pe.th32ProcessID);
-            }
-            bContinue = ::Process32Next(hSnap, &pe);
-        }
-
-        HANDLE hProc = ::OpenProcess(PROCESS_ALL_ACCESS, FALSE, dwProcId);
-        if (hProc)
-        {
-            *logfile << Debug() << L"terminate subprocess " << dwProcId << "for service " << m_ServiceName  << std::endl;
-            ::TerminateProcess(hProc, ERROR_PROCESS_ABORTED);
-            ::CloseHandle(hProc);
-        }
-    } else {
-        HANDLE hProc = ::OpenProcess(PROCESS_ALL_ACCESS, FALSE, dwProcId);
-        if (hProc)
-        {
-            *logfile << Error() << L"terminate subprocess forcibly on " << dwProcId << "for service " << m_ServiceName << std::endl;
-            ::TerminateProcess(hProc, ERROR_PROCESS_ABORTED);
-            ::CloseHandle(hProc);
-        }
-    }
-
-    ::CloseHandle(hSnap);
+    char command[500];
+    char* s = "taskkill.exe /f /t /pid ";
+    sprintf(command, "%s %d", s, dwProcId);
+    *logfile << Verbose() << L"service kill process tree with pid: " << dwProcId << L" with command: " << std::endl;
+    *logfile << Verbose() << command << std::endl;
+    system(command);
 }
 
 void CWrapperService::OnStop()
