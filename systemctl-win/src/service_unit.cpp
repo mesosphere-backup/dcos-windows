@@ -1229,11 +1229,11 @@ static boolean delete_unit(wstring file_path, void *context)
         (file_type.compare(L".target") == 0) ||
         (file_type.compare(L".timer") == 0) ||
         (file_type.compare(L".socket") == 0)) {
-    // Delete the service
+        // Delete the service
         class SystemDUnit *punit = SystemDUnitPool::FindUnit(servicename);
-    if (punit) {
-        punit->Disable(true);
-    }
+        if (punit) {
+            punit->Disable(true);
+        }
     }
     return true;
 }
