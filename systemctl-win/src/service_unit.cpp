@@ -1216,6 +1216,7 @@ static boolean read_unit(wstring file_path, void *context)
             (void)SystemDUnitPool::Apply(requires_dir_path, add_wanted_unit, (void*)punit);
         }
     }
+
     return true;
 }
 
@@ -1232,7 +1233,8 @@ static boolean delete_unit(wstring file_path, void *context)
         // Delete the service
         class SystemDUnit *punit = SystemDUnitPool::FindUnit(servicename);
         if (punit) {
-            punit->Disable(true);
+            punit->Mask(true);
+            punit->Unmask(true);
         }
     }
     return true;
@@ -1729,13 +1731,6 @@ boolean SystemDUnit::Unmask(boolean block)
         (void)SystemDUnitPool::Apply(wants_dir_path, unmask_wanted_unit, (void*)this);
     }
 
-    // Is there a wants directory?
-    if (this->IsEnabled()) {
-        // We don't error but we don't do anything
-        return true;
-    }
-
-
     // Even if we aren't running now, we could have a unit in the active directory
     // If so, we just need to register ourseleves with the service manager
     wifstream checkfs(SystemDUnitPool::ACTIVE_UNIT_DIRECTORY_PATH+L"\\"+servicename);
@@ -1748,6 +1743,7 @@ boolean SystemDUnit::Unmask(boolean block)
         // If there is no file in the active directory, we copy one over, then register.
 
         wstring service_unit_path = SystemDUnitPool::UNIT_DIRECTORY_PATH+L"\\"+servicename;
+        wstring service_unit_path2 = SystemDUnitPool::ACTIVE_UNIT_DIRECTORY_PATH + L"\\" + servicename;
     
         // Find the unit in the unit library
         wifstream fs(service_unit_path, std::fstream::in);
@@ -1756,17 +1752,14 @@ boolean SystemDUnit::Unmask(boolean block)
              SystemCtlLog::Error();
              return false;
         }
-        fs.seekg (0, fs.end);
-        int length = fs.tellg();
-        fs.seekg (0, fs.beg);
-        buffer = new wchar_t [length];
-        fs.read (buffer,length);
-    
         fs.close();
-    
-        wofstream ofs(SystemDUnitPool::ACTIVE_UNIT_DIRECTORY_PATH+L"\\"+servicename);
-        ofs.write (buffer,length);
-        ofs.close();
+        BOOL try_copy = CopyFileW(service_unit_path.c_str(), service_unit_path2.c_str(), false);
+        if (try_copy != TRUE) {
+            SystemCtlLog::msg << L"Copy from : " << service_unit_path.c_str() << std::endl << L" to : "
+                << service_unit_path2.c_str() << std::endl << L"with result: " << try_copy << std::endl
+                << L"And last error: " << GetLastError() << std::endl;
+            SystemCtlLog::Error();
+        }
     
         return true;
     }
@@ -2011,7 +2004,7 @@ static void query_register_unit(std::pair<std::wstring, class SystemDUnit *> ent
         if (!punit->IsEnabled()) {
             SystemCtlLog::msg <<L"query register unit " << punit->Name();
             SystemCtlLog::Debug();
-            punit->RegisterService();
+            punit->ReloadService(true);
         }
     }
 }
@@ -2092,9 +2085,9 @@ SystemDUnitPool::SystemDUnitPool()
         system_drive = BUFFER;
     }
 
-    UNIT_DIRECTORY_PATH = system_drive + L"\\etc\\SystemD\\system";
-    ACTIVE_UNIT_DIRECTORY_PATH = system_drive + L"\\etc\\SystemD\\active";
-    UNIT_WORKING_DIRECTORY_PATH = system_drive + L"\\etc\\SystemD\\run";
+    UNIT_DIRECTORY_PATH = system_drive + L"\\etc\\systemd\\system";
+    ACTIVE_UNIT_DIRECTORY_PATH = system_drive + L"\\etc\\systemd\\active";
+    UNIT_WORKING_DIRECTORY_PATH = system_drive + L"\\etc\\systemd\\run";
 
     wchar_t name_buffer[2048]; 
     ::GetModuleFileNameW(NULL, name_buffer, 2048);
