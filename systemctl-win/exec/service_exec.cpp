@@ -1188,13 +1188,13 @@ DWORD WINAPI CWrapperService::ServiceThread(LPVOID param)
             }
 
             *logfile << Debug() << L"starting cmd " << self->m_ExecStartCmdLine.c_str() << std::endl;
-            self->SetServiceStatus(SERVICE_RUNNING);
             self->m_IsStopping = FALSE;
         
             *logfile << Verbose() << L"Starting service: " << self->m_ServiceName << std::endl;
         
             if (!self->m_ExecStartCmdLine.empty()) {
                 self->StartProcess(self->m_ExecStartCmdLine.c_str(), CREATE_NEW_PROCESS_GROUP, self->m_ExecStartProcInfo, false);
+                self->SetServiceStatus(SERVICE_RUNNING);
                 self->RegisterMainPID();  // We register the pid in the registry so we can kill it later if we wish from systemctl
         
                 *logfile << Verbose() << "wait for main process " << std::endl;
