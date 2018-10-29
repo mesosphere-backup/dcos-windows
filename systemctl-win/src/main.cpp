@@ -384,6 +384,8 @@ int SystemCtrl_Cmd_Reload( boost::program_options::variables_map &vm )
         }
         unit->StopService(false); // We will add non-blocking later
         unit->Disable(false); // We will add non-blocking later
+        unit->Mask(false);
+        unit->Unmask(false);
         unit->Enable(false);
     }
 
