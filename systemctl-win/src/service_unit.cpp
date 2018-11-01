@@ -232,6 +232,8 @@ SystemDUnitPool::CopyUnitFileToActive(wstring servicename)
 
 class SystemDUnit *
 SystemDUnitPool::ReadServiceUnit(std::wstring name, std::wstring service_unit_path) {
+     SystemCtlLog::msg << L"ReadServiceUnit name = " << name << " and path: " << service_unit_path;
+     SystemCtlLog::Debug();
      wstring servicename = name;
      class SystemDUnit *punit = NULL;
 
@@ -451,10 +453,9 @@ wstring SystemDUnit::ParseUnitSection( wifstream &fs)
    
     for (auto i = 0; i < attrs.size(); i++) {
         if (attrs[i].compare(L"Description") == 0) {
-            SystemCtlLog::msg << L"Description = " << values[i].c_str();
-        SystemCtlLog::Debug();
-
             this->description = values[i].c_str(); 
+            SystemCtlLog::msg << L"Description = " << this->description << std::endl << "For service = " << this->name;
+            SystemCtlLog::Debug();
         }
         else if (attrs[i].compare(L"Documentation") == 0) {
             SystemCtlLog::msg << L"2do: attrs = " << attrs[i].c_str() << L" value = " << values[i].c_str();
@@ -1175,6 +1176,47 @@ static boolean add_requireed_unit(wstring file_path, void *context)
     return true;
 }
 
+static boolean delete_unit(wstring file_path, void *context)
+
+{
+    wstring servicename = file_path.substr(file_path.find_last_of('\\') + 1);
+    wstring file_type = file_path.substr(file_path.find_last_of('.'));
+
+    if ((file_type.compare(L".service") == 0) ||
+        (file_type.compare(L".target") == 0) ||
+        (file_type.compare(L".timer") == 0) ||
+        (file_type.compare(L".socket") == 0)) {
+        // Delete the service
+        class SystemDUnit *punit = SystemDUnitPool::FindUnit(servicename);
+        if (punit) {
+            BYTE unit_hash[16];
+            BYTE active_hash[16];
+            wstring service_unit_path = SystemDUnitPool::UNIT_DIRECTORY_PATH + L"\\" + servicename;
+            wstring service_active_path = SystemDUnitPool::ACTIVE_UNIT_DIRECTORY_PATH + L"\\" + servicename;
+            if (SystemDUnitPool::md5_hash(service_unit_path, unit_hash) &&
+                SystemDUnitPool::md5_hash(service_active_path, active_hash) &&
+                (memcmp(unit_hash, active_hash, 16) != 0)) {
+                SystemCtlLog::msg << L"try to stop: " << punit->Name();
+                SystemCtlLog::Debug();
+                punit->StopService(true);
+                punit->Disable(true);
+                punit->Mask(true);
+                punit->Unmask(true);
+            }
+        }
+    }
+    return true;
+}
+
+static boolean
+enable_required_unit(wstring file_path, void *context )
+
+{
+    SystemCtlLog::msg << L"enable required Unit " << file_path.c_str();
+    SystemCtlLog::Verbose();
+    return true;
+}
+
 // Returns true if the file is read in or ignored. false if read fails
 static boolean read_unit(wstring file_path, void *context)
 
@@ -1203,47 +1245,20 @@ static boolean read_unit(wstring file_path, void *context)
             return false;
         }
         // Look for wanted directory
-        wstring wants_dir_path = file_path+L".wants";
+        wstring wants_dir_path = file_path + L".wants";
         if (SystemDUnitPool::DirExists(wants_dir_path)) {
-        // Add to wants
+            // Add to wants
             (void)SystemDUnitPool::Apply(wants_dir_path, add_wanted_unit, (void*)punit);
         }
 
         // Look for required directory
-        wstring requires_dir_path = file_path+L".requires";
+        wstring requires_dir_path = file_path + L".requires";
         if (SystemDUnitPool::DirExists(requires_dir_path)) {
-        // Add to requires
-            (void)SystemDUnitPool::Apply(requires_dir_path, add_wanted_unit, (void*)punit);
+            // Add to requires
+            (void)SystemDUnitPool::Apply(requires_dir_path, add_requireed_unit, (void*)punit);
         }
     }
-    return true;
-}
 
-static boolean delete_unit(wstring file_path, void *context)
-
-{
-    wstring servicename = file_path.substr(file_path.find_last_of('\\') + 1);
-    wstring file_type = file_path.substr(file_path.find_last_of('.'));
-
-    if ((file_type.compare(L".service") == 0) ||
-        (file_type.compare(L".target") == 0) ||
-        (file_type.compare(L".timer") == 0) ||
-        (file_type.compare(L".socket") == 0)) {
-    // Delete the service
-        class SystemDUnit *punit = SystemDUnitPool::FindUnit(servicename);
-    if (punit) {
-        punit->Disable(true);
-    }
-    }
-    return true;
-}
-
-static boolean
-enable_required_unit(wstring file_path, void *context )
-
-{
-    SystemCtlLog::msg << L"enable required Unit " << file_path.c_str();
-    SystemCtlLog::Verbose();
     return true;
 }
 
@@ -1628,6 +1643,7 @@ mask_required_unit(wstring file_path, void *context )
     SystemCtlLog::msg << L"mask required Unit " << file_path.c_str();
     SystemCtlLog::Debug();
     std::string filepath_A = std::string(file_path.begin(), file_path.end());
+    DeleteFileA(filepath_A.c_str());
     std::remove(filepath_A.c_str());
     return true;
 }
@@ -1639,6 +1655,7 @@ mask_wanted_unit(wstring file_path, void *context )
     SystemCtlLog::msg << L"mask wanted Unit " << file_path.c_str();
     SystemCtlLog::Debug();
     std::string filepath_A = std::string(file_path.begin(), file_path.end());
+    DeleteFileA(filepath_A.c_str());
     std::remove(filepath_A.c_str());
     return true;
 }
@@ -1649,6 +1666,8 @@ boolean SystemDUnit::Mask(boolean block)
     // Mask unregisters the service from the service manager, then deletes the service unit 
     // from the active directory.
     wstring servicename = this->name;
+    SystemCtlLog::msg << L"SystemDUnit::Mask with name: " << servicename;
+    SystemCtlLog::Debug();
 
     // Is there a requires directory?
     wstring requires_dir_path = SystemDUnitPool::ACTIVE_UNIT_DIRECTORY_PATH+L"\\"+servicename+L".requires";
@@ -1677,11 +1696,15 @@ boolean SystemDUnit::Mask(boolean block)
         }
     }
 
-    this->UnregisterService();
-
     std::wstring filepath_W = SystemDUnitPool::ACTIVE_UNIT_DIRECTORY_PATH+L"\\"+servicename;
     std::string filepath_A = std::string(filepath_W.begin(), filepath_W.end());
     // Delete the file
+    SystemCtlLog::msg << L"SystemDUnit::Mask deletefile with name: " << filepath_A.c_str();
+    SystemCtlLog::Debug();
+    if (!DeleteFileA(filepath_A.c_str())) {
+        SystemCtlLog::msg << L"SystemDUnit::Mask deletefile failed with GetLastError: " << GetLastError();
+        SystemCtlLog::Debug();
+    }
     std::remove(filepath_A.c_str());
     
     // and mark the object
@@ -1729,13 +1752,6 @@ boolean SystemDUnit::Unmask(boolean block)
         (void)SystemDUnitPool::Apply(wants_dir_path, unmask_wanted_unit, (void*)this);
     }
 
-    // Is there a wants directory?
-    if (this->IsEnabled()) {
-        // We don't error but we don't do anything
-        return true;
-    }
-
-
     // Even if we aren't running now, we could have a unit in the active directory
     // If so, we just need to register ourseleves with the service manager
     wifstream checkfs(SystemDUnitPool::ACTIVE_UNIT_DIRECTORY_PATH+L"\\"+servicename);
@@ -1748,6 +1764,7 @@ boolean SystemDUnit::Unmask(boolean block)
         // If there is no file in the active directory, we copy one over, then register.
 
         wstring service_unit_path = SystemDUnitPool::UNIT_DIRECTORY_PATH+L"\\"+servicename;
+        wstring service_unit_path2 = SystemDUnitPool::ACTIVE_UNIT_DIRECTORY_PATH + L"\\" + servicename;
     
         // Find the unit in the unit library
         wifstream fs(service_unit_path, std::fstream::in);
@@ -1756,17 +1773,14 @@ boolean SystemDUnit::Unmask(boolean block)
              SystemCtlLog::Error();
              return false;
         }
-        fs.seekg (0, fs.end);
-        int length = fs.tellg();
-        fs.seekg (0, fs.beg);
-        buffer = new wchar_t [length];
-        fs.read (buffer,length);
-    
         fs.close();
-    
-        wofstream ofs(SystemDUnitPool::ACTIVE_UNIT_DIRECTORY_PATH+L"\\"+servicename);
-        ofs.write (buffer,length);
-        ofs.close();
+        BOOL try_copy = CopyFileW(service_unit_path.c_str(), service_unit_path2.c_str(), false);
+        if (try_copy != TRUE) {
+            SystemCtlLog::msg << L"Copy from : " << service_unit_path.c_str() << std::endl << L" to : "
+                << service_unit_path2.c_str() << std::endl << L"with result: " << try_copy << std::endl
+                << L"And last error: " << GetLastError() << std::endl;
+            SystemCtlLog::Error();
+        }
     
         return true;
     }
@@ -2011,7 +2025,7 @@ static void query_register_unit(std::pair<std::wstring, class SystemDUnit *> ent
         if (!punit->IsEnabled()) {
             SystemCtlLog::msg <<L"query register unit " << punit->Name();
             SystemCtlLog::Debug();
-            punit->RegisterService();
+            punit->ReloadService(true);
         }
     }
 }
@@ -2092,9 +2106,9 @@ SystemDUnitPool::SystemDUnitPool()
         system_drive = BUFFER;
     }
 
-    UNIT_DIRECTORY_PATH = system_drive + L"\\etc\\SystemD\\system";
-    ACTIVE_UNIT_DIRECTORY_PATH = system_drive + L"\\etc\\SystemD\\active";
-    UNIT_WORKING_DIRECTORY_PATH = system_drive + L"\\etc\\SystemD\\run";
+    UNIT_DIRECTORY_PATH = system_drive + L"\\etc\\systemd\\system";
+    ACTIVE_UNIT_DIRECTORY_PATH = system_drive + L"\\etc\\systemd\\active";
+    UNIT_WORKING_DIRECTORY_PATH = system_drive + L"\\etc\\systemd\\run";
 
     wchar_t name_buffer[2048]; 
     ::GetModuleFileNameW(NULL, name_buffer, 2048);
@@ -2184,6 +2198,83 @@ SystemDUnitPool::SystemDUnitPool()
     this->globals.TimerSlackNSec=50000;
 }
 
+bool SystemDUnitPool::md5_hash(std::wstring path, BYTE* hash)
+{
+    BOOL bResult = FALSE;
+    HCRYPTPROV hProv = 0;
+    HCRYPTHASH hHash = 0;
+    HANDLE hFile = NULL;
+    BYTE file_buffer[1024];
+    DWORD cbRead = 0;
+    BYTE temp_hash[16];
+    DWORD cbHash = 0;
+    LPCWSTR filename = path.c_str();
+
+    hFile = CreateFileW(filename, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, NULL);
+
+    if (INVALID_HANDLE_VALUE == hFile) {
+        SystemCtlLog::msg << "Error opening file: " << filename << L" . With last error: " << GetLastError();
+        SystemCtlLog::Error();
+        return false;
+    }
+
+    if (!CryptAcquireContextW(&hProv, NULL, NULL, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT)) {
+        SystemCtlLog::msg << "CryptAcquireContext failed with last error: " << GetLastError();
+        SystemCtlLog::Error();
+        CloseHandle(hFile);
+        return false;
+    }
+
+    if (!CryptCreateHash(hProv, CALG_MD5, 0, 0, &hHash)) {
+        SystemCtlLog::msg << "CryptCreateHash failed with last error: " << GetLastError();
+        SystemCtlLog::Error();
+        CloseHandle(hFile);
+        CryptReleaseContext(hProv, 0);
+        return false;
+    }
+
+    while (bResult = ReadFile(hFile, file_buffer, 1024, &cbRead, NULL)) {
+        if (0 == cbRead) {
+            break;
+        }
+
+        if (!CryptHashData(hHash, file_buffer, cbRead, 0)) {
+            SystemCtlLog::msg << "CryptHashData failed with last error: " << GetLastError();
+            SystemCtlLog::Error();
+            CryptReleaseContext(hProv, 0);
+            CryptDestroyHash(hHash);
+            CloseHandle(hFile);
+            return false;
+        }
+    }
+
+    if (!bResult) {
+        SystemCtlLog::msg << "ReadFile failed with last error: " << GetLastError();
+        SystemCtlLog::Error();
+        CryptReleaseContext(hProv, 0);
+        CryptDestroyHash(hHash);
+        CloseHandle(hFile);
+        return false;
+    }
+
+    cbHash = 16;
+    if (!CryptGetHashParam(hHash, HP_HASHVAL, temp_hash, &cbHash, 0)) {
+        SystemCtlLog::msg << "CryptGetHashParam failed with last error: " << GetLastError();
+        SystemCtlLog::Error();
+        CryptDestroyHash(hHash);
+        CryptReleaseContext(hProv, 0);
+        CloseHandle(hFile);
+        return false;
+    }
+
+    CryptDestroyHash(hHash);
+    CryptReleaseContext(hProv, 0);
+    CloseHandle(hFile);
+    memcpy(hash, temp_hash, 16);
+
+    return true;
+}
+
 void SystemDUnitPool::ReloadPool()
 
 {
@@ -2194,12 +2285,20 @@ void SystemDUnitPool::ReloadPool()
     //
     (void)Apply(SystemDUnitPool::ACTIVE_UNIT_DIRECTORY_PATH.c_str(), delete_unit, (void*)this);
 
+    g_pool->GetPool().clear();
+
     (void)Apply(SystemDUnitPool::UNIT_DIRECTORY_PATH.c_str(), read_unit, (void*)this);
+
+    for (auto member : g_pool->GetPool()) {
+        SystemCtlLog::msg << L"key = " << member.first << " value = " << member.second->Name() << std::endl; ;
+        SystemCtlLog::Debug();
+    }
 
      // Now we have the graph, we need to resolve a dependencies graph.
      for_each(g_pool->pool.begin(), g_pool->pool.end(), setup_own_dependencies);
      for_each(g_pool->pool.begin(), g_pool->pool.end(), setup_other_dependencies);
      for_each(g_pool->pool.begin(), g_pool->pool.end(), register_unit);
+
 }
 
 
@@ -2211,7 +2310,7 @@ void SystemDUnitPool::LoadPool()
      (void)Apply(SystemDUnitPool::ACTIVE_UNIT_DIRECTORY_PATH.c_str(), read_unit, (void*)this);
 
      for (auto member: g_pool->GetPool()) {
-         SystemCtlLog::msg << L"key = " << member.first << "value = " << member.second->Name() << std::endl; ;
+         SystemCtlLog::msg << L"key = " << member.first << " value = " << member.second->Name() << std::endl; ;
          SystemCtlLog::Debug();
      }
 
@@ -2343,6 +2442,14 @@ SystemDUnit::attr_service_type( wstring attr_name, wstring attr_value, unsigned 
         SystemCtlLog::msg << "service type " << attr_value.c_str() << "is unknown" ; ;
         SystemCtlLog::Warning();
     }
+    return true;
+}
+
+boolean
+SystemDUnit::attr_service_user(wstring attr_name, wstring attr_value, unsigned long &attr_bitmask)
+
+{
+    this->user_name = attr_value;
     return true;
 }
 
@@ -2950,7 +3057,7 @@ std::map< std::wstring , SystemDUnit::systemd_service_attr_func> SystemDUnit::Sy
         { L"MountAPIVFS", &SystemDUnit::attr_not_implemented },
         { L"BindPaths", &SystemDUnit::attr_not_implemented },
         { L"BindReadOnlyPaths", &SystemDUnit::attr_not_implemented },
-        { L"User", &SystemDUnit::attr_not_implemented },
+        { L"User", &SystemDUnit::attr_service_user },
         { L"Group", &SystemDUnit::attr_not_implemented },
         { L"DynamicUser", &SystemDUnit::attr_not_implemented },
         { L"SupplementaryGroups", &SystemDUnit::attr_not_implemented },

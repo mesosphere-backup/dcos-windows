@@ -384,6 +384,8 @@ int SystemCtrl_Cmd_Reload( boost::program_options::variables_map &vm )
         }
         unit->StopService(false); // We will add non-blocking later
         unit->Disable(false); // We will add non-blocking later
+        unit->Mask(false);
+        unit->Unmask(false);
         unit->Enable(false);
     }
 
@@ -770,7 +772,7 @@ int SystemCtrl_Cmd_Enable( boost::program_options::variables_map &vm )
 
     for (wstring unitname: units) {
         // We allow a shorthand reference via just the service name, but 
-        // we recognise the valid file extensions if given.
+        // we recognize the valid file extensions if given.
         if (unitname.rfind(L".service") == string::npos &&
             unitname.rfind(L".target")  == string::npos &&
             unitname.rfind(L".timer")   == string::npos &&

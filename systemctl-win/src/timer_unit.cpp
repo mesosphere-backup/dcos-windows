@@ -118,7 +118,7 @@ SystemDUnitPool::ReadTimerUnit(std::wstring name, std::wstring service_unit_path
 
 class SystemDTimer *SystemDTimer::ParseSystemDTimerUnit(wstring servicename, wstring unit_path, wifstream &fs)
 { 
-    SystemCtlLog::msg << L"ParseSystemDServiceUnit unit = " << servicename;
+    SystemCtlLog::msg << L"ParseSystemDTimerUnit unit = " << servicename;
     SystemCtlLog::Debug();
 
     std::wstring line;
@@ -292,6 +292,12 @@ boolean SystemDTimer::Mask(boolean block)
     wstring servicename = this->name;
     SystemCtlLog::msg << L"SystemDTimer::Mask is a stub " << this->name ;
     SystemCtlLog::Debug();
+    std::wstring filepath_W = SystemDUnitPool::ACTIVE_UNIT_DIRECTORY_PATH + L"\\" + servicename;
+    std::string filepath_A = std::string(filepath_W.begin(), filepath_W.end());
+    // Delete the file
+    this->UnregisterService();
+    std::remove(filepath_A.c_str());
+
 
     return false;
 }
@@ -322,9 +328,37 @@ boolean SystemDTimer::Unmask(boolean block)
     wchar_t * buffer;
 
     wstring servicename = this->name;
-    SystemCtlLog::msg << L"SystemDTimer::Unmask  is a stub " << this->name;
-    SystemCtlLog::Debug();
-    return true;
+    wifstream checkfs(SystemDUnitPool::ACTIVE_UNIT_DIRECTORY_PATH + L"\\" + servicename);
+    if (checkfs.is_open()) {
+        checkfs.close();
+        return true;
+    }
+    else {
+
+        // If there is no file in the active directory, we copy one over, then register.
+
+        wstring service_unit_path = SystemDUnitPool::UNIT_DIRECTORY_PATH + L"\\" + servicename;
+        wstring service_unit_path2 = SystemDUnitPool::ACTIVE_UNIT_DIRECTORY_PATH + L"\\" + servicename;
+
+        // Find the unit in the unit library
+        wifstream fs(service_unit_path, std::fstream::in);
+        if (!fs.is_open()) {
+            SystemCtlLog::msg << "No service unit " << servicename.c_str() << "Found in unit library";
+            SystemCtlLog::Error();
+            return false;
+        }
+        fs.close();
+        BOOL try_copy = CopyFileW(service_unit_path.c_str(), service_unit_path2.c_str(), false);
+        if (try_copy != TRUE) {
+            SystemCtlLog::msg << L"Copy from : " << service_unit_path.c_str() << std::endl << L" to : "
+                << service_unit_path2.c_str() << std::endl << L"with result: " << try_copy << std::endl
+                << L"And last error: " << GetLastError() << std::endl;
+            SystemCtlLog::Error();
+        }
+
+        return true;
+    }
+    return false;
 }
 
 
