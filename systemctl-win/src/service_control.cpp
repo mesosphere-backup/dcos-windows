@@ -463,7 +463,7 @@ SystemDUnit::RegisterService(std::wstring unit )
         SystemCtlLog::msg << L"CreateService for: " << wservice_name.c_str() << L", failed with last error: " << GetLastError();
         SystemCtlLog::Error();
         SystemCtlLog::msg << L"With username:  " << user_name_temp.c_str();
-        SystemCtlLog::Error();
+        SystemCtlLog::Debug();
         CloseServiceHandle(hsc);
         return false;
     }
