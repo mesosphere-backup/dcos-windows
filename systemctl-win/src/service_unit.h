@@ -81,6 +81,7 @@ public:
 
     // Disables, recopies, reloads, then start/enables everybody in the systemd/lib directory
     void ReloadPool();
+    static bool md5_hash(std::wstring path, BYTE* hash);
 
     // deserialises and loads the pool of objects. Throws an exception on failure
 
@@ -89,6 +90,7 @@ public:
     void ShowGlobal();
 
     static wstring UNIT_DIRECTORY_PATH;        // Quasi constant inited in contructor
+    static wstring ACTIVE_UNIT_DIRECTORY_PATH; // Quasi constant
     static wstring SERVICE_WRAPPER_PATH; // Single instance for everybody
     static boolean DirExists(wstring dir_path);
     static boolean Apply(wstring dir_path, boolean (*action)(wstring dir_path, void *context ), void *context);
@@ -96,7 +98,6 @@ public:
 private:
     friend class SystemDUnit;
     friend class SystemDTimer;
-    static wstring ACTIVE_UNIT_DIRECTORY_PATH; // Quasi constant
     static wstring UNIT_WORKING_DIRECTORY_PATH; // Quasi constant
     static std::map<std::wstring, class SystemDUnit *> pool;
 
@@ -307,6 +308,7 @@ public:
             this->m_retry = 0;
 
             this->service_type   = SERVICE_TYPE_SIMPLE;
+            this->user_name      = L".\\LocalSystem";
             this->restart_action = RESTART_ACTION_ALWAYS;
             this->notify_access  = NOTIFY_ACTION_NONE;
             this->restart_sec     = g_pool->globals.DefaultRestartUSec.count()/1000000.0;
@@ -459,8 +461,6 @@ public:
     virtual boolean Kill(int action, int killtarget, boolean block);
     virtual boolean CatUnit(wostream &out);
 
-   static void AddUserServiceLogonPrivilege();
-
 protected:
     virtual wstring ParseUnitSection( wifstream &fs);
     virtual wstring ParseInstallSection( wifstream &fs);
@@ -493,6 +493,7 @@ private:
     wstring  bus_name;            // d-bus bus name (in windows this is just a service id) . Required for type = dbus
     enum ServiceType service_type;
     int m_retry;
+    wstring  user_name;
 
     enum RestartAction restart_action; // Restart= attribute parsed.
     double restart_sec;             // time to sleep before restarting a service. Default 100ms
@@ -595,6 +596,7 @@ private:
     static const unsigned long  ATTRIBUTE_BIT_USB_FUNCTION_STRINGS       =  0x10000000;
 
     boolean attr_service_type( wstring attr_name, wstring attr_value, unsigned long &attr_bitmask );
+    boolean attr_service_user(wstring attr_name, wstring attr_value, unsigned long &attr_bitmask);
     boolean attr_remain_after_exit( wstring attr_name, wstring attr_value, unsigned long &attr_bitmask );
     boolean attr_guess_main_pid( wstring attr_name, wstring attr_value, unsigned long &attr_bitmask );
     boolean attr_pid_file( wstring attr_name, wstring attr_value, unsigned long &attr_bitmask );
