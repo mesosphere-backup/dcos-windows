@@ -29,208 +29,6 @@ using namespace std;
 wstring SystemDUnit::SERVICE_WRAPPER = L"systemd-exec.exe";
 wstring SystemDUnitPool::SERVICE_WRAPPER_PATH;
 
-static void
-GetUserCreds(wstring &username, wstring &user_password)
-
-{
-    PCREDENTIALW pcred = NULL;
-
-    // First, we try the cred mgr
-    { //--- RETRIEVE user credentials. We need to have credentials specified for the service user otherwise we are
-      //    LocalSystem which is a bit too restrictive to be able to set stuff up.
-
-        BOOL ok = ::CredReadW (L"dcos/app", CRED_TYPE_GENERIC, 0, &pcred);
-        if (ok) {
-            user_password = wstring((wchar_t*)pcred->CredentialBlob, pcred->CredentialBlobSize / sizeof(wchar_t));
-            username = wstring(pcred->UserName); // L"wp128869010\\azureuser"; // 
-            // SystemCtlLog::msg << L"Read username = " << username << " password= " << user_password;
-            // SystemCtlLog::Debug();
-            ::CredFree (pcred);
-            return;
-        }
-        else {
-            SystemCtlLog::msg << L"CredRead() failed - errno -  fallback to env " << GetLastError();
-            SystemCtlLog::Warning();
-        }
-    }
-
-    // Not in the cred manager, we try environment variables
-
-    DWORD buff_size = 0;
-    vector<wchar_t> buf;
-    DWORD status = 0;
-    try {
-        buff_size = GetEnvironmentVariableW(L"SYSTEMD_SERVICE_USERNAME", NULL, 0);
-        if (!buff_size) {
-            // Throw something
-            throw std::exception("env var SYSTEMD_SERVICE_USERNAME not present in AddUserServiceLogonPrivilege");
-        }
-        buf = vector<wchar_t>(buff_size);
-        status = GetEnvironmentVariableW(L"SYSTEMD_SERVICE_USERNAME", buf.data(), buff_size);
-        if (!status) {
-            // Throw something
-            throw std::exception("env var SYSTEMD_SERVICE_USERNAME not present in AddUserServiceLogonPrivilege*2");
-        }
-        username = buf.data();
-    }
-    catch( std::exception &e ) {
-        string cmsg = e.what();
-        SystemCtlLog::msg << wstring(cmsg.begin(), cmsg.end());
-        SystemCtlLog::Error();
-        
-        // No env var there. We fall back and try to use what we have
-        buff_size = GetEnvironmentVariableW(L"USERDOMAIN", buf.data(), buff_size);
-        if (!buff_size) {
-             // Throw something
-            throw std::exception("env var USERDOMAIN not present in AddUserServiceLogonPrivilege");
-        }
-        buf = vector<wchar_t>(buff_size);
-        status = GetEnvironmentVariableW(L"USERDOMAIN", buf.data(), buff_size);
-        username = buf.data();
-        buff_size = GetEnvironmentVariableW(L"USERNAME", buf.data(), buff_size);
-        if (!buff_size) {
-             // Throw something
-            throw std::exception("env var USERNAME not present in AddUserServiceLogonPrivilege*2");
-        }
-        buf = vector<wchar_t>(buff_size);
-        status = GetEnvironmentVariableW(L"USERNAME", buf.data(), buff_size);
-        username.append(L"\\");
-        username.append(buf.data());
-    }
-
-    try {
-        buff_size = GetEnvironmentVariableW(L"SYSTEMD_SERVICE_PASSWORD", NULL, 0);
-        if (!buff_size) {
-            // Throw something
-            throw std::exception("env var SYSTEMD_SERVICE_PASSWORD not present in AddUserServiceLogonPrivilege");
-        }
-        buf = vector<wchar_t>(buff_size);
-        status = GetEnvironmentVariableW(L"SYSTEMD_SERVICE_PASSWORD", buf.data(), buff_size);
-        if (!status) {
-            // Throw something
-            throw std::exception("env var SYSTEMD_SERVICE_PASSWORD not present in AddUserServiceLogonPrivilege*2");
-        }
-        user_password = buf.data();
-    }
-    catch( std::exception &e ) {
-        string cmsg = e.what();
-        SystemCtlLog::msg << wstring(cmsg.begin(), cmsg.end());
-        SystemCtlLog::Error();
-        user_password = L""; // It is possible we actually don't have a password for this service account if it is 
-                             // a managed service account
-    }
-}
-
-
-void
-SystemDUnit::AddUserServiceLogonPrivilege()
-
-{
-    wstring username;
-    wstring password; // ignored 
-
-    //TODO remove this make .service user managed
-    GetUserCreds(username, password);
- 
-    // SystemCtlLog::msg << L"username = " << username << " password = " << password << std::endl; 
-    // SystemCtlLog::Debug();
-
-    // Get the sid
-    SID *psid;
-    SID_NAME_USE nameuse;
-    DWORD sid_size = 0;
-    DWORD domain_size = 0;
-    // Get sizes
-    SystemCtlLog::msg << L"ADD the SERVICELOGON PRIVILEGE";
-    SystemCtlLog::Info();
-    (void)LookupAccountNameW(  NULL, // local machine
-                           username.c_str(),  // Account name
-                           NULL,   // sid ptr
-                           &sid_size, // sizeof sid
-                           NULL,   // referenced domain
-                           &domain_size,
-                           &nameuse );
-    // ignore the return
-    SystemCtlLog::msg << L"p2 sid_size = " << sid_size << " domainlen = " << domain_size;
-    SystemCtlLog::Debug();
-    std::vector<char>sid_buff(sid_size);
-    psid = (SID*)sid_buff.data();
-    std::vector<wchar_t>refdomain(domain_size+1);
-    if (!LookupAccountNameW(  NULL, // local machine
-                           username.c_str(),  // Account name
-                           psid,   // sid ptr
-                           &sid_size, // sizeof sid
-                           refdomain.data(),   // referenced domain
-                           &domain_size,
-                           &nameuse )) {
-        DWORD err = GetLastError();
-        SystemCtlLog::msg << L"LookupAccountName() failed in AddUserServiceLogonPrivilege - errno " << GetLastError() << L" sid size " << sid_size << " domain_size << " << domain_size;
-        SystemCtlLog::Warning();
-        return;
-    }
-
-    // Get the LSA_HANDLE
-    LSA_OBJECT_ATTRIBUTES attrs = {0};
-    LSA_HANDLE policy_h;
-    DWORD status = LsaOpenPolicy(NULL, &attrs, POLICY_ALL_ACCESS, &policy_h);
-    if (status) {
-        SystemCtlLog::msg << L"LsaOpenPolicy() failed in AddUserServiceLogonPrivilege - errno " << status;
-        SystemCtlLog::Warning();
-        return;
-    }
-
-    // Check to see if the right is already there. We coiuld just set it but that assumes the 
-    // underlying code will definitely tolerate that.  Rather not take that bet.
-
-    static const std::wstring se_service_logon = L"SeServiceLogonRight";
-    LSA_UNICODE_STRING *pprivs = NULL;
-    unsigned long priv_count = 0;
-
-    status = LsaEnumerateAccountRights( policy_h,
-                                  psid,
-                                  &pprivs,
-                                  &priv_count);
-
-    // status isn't so great for enum, because it can return several non zero values in normal operation.
-    // so we just check for the result if it fails or succeeds. priv_count will be 0 if it fails. That is normal
-    // if no privs are configured.
-    for (unsigned long i = 0; i < priv_count; i++ ) {
-        if (pprivs && pprivs[i].Buffer) {
-            if (se_service_logon.compare(0, pprivs[i].Length, pprivs[i].Buffer) == 0) {
-                SystemCtlLog::msg << L"Service Logon right already present";
-                SystemCtlLog::Debug();
-                LsaFreeMemory(pprivs);
-                LsaClose(policy_h);
-                return;
-            }
-        }
-    }
-
-    LsaFreeMemory(pprivs);
-
-    LSA_UNICODE_STRING privs[1];
-    privs[0].Length = se_service_logon.length()*sizeof(wchar_t);
-    privs[0].MaximumLength = se_service_logon.max_size()*sizeof(wchar_t);
-    privs[0].Buffer = (wchar_t *)(se_service_logon.c_str());
-
-    status = LsaAddAccountRights( policy_h,
-                                  psid,
-                                  privs,
-                                  1);
-    if (status) {
-        SystemCtlLog::msg << L"LsaAddAccountRights() failed in AddUserServiceLogonPrivilege - errno " << status;
-        SystemCtlLog::Warning();
-        LsaClose(policy_h);
-        return;
-    }
-
-    LsaClose(policy_h);
-    SystemCtlLog::msg << L"Service Logon right added";
-    SystemCtlLog::Info();
-}
-
-
-
 boolean SystemDUnit::StartService(boolean blocking)
 
 {
@@ -271,7 +69,6 @@ boolean SystemDUnit::StartService(boolean blocking)
             SystemCtlLog::Info();
             CloseServiceHandle(hsvc); 
             CloseServiceHandle(hsc);
-            AddUserServiceLogonPrivilege();  // We do this unconditionally 
             if (!this->m_retry++ ) {
                 CloseServiceHandle(hsvc);
                 CloseServiceHandle(hsc);
@@ -586,8 +383,6 @@ SystemDUnit::RegisterService(std::wstring unit )
 
     std::wstringstream wcmdline ;
 
-    AddUserServiceLogonPrivilege(); // Make sure the user can actually use the thing.
-
     if (unit.empty()) {
         unit = wservice_name;
     }
@@ -639,11 +434,6 @@ SystemDUnit::RegisterService(std::wstring unit )
         }
     }
 
-    wstring username;
-    wstring user_password;
-
-    GetUserCreds(username, user_password);
-
     SC_HANDLE hsc = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
     if (!hsc) {
         int last_error = GetLastError();
@@ -652,6 +442,7 @@ SystemDUnit::RegisterService(std::wstring unit )
         return false;
     }
 
+    wstring user_name_temp = this->user_name;
     SC_HANDLE hsvc = CreateServiceW( 
             hsc,                       // SCM database 
             wservice_name.c_str(),             // name of service 
@@ -664,12 +455,14 @@ SystemDUnit::RegisterService(std::wstring unit )
             NULL,                      // no load ordering group 
             NULL,                      // no tag identifier 
             dep_buffer.data(),  // dependencies 
-            username.c_str(), //pcred? username.c_str(): NULL,  // LocalSystem account 
-            user_password.c_str()); // pcred ? user_password.c_str() : NULL);   // no password 
+            user_name_temp.c_str(), //pcred? username.c_str(): NULL,  // LocalSystem account
+            NULL); // pcred ? user_password.c_str() : NULL);   // no password
 
     if (hsvc == NULL) 
     {
-        SystemCtlLog::msg << L"CreateService failed " << GetLastError();
+        SystemCtlLog::msg << L"CreateService for: " << wservice_name.c_str() << L", failed with last error: " << GetLastError();
+        SystemCtlLog::Error();
+        SystemCtlLog::msg << L"With username:  " << user_name_temp.c_str();
         SystemCtlLog::Error();
         CloseServiceHandle(hsc);
         return false;
@@ -678,6 +471,8 @@ SystemDUnit::RegisterService(std::wstring unit )
     if (this->description.length() > 0) {
         SERVICE_DESCRIPTIONW sd = { 0 };
         sd.lpDescription = (wchar_t *)this->description.c_str();
+        SystemCtlLog::msg << L"ChangeServiceConfig2W description= " << this->description.c_str();
+        SystemCtlLog::Debug();
         if (!ChangeServiceConfig2W(hsvc, SERVICE_CONFIG_DESCRIPTION, &sd)) {
             SystemCtlLog::msg << L"ChangeServiceConfig2W failed " << GetLastError();
             SystemCtlLog::Debug();
